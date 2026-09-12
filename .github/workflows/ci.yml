@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DMRU_BUILD_TESTS=ON -DMRU_BUILD_PLUGIN=OFF
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Format check
+        run: |
+          command -v clang-format >/dev/null
+          find include src tests \( -name '*.cpp' -o -name '*.hpp' \) -print0 | xargs -0 -r clang-format --dry-run -Werror
+
+  # domain-hyprland-guard:
+  #   fails if domain sources include hyprland headers
+  domain-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Forbid hyprland includes in domain
+        run: |
+          if grep -RIn '#include <hyprland' include/mru/domain src/domain 2>/dev/null; then
+            echo "domain must not include hyprland headers"
+            exit 1
+          fi
+          echo OK

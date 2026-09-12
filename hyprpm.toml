@@ -1,0 +1,14 @@
+[repository]
+name = "mru-switcher"
+authors = ["TBD"]
+# commit_pins = ["HYPRLAND_COMMIT_TBD = plugin_commit_tbd"]
+
+[mru-switcher]
+description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
+authors = ["TBD"]
+output = "build/mru-switcher.so"
+build = [
+  "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release",
+  "cmake --build build -j"
+]
+# Fill commit_pins when COMPAT.md has a real Hyprland pin (M2).
