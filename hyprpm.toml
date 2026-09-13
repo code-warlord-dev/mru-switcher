@@ -1,3 +1,4 @@
+# NOTE: build produces mru-switcher.so only after M2; until then use domain tests (MRU_BUILD_PLUGIN=OFF).
 [repository]
 name = "mru-switcher"
 authors = ["TBD"]

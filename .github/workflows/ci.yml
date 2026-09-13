@@ -7,30 +7,52 @@ on:
 
 jobs:
   unit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 clang-format-18 cmake ninja-build
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DMRU_BUILD_TESTS=ON -DMRU_BUILD_PLUGIN=OFF
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DMRU_BUILD_TESTS=ON \
+            -DMRU_BUILD_PLUGIN=OFF \
+            -DMRU_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build -j
       - name: Test
         run: ctest --test-dir build --output-on-failure
-      - name: Format check
+      - name: clang-format (dry-run)
         run: |
-          command -v clang-format >/dev/null
-          find include src tests \( -name '*.cpp' -o -name '*.hpp' \) -print0 | xargs -0 -r clang-format --dry-run -Werror
+          mapfile -t files < <(find include src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) 2>/dev/null || true)
+          if [ ${#files[@]} -eq 0 ]; then echo "No sources"; exit 0; fi
+          clang-format-18 --dry-run -Werror "${files[@]}"
 
-  # domain-hyprland-guard:
-  #   fails if domain sources include hyprland headers
   domain-deps:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Forbid hyprland includes in domain
         run: |
           if grep -RIn '#include <hyprland' include/mru/domain src/domain 2>/dev/null; then
-            echo "domain must not include hyprland headers"
-            exit 1
+            echo "domain must not include hyprland headers"; exit 1
           fi
           echo OK
+
+  plugin-flag-fails-closed:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cmake
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake
+      - name: MRU_BUILD_PLUGIN=ON must fail until M2
+        run: |
+          if cmake -S . -B build-plugin -DMRU_BUILD_PLUGIN=ON; then
+            echo "Expected FATAL_ERROR"; exit 1
+          fi
+          echo "configure failed as expected"

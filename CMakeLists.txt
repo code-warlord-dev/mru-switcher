@@ -40,6 +40,10 @@ if(MRU_BUILD_TESTS)
 endif()
 
 if(MRU_BUILD_PLUGIN)
-  message(STATUS "MRU_BUILD_PLUGIN=ON — ensure Hyprland headers match COMPAT.md pin")
-  # Plugin target wired in M2
+  # M2 will define add_library(mru-switcher SHARED ...). Until then, fail closed so
+  # hyprpm/CI cannot report a green build without a .so.
+  message(FATAL_ERROR
+    "MRU_BUILD_PLUGIN=ON is not supported until M2 wires the shared library target.\n"
+    "  See docs/ROADMAP.md M2 and docs/COMPAT.md.\n"
+    "  Configure with -DMRU_BUILD_PLUGIN=OFF (default) for domain tests.")
 endif()
