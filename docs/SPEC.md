@@ -111,7 +111,7 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 | `monitor` | Valid AND on current monitor |
 | `workspace` | Valid AND on current workspace |
 | `visible` | Valid AND on a currently visible workspace |
-| `app` | Valid AND same application class as the focused window at snapshot time (if no focused window, behave as `global`) |
+| `app` | Valid AND same **`class`** (not `initialClass`) as the focused window at snapshot time; if no focused window, behave as `global` |
 
 **REQ-SC-003** Unknown scope token SHALL cause `mru:cycle` to fail with a clear error string (session not started).
 
@@ -135,7 +135,7 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 When `mru:apply` runs and the current selection’s `WindowRef` is invalid:
 
 1. **Prune** all invalid entries from the Snapshot (stable relative order of survivors).
-2. If Snapshot is empty → end session as **Cancelled** (UI `Cancelled`); dispatcher success or soft-fail MAY be implementation-defined but MUST NOT crash; prefer `{ success: false, error: "no windows" }` if nothing was focused.
+2. If Snapshot is empty → end session as **Cancelled** (UI `Cancelled`); dispatcher MUST return `{ success: false, error: "no windows" }` if nothing was focused.
 3. If Snapshot non-empty:
    - Let `i` be the selection index **before** prune.
    - After prune, set index to `min(i, len-1)` (clamp toward the same slot / previous neighbor). **Do not** scan arbitrarily far; a single clamp after full prune is enough.
@@ -167,6 +167,12 @@ job_id = schedule_after(delay_ms, callback)
 
 All dispatchers registered via `HyprlandAPI::addDispatcherV2`.
 
+### 3.0 Dispatcher common rules
+
+**REQ-DISP-001** For `mru:cycle`, if direction token is omitted, treat as `next`.
+
+**REQ-DISP-002** When apply ends with no focus (empty after prune), result is always `{ success: false, error: "no windows" }` (not success no-op).
+
 ### 3.1 `mru:cycle`
 
 **Grammar:**
@@ -175,7 +181,7 @@ All dispatchers registered via `HyprlandAPI::addDispatcherV2`.
 mru:cycle [next|prev] [global|monitor|workspace|visible|app]
 ```
 
-- Direction defaults to `next` if omitted (implementation MAY require explicit direction — prefer explicit in binds).
+- **Direction:** if omitted, MUST default to `next` (normative). Binds SHOULD still pass an explicit direction for clarity.
 - Scope optional (§2.6).
 
 **Results:**
@@ -332,6 +338,8 @@ When `restore_focus_on_cancel = true`:
 | T-S-05 | restore_focus_on_cancel focuses session_origin when valid |
 | T-S-06 | restore_focus_on_cancel no-ops when origin invalid |
 | T-UI-01 | unknown/unavailable ui backend falls back to null |
+| T-DISP-01 | omitted cycle direction equals next |
+| T-SC-02 | app scope matches class only |
 
 ---
 

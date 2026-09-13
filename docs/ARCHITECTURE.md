@@ -185,7 +185,7 @@ Builds the candidate set for a new Snapshot:
 | Monitor | Windows on current monitor |
 | Workspace | Windows on current workspace |
 | Visible | Windows on currently visible workspaces |
-| App | Same `class` / `initialClass` as active window |
+| App | Same `class` as the focused window at snapshot time (see SPEC REQ-SC-002; not initialClass) |
 
 Invalid / closed windows are filtered at snapshot time and on prune.
 
@@ -267,7 +267,7 @@ plugin {
         default_scope           = global   # global|monitor|workspace|visible|app
         start_offset            = second   # first|second
         wrap                    = true
-        ui                      = border   # null|border|external
+        ui                      = null     # null|border|external (border from M4)
         lock_history_on_session = true
         restore_focus_on_cancel = false
     }

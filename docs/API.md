@@ -16,7 +16,7 @@ Starts a session or moves selection.
 
 | Argument | Required | Values |
 |----------|----------|--------|
-| direction | recommended | `next`, `prev` |
+| direction | optional (default **next**) | `next`, `prev` |
 | scope | no | `global`, `monitor`, `workspace`, `visible`, `app` |
 
 ### `mru:apply`
@@ -55,7 +55,7 @@ Prefix: `plugin:mru-switcher:`
 | `default_scope` | string | global |
 | `start_offset` | string | second |
 | `wrap` | bool | true |
-| `ui` | string | border |
+| `ui` | string | null |
 | `lock_history_on_session` | bool | true |
 | `restore_focus_on_cancel` | bool | false |
 | `external_socket` | string | (empty) |

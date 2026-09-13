@@ -7,7 +7,7 @@ For each mode: **trigger → session state → dispatcher result → UI → hist
 
 | ID | Trigger | Session after | Dispatcher | UI | Side effects | Tests |
 |----|---------|---------------|------------|-----|--------------|-------|
-| FM-01 | Selected window closed before apply | Idle | prefer fail `"no windows"` or success-noop policy per SPEC §2.8 | `Cancelled` if no focus; `Applied` if survivor focused | prune; cancel debounce N/A | T-F-03, T-F-04 |
+| FM-01 | Selected window closed before apply | Idle | if survivor focused → success; if none → **fail** `"no windows"` (never success-noop) | `Cancelled` if no focus; `Applied` if survivor focused | prune | T-F-03, T-F-04 |
 | FM-02 | All snapshot windows closed | Idle | fail `"no windows"` | `Cancelled` | clear session | T-F-04, REQ-S-006 |
 | FM-03 | Focused window closes while Idle | Idle | n/a | n/a | HistoryTracker: pending debounce cancelled if that ref (REQ-H-009) | T-H-05 |
 | FM-04 | Workspace/monitor disappears | Active or Idle | cycle may rebuild only on **new** session; active snapshot pruned of invalid | selection_changed if prune mid-UI optional | prune invalid refs | T-F-03 + scope tests M3 |
