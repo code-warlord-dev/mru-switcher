@@ -48,6 +48,11 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(domain_test_snapshot PRIVATE mru_domain)
   mru_warnings(domain_test_snapshot)
   add_test(NAME domain_snapshot COMMAND domain_test_snapshot)
+
+  add_executable(domain_test_session_controller tests/domain/test_session_controller.cpp)
+  target_link_libraries(domain_test_session_controller PRIVATE mru_domain)
+  mru_warnings(domain_test_session_controller)
+  add_test(NAME domain_session_controller COMMAND domain_test_session_controller)
 endif()
 
 if(MRU_BUILD_PLUGIN)
