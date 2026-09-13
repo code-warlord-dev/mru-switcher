@@ -218,6 +218,25 @@ Never skip the design gate for changes to snapshot, lock-in, apply-on-release, o
 
 One logical change per branch. Do not mix M2 plugin wiring with unrelated docs reformatting.
 
+### 5.1a Dual-remote sync (MANDATORY)
+
+The repository is hosted on **two platforms that must stay fully identical and synchronized**: `GitLab` (SSH) and `GitHub` (HTTPS). This is the **only** way to work with remotes.
+
+- `origin` carries **two** `pushurl`s and **two** `url`s (fetch), both GitLab and GitHub.
+- **Every** `git push origin`, `git fetch origin`, and `git pull origin` hits **both** remotes automatically — never push to a single platform.
+- A commit/release that exists on one platform but not the other is a **failed state**; detect and fix it before continuing (e.g. `git push origin --dry-run`, compare `git ls-remote`).
+- Never edit remote config to drop a platform without an ADR and human approval.
+- Review targets exist on both: GitLab **MR** and GitHub **PR**. A merge must be mirrored to the counterpart host (push the merged commit/delete the branch on both).
+
+#### Setting up (one-time)
+
+```bash
+git remote set-url --add origin <gitlab-ssh-url>
+git remote set-url --add origin <github-https-url>     # fetch url
+git remote set-url --add --push origin <gitlab-ssh-url>
+git remote set-url --add --push origin <github-https-url>
+```
+
 ### 5.2 Commits
 
 - **Conventional Commits** preferred:
@@ -268,11 +287,13 @@ git rebase origin/main
 
 ## 6. GitHub workflow
 
+> This section covers **both** hosts (GitLab + GitHub). Per §5.1a the two platforms are always synchronized; each review artifact (GitLab MR or GitHub PR) must be mirrored to the counterpart host before merge is considered complete.
+
 ### 6.1 Pull requests
 
-1. Push branch: `git push -u origin HEAD`  
-2. Open PR against `main`  
-3. PR description **must** include:
+1. Push branch: `git push -u origin HEAD`  (hits both GitLab and GitHub via dual `pushurl`)  
+2. Open MR against `main` on **GitLab**; open the matching **PR** on GitHub  
+3. MR/PR description **must** include:
 
    - Summary (1 paragraph)  
    - SPEC requirement IDs touched (`REQ-S-002`, `T-H-01`, …)  
@@ -305,6 +326,7 @@ git rebase origin/main
 
 - Prefer **squash** for feature branches or **rebase merge** if the team wants linear history — pick one repo rule and stick to it  
 - Delete branch after merge  
+- **Mirror the merge to both hosts** (per §5.1a): after the MR is merged on GitLab, push the merged commit and branch deletion to GitHub too — the two platforms must never diverge  
 - On release tags: follow ROADMAP versioning (0.x flexible contracts; 1.x stable dispatchers/config)  
 
 ### 6.5 Issues and milestones
