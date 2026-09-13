@@ -21,22 +21,28 @@ endfunction()
 # --- Domain library (no Hyprland) ---
 add_library(mru_domain STATIC)
 target_include_directories(mru_domain PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-# Sources added as M1 lands; placeholder object keeps target valid
 file(GLOB_RECURSE MRU_DOMAIN_SOURCES CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/*.cpp)
-if(MRU_DOMAIN_SOURCES)
-  target_sources(mru_domain PRIVATE ${MRU_DOMAIN_SOURCES})
-else()
-  target_sources(mru_domain PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/domain/placeholder.cpp)
-endif()
+target_sources(mru_domain PRIVATE ${MRU_DOMAIN_SOURCES})
 mru_warnings(mru_domain)
 
 if(MRU_BUILD_TESTS)
   enable_testing()
-  add_executable(mru_domain_tests tests/domain/smoke_placeholder.cpp)
-  target_link_libraries(mru_domain_tests PRIVATE mru_domain)
-  mru_warnings(mru_domain_tests)
-  add_test(NAME domain_smoke COMMAND mru_domain_tests)
+
+  add_executable(domain_test_window_identity tests/domain/test_window_identity.cpp)
+  target_link_libraries(domain_test_window_identity PRIVATE mru_domain)
+  mru_warnings(domain_test_window_identity)
+  add_test(NAME domain_window_identity COMMAND domain_test_window_identity)
+
+  add_executable(domain_test_history_tracker tests/domain/test_history_tracker.cpp)
+  target_link_libraries(domain_test_history_tracker PRIVATE mru_domain)
+  mru_warnings(domain_test_history_tracker)
+  add_test(NAME domain_history_tracker COMMAND domain_test_history_tracker)
+
+  add_executable(domain_test_selection_helpers tests/domain/test_selection_helpers.cpp)
+  target_link_libraries(domain_test_selection_helpers PRIVATE mru_domain)
+  mru_warnings(domain_test_selection_helpers)
+  add_test(NAME domain_selection_helpers COMMAND domain_test_selection_helpers)
 endif()
 
 if(MRU_BUILD_PLUGIN)
