@@ -11,12 +11,12 @@ namespace mru::domain {
 enum class UIEndReason { Applied, Cancelled };
 
 class UIPort {
-public:
-  virtual ~UIPort() = default;
+  public:
+    virtual ~UIPort() = default;
 
-  virtual void on_session_start(const Snapshot& snapshot, std::size_t index) = 0;
-  virtual void on_selection_changed(std::size_t index) = 0;
-  virtual void on_session_end(UIEndReason reason) = 0;
+    virtual void on_session_start(const Snapshot &snapshot, std::size_t index) = 0;
+    virtual void on_selection_changed(std::size_t index) = 0;
+    virtual void on_session_end(UIEndReason reason) = 0;
 };
 
 } // namespace mru::domain

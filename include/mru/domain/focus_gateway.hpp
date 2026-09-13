@@ -10,11 +10,11 @@ enum class FocusResult { Applied, InvalidTarget, Failed };
 
 // The single path through which compositor focus changes (ADR-006).
 class FocusGateway {
-public:
-  virtual ~FocusGateway() = default;
+  public:
+    virtual ~FocusGateway() = default;
 
-  // Applies focus to the resolved live window. Called at most once per apply.
-  virtual FocusResult focus(const WindowRef& ref) = 0;
+    // Applies focus to the resolved live window. Called at most once per apply.
+    virtual FocusResult focus(const WindowRef &ref) = 0;
 };
 
 } // namespace mru::domain

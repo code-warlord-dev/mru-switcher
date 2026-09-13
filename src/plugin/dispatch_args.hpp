@@ -9,10 +9,10 @@
 namespace mru::plugin {
 
 struct CycleArgs {
-  mru::domain::Direction              dir = mru::domain::Direction::Next;
-  std::optional<mru::domain::Scope>   scope;
-  bool                                ok = false;
-  std::string                         error;
+    mru::domain::Direction dir = mru::domain::Direction::Next;
+    std::optional<mru::domain::Scope> scope;
+    bool ok = false;
+    std::string error;
 };
 
 // Grammar: mru:cycle [next|prev] [global|monitor|workspace|visible|app]
