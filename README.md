@@ -4,6 +4,8 @@
 
 Built for **[Omarchy](https://omarchy.org)** (and anyone on **[Hyprland](https://hyprland.org)** who wants the same feel): take the best interaction ideas from **[Niri](https://github.com/YaLTeR/niri)** and make them feel native under Hyprland, without replacing the compositor or forcing a different layout philosophy.
 
+> **Goal:** give Hyprland (and Omarchy) a Niri-class global Alt+Tab — MRU order, frozen list while tabbing, focus only on modifier release — as a proper plugin with explicit contracts, not a fragile bind script.
+
 ---
 
 ## Why this exists
