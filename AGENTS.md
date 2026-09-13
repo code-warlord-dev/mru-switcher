@@ -196,7 +196,7 @@ npx skills update
 5. INTEGRATE       orchestrator checks SPEC IDs, architecture boundaries
 6. VERIFY          unit tests + nested smoke (hyprland-nested-dev)
 7. REVIEW          plugin-spec-compliance + code-review subagent
-8. SHIP            git branch → PR → human merge
+8. SHIP            git branch → MR (GitLab) + PR (GitHub) → self-review → merge to main
 ```
 
 Never skip the design gate for changes to snapshot, lock-in, apply-on-release, or dispatcher grammar.
@@ -303,7 +303,7 @@ git rebase origin/main
 
 4. Labels (suggested): `milestone:M2`, `area:domain`, `area:plugin`, `docs`, `needs-adr`  
 
-5. Request review; orchestrator assigns **reviewer subagent** + human as needed  
+5. Orchestrator runs **self-review** (plugin-spec-compliance + code-review) and, once the Definition of Done in §6.2 and CI are green, **approves and merges itself** on both hosts — no human gate for routine work.
 
 ### 6.2 PR checks (Definition of Done)
 
@@ -325,6 +325,7 @@ git rebase origin/main
 ### 6.4 Merge
 
 - Prefer **squash** for feature branches or **rebase merge** if the team wants linear history — pick one repo rule and stick to it  
+- **Self-merge (default):** once self-review and CI are green, the orchestrator **approves and merges into `main` itself** on both hosts — no human approval required for routine work. Human gate reserved only for: release tags, `adr/*` branches, or changes explicitly flagged `needs-human`.  
 - Delete branch after merge  
 - **Mirror the merge to both hosts** (per §5.1a): after the MR is merged on GitLab, push the merged commit and branch deletion to GitHub too — the two platforms must never diverge  
 - On release tags: follow ROADMAP versioning (0.x flexible contracts; 1.x stable dispatchers/config)  
@@ -402,7 +403,7 @@ Deliverable format: patch | memo | checklist | PR text
 | “Just write the plugin” | Refuse big-bang; start M1 domain per ROADMAP |
 | Load crash / hash mismatch | `hyprland-plugin` + `diagnosing-bugs` + nested-dev |
 | List jumps while Alt held | `hyprland-focus-mru` + SPEC REQ-H-* |
-| PR ready | `plugin-spec-compliance` + `code-review` → human merge |
+| PR ready | `plugin-spec-compliance` + `code-review` → self-merge both hosts |
 | Upstream Hyprland update | `research` → impact memo → pin or fix adapters |
 
 ---
@@ -786,3 +787,4 @@ Do not put secrets there.
 |---------|------|-------|
 | 1.0 | 2026-09-13 | Initial orchestrator contract, skills, git/GitHub |
 | 1.1 | 2026-09-13 | State sync, progress, version map, release, bugs, features-from-SPEC, token economy, recovery |
+| 1.2 | 2026-09-13 | Dual-remote sync §5.1a; orchestrator self-approves/self-merges MR+PR into main |
