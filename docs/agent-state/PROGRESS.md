@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-13 (M1 implementation complete on feat/m1-domain; awaiting review + MR)
+Updated: 2026-09-13 (M1 merged to main via MR !1; review fixes included)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -30,14 +30,17 @@ Updated: 2026-09-13 (M1 implementation complete on feat/m1-domain; awaiting revi
 - [x] SessionController + apply-after-invalidation
 - [x] HistoryTracker + SchedulerPort + FakeClock
 - [x] Unit tests T-S-* / T-H-* / T-SEL-* / T-F-03/04 / T-ID-01 (ctest 5/5 green)
-- [ ] Compliance review + MR merge to main
+- [x] Compliance review + MR merge to main (MR !1; polish: REQ-F-008 retry, last_end_reason, pruned() unify)
 
 ## M2 MVP plugin
 - [ ] PLUGIN_INIT hash check + config registration
+- [ ] Adapters: HyprlandCompositorPort, FocusGateway, SchedulerPort
 - [ ] Dispatchers mru:cycle / apply / cancel
-- [ ] Event::bus subscriptions
-- [ ] FocusGateway + Null UI
-- [ ] Nested smoke (basic binds)
+- [ ] Event::bus subscriptions (window.active / window.close)
+- [ ] WindowRef registry with generation
+- [ ] FocusGateway + Null UI (default ui=null)
+- [ ] restore_focus_on_cancel wired
+- [ ] Nested smoke (basic binds) on pinned Hyprland
 
 ## M3 Scopes + config
 - [ ] All scopes
