@@ -110,24 +110,24 @@ Layout:
 
 | Skill | Location |
 |-------|----------|
-| [code-review](code-review/) | `.agents/skills/code-review/` |
-| [codebase-design](codebase-design/) | `.agents/skills/codebase-design/` |
-| [cpp-plugin-architecture](cpp-plugin-architecture/) | `.agents/skills/cpp-plugin-architecture/` |
-| [diagnosing-bugs](diagnosing-bugs/) | `.agents/skills/diagnosing-bugs/` |
-| [domain-modeling](domain-modeling/) | `.agents/skills/domain-modeling/` |
-| [find-skills](find-skills/) | `.agents/skills/find-skills/` |
-| [grill-me](grill-me/) | `.agents/skills/grill-me/` |
-| [grilling](grilling/) | `.agents/skills/grilling/` |
-| [hyprland-focus-mru](hyprland-focus-mru/) | `.agents/skills/hyprland-focus-mru/` |
-| [hyprland-nested-dev](hyprland-nested-dev/) | `.agents/skills/hyprland-nested-dev/` |
-| [hyprland-plugin](hyprland-plugin/) | `.agents/skills/hyprland-plugin/` |
-| [implement](implement/) | `.agents/skills/implement/` |
-| [mru-switcher](mru-switcher/) | `.agents/skills/mru-switcher/` |
-| [plugin-spec-compliance](plugin-spec-compliance/) | `.agents/skills/plugin-spec-compliance/` |
-| [research](research/) | `.agents/skills/research/` |
-| [to-spec](to-spec/) | `.agents/skills/to-spec/` |
-| [to-tickets](to-tickets/) | `.agents/skills/to-tickets/` |
-| [writing-plans](writing-plans/) | `.agents/skills/writing-plans/` |
+| [code-review](.agents/skills/code-review/) | `.agents/skills/code-review/` |
+| [codebase-design](.agents/skills/codebase-design/) | `.agents/skills/codebase-design/` |
+| [cpp-plugin-architecture](.agents/skills/cpp-plugin-architecture/) | `.agents/skills/cpp-plugin-architecture/` |
+| [diagnosing-bugs](.agents/skills/diagnosing-bugs/) | `.agents/skills/diagnosing-bugs/` |
+| [domain-modeling](.agents/skills/domain-modeling/) | `.agents/skills/domain-modeling/` |
+| [find-skills](.agents/skills/find-skills/) | `.agents/skills/find-skills/` |
+| [grill-me](.agents/skills/grill-me/) | `.agents/skills/grill-me/` |
+| [grilling](.agents/skills/grilling/) | `.agents/skills/grilling/` |
+| [hyprland-focus-mru](.agents/skills/hyprland-focus-mru/) | `.agents/skills/hyprland-focus-mru/` |
+| [hyprland-nested-dev](.agents/skills/hyprland-nested-dev/) | `.agents/skills/hyprland-nested-dev/` |
+| [hyprland-plugin](.agents/skills/hyprland-plugin/) | `.agents/skills/hyprland-plugin/` |
+| [implement](.agents/skills/implement/) | `.agents/skills/implement/` |
+| [mru-switcher](.agents/skills/mru-switcher/) | `.agents/skills/mru-switcher/` |
+| [plugin-spec-compliance](.agents/skills/plugin-spec-compliance/) | `.agents/skills/plugin-spec-compliance/` |
+| [research](.agents/skills/research/) | `.agents/skills/research/` |
+| [to-spec](.agents/skills/to-spec/) | `.agents/skills/to-spec/` |
+| [to-tickets](.agents/skills/to-tickets/) | `.agents/skills/to-tickets/` |
+| [writing-plans](.agents/skills/writing-plans/) | `.agents/skills/writing-plans/` |
 
 Paths are relative to `.agents/skills/`. Project-owned skills always live in-repo; ecosystem skills may be installed via the skills CLI into the same tree.
 
@@ -135,12 +135,12 @@ Paths are relative to `.agents/skills/`. Project-owned skills always live in-rep
 
 | Skill | Level | Purpose |
 |-------|-------|---------|
-| [hyprland-plugin](hyprland-plugin/) | Expert | Native Hyprland `.so` API, Event::bus, dispatchers, config, hooks |
-| [mru-switcher](mru-switcher/) | Expert | Project contracts — snapshot, apply-on-release, scopes, ROADMAP |
-| [hyprland-focus-mru](hyprland-focus-mru/) | Expert | Focus history, debounce, lock-in, virtual selection |
-| [cpp-plugin-architecture](cpp-plugin-architecture/) | Expert | Ports/adapters, pure domain, FocusGateway, tests |
-| [hyprland-nested-dev](hyprland-nested-dev/) | Advanced | Nested session, load/reload, smoke checklist |
-| [plugin-spec-compliance](plugin-spec-compliance/) | Expert | SPEC/ADR review, requirement IDs, merge gates |
+| [hyprland-plugin](.agents/skills/hyprland-plugin/) | Expert | Native Hyprland `.so` API, Event::bus, dispatchers, config, hooks |
+| [mru-switcher](.agents/skills/mru-switcher/) | Expert | Project contracts — snapshot, apply-on-release, scopes, ROADMAP |
+| [hyprland-focus-mru](.agents/skills/hyprland-focus-mru/) | Expert | Focus history, debounce, lock-in, virtual selection |
+| [cpp-plugin-architecture](.agents/skills/cpp-plugin-architecture/) | Expert | Ports/adapters, pure domain, FocusGateway, tests |
+| [hyprland-nested-dev](.agents/skills/hyprland-nested-dev/) | Advanced | Nested session, load/reload, smoke checklist |
+| [plugin-spec-compliance](.agents/skills/plugin-spec-compliance/) | Expert | SPEC/ADR review, requirement IDs, merge gates |
 
 ### 3.5 Suggested activation matrix
 

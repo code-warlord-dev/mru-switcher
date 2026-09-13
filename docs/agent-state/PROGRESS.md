@@ -23,6 +23,7 @@ Updated: 2026-09-13 (design gate closed)
 - [x] THREAT-MODEL.md, GOVERNANCE.md, SUPPORT-AND-RELEASE.md
 - [x] CMake scaffold + CI workflow + hyprpm.toml template
 - [x] Domain dependency guard in CI
+- [x] Consistency pass: UI defaults, cycle grammar, FM-01, CMake PLUGIN fail-closed, REQ-TRACE expand, CI pins
 
 ## M1 Domain
 - [ ] Domain types (WindowRef address+generation, Snapshot, Selection, Session, Scope, Policy)
