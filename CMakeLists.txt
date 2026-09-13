@@ -43,6 +43,11 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(domain_test_selection_helpers PRIVATE mru_domain)
   mru_warnings(domain_test_selection_helpers)
   add_test(NAME domain_selection_helpers COMMAND domain_test_selection_helpers)
+
+  add_executable(domain_test_snapshot tests/domain/test_snapshot.cpp)
+  target_link_libraries(domain_test_snapshot PRIVATE mru_domain)
+  mru_warnings(domain_test_snapshot)
+  add_test(NAME domain_snapshot COMMAND domain_test_snapshot)
 endif()
 
 if(MRU_BUILD_PLUGIN)

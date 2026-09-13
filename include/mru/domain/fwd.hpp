@@ -8,5 +8,13 @@ struct WindowRef;
 class Snapshot;
 struct Selection;
 class SessionController;
+class WindowSource;
+class FocusGateway;
+class UIPort;
+class HistoryTracker;
+
+enum class FocusResult;
+enum class SessionEndReason;
+enum class UIEndReason;
 
 } // namespace mru::domain
