@@ -55,6 +55,24 @@ if(MRU_BUILD_TESTS)
   add_test(NAME domain_session_controller COMMAND domain_test_session_controller)
 endif()
 
+# --- Plugin pure helpers (no Hyprland headers; unit-testable) ---
+add_library(mru_plugin_core STATIC src/plugin/config_value.cpp src/plugin/dispatch_args.cpp)
+target_include_directories(mru_plugin_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)
+target_link_libraries(mru_plugin_core PUBLIC mru_domain)
+mru_warnings(mru_plugin_core)
+
+if(MRU_BUILD_TESTS)
+  add_executable(plugin_config_value tests/plugin/test_config_value.cpp)
+  target_link_libraries(plugin_config_value PRIVATE mru_plugin_core)
+  mru_warnings(plugin_config_value)
+  add_test(NAME plugin_config_value COMMAND plugin_config_value)
+
+  add_executable(plugin_dispatch_args tests/plugin/test_dispatch_args.cpp)
+  target_link_libraries(plugin_dispatch_args PRIVATE mru_plugin_core)
+  mru_warnings(plugin_dispatch_args)
+  add_test(NAME plugin_dispatch_args COMMAND plugin_dispatch_args)
+endif()
+
 if(MRU_BUILD_PLUGIN)
   # M2 will define add_library(mru-switcher SHARED ...). Until then, fail closed so
   # hyprpm/CI cannot report a green build without a .so.
