@@ -123,4 +123,4 @@ Details: [docs/ROADMAP.md](docs/ROADMAP.md), progress: [docs/agent-state/PROGRES
 
 ## License
 
-To be decided with the implementation.
+[MIT](LICENSE)
