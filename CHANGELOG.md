@@ -27,6 +27,7 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 - CI: ubuntu-24.04, clang-18, clang-format-18, plugin-flag fail-closed job
 
 ### Fixed
+- Pre-M1 dual-audit pass: LICENSE, reentrancy, session policy, FocusResult, NFR, timeout clarified, PR template
 
 - Duplicate `### Changed` heading in changelog
 - FM-01 dual success/error contract

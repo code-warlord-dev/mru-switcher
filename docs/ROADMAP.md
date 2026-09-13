@@ -76,6 +76,7 @@ Deliverables:
 - WindowRef registry with generation (identity validation)
 - Null UI; config default `ui = null`; REQ-UI-002 fallback if user sets `border` early
 - Default scope: `global`
+- `restore_focus_on_cancel` wired through FocusGateway (domain semantics already M1)
 - Manual smoke on nested Hyprland against **pinned** Hyprland revision (`docs/COMPAT.md`)
 
 **Exit criteria:**
@@ -120,7 +121,7 @@ Deliverables:
 - `BorderHighlightUI` (border colour / opacity via public mechanisms)
 - Selection highlight updates on cycle
 - Clear highlight on apply/cancel
-- Optional `restore_focus_on_cancel`
+- UI polish only for cancel path (restore-on-cancel behavior already in M1/M2)
 
 **Exit criteria:**
 

@@ -1,7 +1,8 @@
 # MRU Window Switcher — Technical Specification
 
 **Version:** 0.2 (pre-implementation, design gate closed)  
-**Status:** Normative for v0.x implementation  
+**Status:** Normative for v0.x implementation
+**Document type:** Normative  
 **Related:** ARCHITECTURE.md, DECISIONS.md, USER.md, ROADMAP.md
 
 This document is the detailed contract for behaviour, interfaces, configuration, and error handling.  
@@ -44,6 +45,14 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 **REQ-S-006** If the Snapshot becomes empty (all windows closed/invalid), the session SHALL end as Cancelled.
 
 **REQ-S-007** Starting a session SHALL record the then-current focused window as `session_origin` for optional restore.
+
+**REQ-S-008** Each session SHALL receive a monotonic `session_id` (uint64, plugin lifetime) for diagnostics and logs.
+
+**REQ-S-009** At session start the controller SHALL snapshot **SessionPolicy** (effective scope, wrap, start_offset, lock_history_on_session, restore_focus_on_cancel, ui backend choice for this session). Runtime config reload MUST NOT mutate the active session's policy; new values apply to the **next** session only.
+
+**REQ-S-010** While Active, a `mru:cycle` that includes a **scope** token differing from the session policy scope MUST **ignore** the override and continue with the existing Snapshot (MUST NOT rebuild). Implementations MAY log at debug. (Ergonomic default: switching keybinds mid-hold does not abort the session.)
+
+**REQ-S-011** Automatic session timeout is **out of scope** for v0.x and 1.0. No implicit apply/cancel by timer is permitted.
 
 ### 2.2 Snapshot construction
 
@@ -88,6 +97,12 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 **REQ-H-003** Only after the timer fires without newer focus events SHALL the window be committed to the MRU list.
 
 **REQ-H-004** Preferred seed/order source: `Desktop::History::windowTracker()->fullHistory()` when available; otherwise event-sourced list.
+
+**REQ-H-004a** The plugin **owns** the semantic MRU list used for Alt+Tab. Compositor history is seed/reconciliation only when available, not a live source of truth during the session.
+
+**REQ-H-004b** On plugin init, HistoryTracker SHALL attempt to seed from the compositor history source; if unavailable or empty, start empty and populate from subsequent focus events.
+
+**REQ-H-004c** History contains at most one entry per currently known live `WindowRef` identity; destroyed identities are removed (no separate max-length config required for v1).
 
 **REQ-H-005** Focus reasons MAY be used to ignore pure pointer-enter noise if configured in a future revision; v0.1 commits all focus events subject to debounce.
 
@@ -163,6 +178,27 @@ job_id = schedule_after(delay_ms, callback)
 
 ---
 
+### 2.10 Reentrancy and event ordering
+
+**REQ-RE-001** All domain and SessionController mutations run on the compositor main thread (no worker threads touching controller state).
+
+**REQ-RE-002** A single dispatcher invocation (`cycle` / `apply` / `cancel`) is **logically atomic** with respect to session state: it finishes its state transition before processing further dispatcher calls ordered by Hyprland after it.
+
+**REQ-RE-003** Events emitted as a consequence of `FocusGateway` focus during `apply` (e.g. `window.active`) MUST NOT reopen or mutate the session that is already terminating; HistoryTracker applies lock-in/Idle rules based on post-transition state (typically Idle after apply completes).
+
+**REQ-RE-004** Nested or overlapping dispatcher entry during an in-progress transition is ordered by the compositor; the plugin MUST NOT assume concurrent mutation of one session. Prefer finishing the current transition, then handling the next dispatcher.
+
+### 2.11 Performance and non-functional constraints
+
+**REQ-PERF-001** Dispatchers and event listeners MUST NOT block the compositor thread: no blocking I/O, no `sleep`, no process spawn, no `hyprctl`/socket IPC on the `mru:cycle` / `mru:apply` / `mru:cancel` hot path.
+
+**REQ-PERF-002** After Snapshot construction, advancing selection (`cycle`) is **O(1)** index arithmetic. Snapshot build and prune are **O(n)** in snapshot/candidate size.
+
+**REQ-PERF-003** UIPort implementations MUST NOT block the controller on external I/O (M5 socket is best-effort, non-blocking / timed).
+
+**REQ-PERF-004** No allocations beyond the unavoidable are required on the cycle hot path; do not re-enumerate all compositor windows on every cycle (resolve candidates at snapshot time).
+
+
 ## 3. Dispatcher specification
 
 All dispatchers registered via `HyprlandAPI::addDispatcherV2`.
@@ -234,7 +270,7 @@ Registered only in `PLUGIN_INIT`. Types follow Hyprland config value types used 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `debounce_ms` | int | `400` | Debounce before MRU commit (ms); `0` = immediate |
+| `debounce_ms` | int | `400` | Debounce before MRU commit (ms); `0` = immediate; clamp to **[0, 5000]** (REQ-CFG-004) |
 | `default_scope` | string | `global` | One of: `global`, `monitor`, `workspace`, `visible`, `app` |
 | `start_offset` | string | `second` | `first` \| `second` |
 | `wrap` | bool/int | `true` | Wrap selection at ends |
@@ -249,6 +285,8 @@ Registered only in `PLUGIN_INIT`. Types follow Hyprland config value types used 
 
 **REQ-CFG-003** Changing `ui` at reload switches backend for the next session start; current session may keep the backend already used for that session.
 
+**REQ-CFG-004** Numeric `debounce_ms` outside `[0, 5000]` SHALL be clamped into range; implementations MAY log once at warn when clamping.
+
 ---
 
 ## 5. UI port specification
@@ -258,7 +296,7 @@ Registered only in `PLUGIN_INIT`. Types follow Hyprland config value types used 
 ```text
 on_session_start(snapshot, selection)
 on_selection_changed(selection)
-on_session_end(reason: Applied | Cancelled)
+on_session_end(reason: Applied | Cancelled)  # UI; internal SessionEndReason is richer (REQ-F-009)
 ```
 
 ### 5.2 Backends

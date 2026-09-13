@@ -1,6 +1,6 @@
 # MRU Window Switcher — Architecture
 
-**Status:** Draft → Ready for implementation  
+**Status:** Ready for implementation (descriptive; SPEC/ADR are normative)  
 **Target:** Hyprland plugin (C++23)  
 **Scope:** Niri-style Alt+Tab (MRU, snapshot, apply-on-release, focus lock-in)
 
@@ -68,27 +68,25 @@ We use the reason to decide whether a focus change should update our HistoryTrac
          ┌───────────────────▼───────────────────┐
          │         SessionController             │
          │  (state machine: Idle ↔ Active)       │
-         └───────┬─────────────┬─────────┬───────┘
-                 │             │         │
-     ┌───────────▼──┐  ┌───────▼──┐  ┌───▼──────────┐
-     │ HistoryTracker│  │ Scope   │  │ FocusGateway │
-     │ + debounce    │  │ Resolver│  │ (single call)│
-     └───────┬───────┘  └────┬────┘  └──────────────┘
-             │               │
-             └───────┬───────┘
-                     │
-              ┌──────▼──────┐
-              │   Domain    │  pure types + invariants
-              │ Snapshot,   │
-              │ Selection,  │
-              │ Policy      │
-              └──────┬──────┘
-                     │
-              ┌──────▼──────┐
-              │  UIPort     │  Strategy
-              │ Null|Border │
-              │ |External   │
-              └─────────────┘
+         └───┬──────────┬────────────┬───────┬───┘
+             │          │            │       │
+     ┌───────▼──┐ ┌─────▼────┐ ┌─────▼────┐ ┌▼──────────┐
+     │ History  │ │ Scope    │ │ Focus    │ │ UIPort    │
+     │ Tracker  │ │ Resolver │ │ Gateway  │ │ (strategy)│
+     └──────────┘ └──────────┘ └──────────┘ └───────────┘
+             │          │
+             └────┬─────┘
+                  │
+           ┌──────▼──────┐
+           │   Domain    │  pure types + invariants
+           │ Snapshot,   │  (no Hyprland types)
+           │ Selection,  │
+           │ Policy      │
+           └─────────────┘
+
+HistoryTracker and ScopeResolver are **independent** collaborators of SessionController.
+Scope filters candidates when building a Snapshot; HistoryTracker only maintains MRU order.
+There is no History→Scope dependency.
 ```
 
 **Dependency rule:** Domain has zero knowledge of Hyprland.  
@@ -133,7 +131,7 @@ All compositor interaction goes through ports implemented in `adapters/`.
      │         │
      │    ┌────┼────┐
      │    │         │
-     │  Apply    Cancel / (optional timeout)
+     │  Apply    Cancel  (no session timeout in v0.x / 1.0)
      │    │         │
      └────┴────┬────┘
                ▼
@@ -185,7 +183,7 @@ Builds the candidate set for a new Snapshot:
 | Monitor | Windows on current monitor |
 | Workspace | Windows on current workspace |
 | Visible | Windows on currently visible workspaces |
-| App | Same `class` as the focused window at snapshot time (see SPEC REQ-SC-002; not initialClass) |
+| App | Same `class` as the focused window at snapshot time (SPEC REQ-SC-002; not initialClass) |
 
 Invalid / closed windows are filtered at snapshot time and on prune.
 

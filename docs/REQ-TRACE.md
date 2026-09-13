@@ -72,6 +72,18 @@
 | REQ-SCH-002 | T-H-02 | FakeClock | M1 |
 | REQ-SCH-003 | T-H-03 | job replace | M1 |
 
+
+| REQ-S-008 | observability | session_id | M1–M2 |
+| REQ-S-009 | T-CFG-02 | immutable SessionPolicy | M1–M3 |
+| REQ-S-010 | T-S-07 | ignore scope override when Active | M1 |
+| REQ-S-011 | — | no session timeout | M1 |
+| REQ-F-008 | T-F-05 | FocusResult | M1–M2 |
+| REQ-F-009 | logs | SessionEndReason | M1–M2 |
+| REQ-H-004a/b/c | T-H-seed | MRU ownership + seed | M1–M2 |
+| REQ-CFG-004 | T-CFG-03 | debounce_ms clamp | M2–M3 |
+| REQ-RE-001–004 | T-RE-01 | reentrancy / apply+active | M1–M2 |
+| REQ-PERF-001–004 | review | hot path constraints | M1–M2 |
+
 ## Test ID index
 
 | Test ID | Intent | Milestone |
