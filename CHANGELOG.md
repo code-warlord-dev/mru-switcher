@@ -8,6 +8,13 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- M1 domain core (pure C++, no Hyprland): `WindowRef` (address+generation, ADR-013), `Scope`/`Direction`/`StartOffset`/`SessionPolicy`, `Snapshot` (+prune helper), `SessionController` (Idle↔Active, REQ-S-001..011), `HistoryTracker` with debounce + lock-in, `SchedulerPort`/`FakeClock`
+- Domain ports (interfaces for M2 adapters): `WindowSource`, `FocusGateway` (`FocusResult`), `UIPort`
+- Unit tests T-S-01..07, T-F-01..05, T-RE-01, T-H-01..05, T-SEL-01..03, T-ID-01, T-H-seed (ctest 5/5 green)
+- Plan artifact: `docs/agent-state/plans/2026-09-13-m1-domain.md`
+
+### Changed
+
 - Documentation set (ARCHITECTURE, SPEC, ADRs, ROADMAP, USER, API, diagrams)
 - Hyprland plugin system reference
 - Agent skills (project) and AGENTS.md orchestrator contract

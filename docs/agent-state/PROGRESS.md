@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-13 (design gate closed)
+Updated: 2026-09-13 (M1 implementation complete on feat/m1-domain; awaiting review + MR)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -26,10 +26,11 @@ Updated: 2026-09-13 (design gate closed)
 - [x] Consistency pass: UI defaults, cycle grammar, FM-01, CMake PLUGIN fail-closed, REQ-TRACE expand, CI pins
 
 ## M1 Domain
-- [ ] Domain types (WindowRef address+generation, Snapshot, Selection, Session, Scope, Policy)
-- [ ] SessionController + apply-after-invalidation
-- [ ] HistoryTracker + SchedulerPort + FakeClock
-- [ ] Unit tests T-S-* / T-H-* / T-SEL-* / T-F-03/04 / T-ID-01 / T-UI-01 (null fallback logic pure)
+- [x] Domain types (WindowRef address+generation, Snapshot, Selection, Session, Scope, Policy)
+- [x] SessionController + apply-after-invalidation
+- [x] HistoryTracker + SchedulerPort + FakeClock
+- [x] Unit tests T-S-* / T-H-* / T-SEL-* / T-F-03/04 / T-ID-01 (ctest 5/5 green)
+- [ ] Compliance review + MR merge to main
 
 ## M2 MVP plugin
 - [ ] PLUGIN_INIT hash check + config registration
