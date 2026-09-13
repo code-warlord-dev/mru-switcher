@@ -1,8 +1,56 @@
 # MRU Window Switcher for Hyprland
 
-Niri-style Alt+Tab: most-recently-used order, frozen snapshot while tabbing, focus applied on modifier release.
+**Alt+Tab that remembers how you actually work** — not where a window sits on a grid.
 
-This repository is an **M0/M1 scaffold**: normative docs, agent operating system, CMake/CI for domain tests. Plugin `.so` lands in **M2** (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+Built for **[Omarchy](https://omarchy.org)** (and anyone on Hyprland who wants the same feel): take the best interaction ideas from **[Niri](https://github.com/YaLTeR/niri)** and make them feel native under Hyprland, without replacing the compositor or forcing a different layout philosophy.
+
+---
+
+## Why this exists
+
+Hyprland is excellent at tiling, workspaces, and motion. What many people still miss after using Niri is a **predictable global window switcher**:
+
+| What you want | What you often get instead |
+|---------------|----------------------------|
+| Jump to *the window you used a moment ago* | Workspace-local or stack-order cycling |
+| Hold Alt, tap Tab, list stays still | List **jumps** as focus events reorder it |
+| Focus commits when you **release** Alt | Every Tab already moves real focus (and pollutes history) |
+
+Niri’s model is simple and hard to unlearn: **most-recently-used order**, a **frozen list while you tab**, **real focus only on release**. This plugin brings that contract into Hyprland as a first-class plugin — designed for Omarchy’s “batteries included, still under your control” desktop, not as a one-off dotfiles hack.
+
+We are **not** trying to turn Hyprland into Niri. Scrolling columns, Niri’s layout engine, and its whole shell stay where they belong. We borrow **one sharp UX idea** and implement it with Hyprland’s plugin API, explicit invariants, and a testable domain core.
+
+---
+
+## What you get (in one screen)
+
+```text
+Alt held  →  Tab / Shift+Tab move a *virtual* selection through an MRU snapshot
+Alt up    →  focus lands on the selected window once
+```
+
+Under the hood (so it keeps working after a week of real use, not only in a demo):
+
+- **Snapshot** — the candidate list is fixed for the whole Alt-hold session  
+- **Lock-in** — intermediate focuses do not rewrite MRU while you switch  
+- **Debounce** — brief focus blips do not instantly reshuffle history  
+- **Stable identity** — `address + generation`, so a recycled window id cannot steal focus  
+- **Scopes** — global / monitor / workspace / visible / app when you need a narrower ring  
+
+Dispatch surface (planned / SPEC): `mru:cycle`, `mru:apply`, `mru:cancel`, `mru:status`.
+
+---
+
+## Project status
+
+This repository is past **design gate (M0)** and ready for **M1 domain implementation**. Normative contracts live in `docs/`; the loadable `.so` is **M2**. See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md).
+
+| If you are… | Start here |
+|-------------|------------|
+| Curious user / Omarchy explorer | This README → [docs/USER.md](docs/USER.md) (binds & config) |
+| Implementing the plugin | [docs/SPEC.md](docs/SPEC.md) → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Reviewing design decisions | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| Wiring agents / automation | [AGENTS.md](AGENTS.md) |
 
 ---
 
