@@ -1,11 +1,11 @@
 # Session State
-Updated: 2026-09-13T12:00:00Z
-Human goal: M1 domain implementation (types, SessionController, HistoryTracker, unit tests)
-Active milestone: M1 (impl done, awaiting compliance review + MR)
-Branch: feat/m1-domain
+Updated: 2026-09-13T17:30:00Z
+Human goal: M2 Hyprland MVP plugin (Null UI) — plan written, awaiting env
+Active milestone: M2
+Branch: main
 PR: none
-Blocked: none
-Next action: dispatch compliance-review subagent; then push + open MR
-SPEC focus: §2.1–2.10, REQ-S-*, REQ-SNAP-*, REQ-SEL-*, REQ-H-*, REQ-F-*, T-S/T-H/T-SEL/T-F/T-ID
-Open questions: none blocking M1
-Last artifact: M1 plan (Task 6-9) implemented by subagent-B (commits cca67c9..ee69734), ctest 5/5 green
+Blocked: human must run `paru -S hyprland-git --noconfirm` (needs sudo; no TTY)
+Next action: Task 1 env (human) -> delegate Tasks 2-6 via implementer subagents -> Task 7 nested smoke
+SPEC focus: REQ-DISP-001/002, REQ-CFG-001..004, REQ-UI-001..003, REQ-F-003/005, REQ-S-011
+Open questions: none
+Last artifact: docs/agent-state/plans/2026-09-13-m2-mvp-plugin.md
