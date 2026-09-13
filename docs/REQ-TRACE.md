@@ -3,6 +3,8 @@
 **Status:** Living — update on every behavioral PR  
 **Rule:** Every `REQ-*` in SPEC should appear here.
 
+> **M1 status (2026-09-13):** domain types, SessionController, HistoryTracker, SchedulerPort/FakeClock landed with unit tests (T-S-*, T-H-*, T-SEL-*, T-F-*, T-ID-01, T-RE-01, T-S-07). Rows marked `M1` are **done**; `M1–M2` partially done in domain, adapter/focus wiring remains for M2.
+
 | SPEC ID | Test IDs | Implementation area (target) | Milestone |
 |---------|----------|------------------------------|-----------|
 | REQ-S-001 | T-S-01 | SessionController | M1 |
