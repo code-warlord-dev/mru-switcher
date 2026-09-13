@@ -161,6 +161,29 @@ When `mru:apply` runs and the current selection’s `WindowRef` is invalid:
 
 **REQ-F-007** UI receives exactly one `on_session_end`: `Applied` if focus ran, `Cancelled` if not.
 
+**REQ-F-008** FocusGateway SHALL return a structured **FocusResult** to the controller (not a bare bool). The result MUST distinguish at least:
+
+| FocusResult | Meaning | Controller action |
+|-------------|---------|-------------------|
+| `Applied` | Focus was issued successfully to the resolved live window | End session as applied (UI `Applied`, internal reason `Applied`) |
+| `InvalidTarget` | `WindowRef` failed validation (stale generation, missing, unmapped) | Treat as invalid selection: continue **Apply-After-Invalidation** (§2.8) or end with no focus |
+| `Failed` | Focus API rejected or failed unexpectedly after a valid target was resolved | End session without a successful focus; UI `Cancelled`; internal reason `FocusFailed`; log at error |
+
+Domain tests may use a mock FocusGateway that returns these values without Hyprland.
+
+**REQ-F-009** Internally the controller SHALL record a **SessionEndReason** for diagnostics, status, and logs. UIPort continues to receive only the coarse UI reason (`Applied` | `Cancelled`). Mapping:
+
+| SessionEndReason | UI `on_session_end` | Typical trigger |
+|------------------|---------------------|-----------------|
+| `Applied` | Applied | Successful focus on apply |
+| `UserCancel` | Cancelled | `mru:cancel` / user abort |
+| `NoWindows` | Cancelled | Snapshot empty (after prune or on start failure path) |
+| `InvalidSelection` | Cancelled | Apply path exhausted invalid targets without focus |
+| `FocusFailed` | Cancelled | FocusResult `Failed` |
+| `PluginShutdown` | Cancelled | Unload / teardown while Active |
+
+`mru:status` and debug logs SHOULD expose the internal reason when verbose; the human-readable status string remains non-normative until 1.0.
+
 ### 2.9 SchedulerPort (debounce)
 
 Logical interface:
@@ -377,6 +400,9 @@ When `restore_focus_on_cancel = true`:
 | T-S-06 | restore_focus_on_cancel no-ops when origin invalid |
 | T-UI-01 | unknown/unavailable ui backend falls back to null |
 | T-DISP-01 | omitted cycle direction equals next |
+| T-F-05 | FocusResult InvalidTarget and Failed paths |
+| T-S-07 | Active cycle ignores different scope token |
+| T-RE-01 | apply then synthetic active does not reopen session |
 | T-SC-02 | app scope matches class only |
 
 ---

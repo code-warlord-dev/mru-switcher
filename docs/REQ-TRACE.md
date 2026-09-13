@@ -94,6 +94,7 @@
 | T-S-04 | empty candidates fail cycle | M1 |
 | T-S-05 | restore_focus_on_cancel valid | M1–M2 |
 | T-S-06 | restore origin invalid | M1–M2 |
+| T-S-07 | Active cycle ignores new scope token | M1 |
 | T-SEL-01 | start_offset second | M1 |
 | T-SEL-02 | wrap next/prev | M1 |
 | T-SEL-03 | wrap false clamp | M1 |
@@ -102,10 +103,12 @@
 | T-H-03 | replace pending | M1 |
 | T-H-04 | cancel on destroy | M1 |
 | T-H-05 | invalid before fire | M1 |
+| T-H-seed | init seed from compositor or empty | M1–M2 |
 | T-F-01 | cycle no FocusGateway | M1 |
 | T-F-02 | apply one focus | M1 |
 | T-F-03 | prune/clamp/apply | M1 |
 | T-F-04 | empty → error no windows | M1 |
+| T-F-05 | FocusResult InvalidTarget / Failed | M1–M2 |
 | T-ID-01 | stale generation | M1 |
 | T-DISP-01 | omitted direction = next | M1 |
 | T-SC-01 | scopes filter | M3 |
@@ -113,6 +116,8 @@
 | T-SC-03 | unknown scope | M3 |
 | T-CFG-01 | enum fallback | M3 |
 | T-CFG-02 | reload semantics | M3 |
+| T-CFG-03 | debounce_ms clamp to [0,5000] | M3 |
 | T-UI-01 | backend fallback | M2 |
 | T-UI-02 | UI throw isolated | M4 |
 | T-ERR-01 | exception mapping | M2 |
+| T-RE-01 | apply + synthetic active does not corrupt session | M1 |
