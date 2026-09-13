@@ -48,28 +48,44 @@ SessionController::CommandResult SessionController::apply() {
   if (!active_)
     return {true, ""}; // idempotent no-op, FM-12
 
-  prune_active(); // SPEC §2.8 step 1
+  std::optional<FocusResult> first = resolve_and_focus(); // §2.8
+  if (!first)
+    return end_session(SessionEndReason::NoWindows, "no windows"); // step 2
+  if (*first == FocusResult::Applied)
+    return end_session(SessionEndReason::Applied, "");
+  if (*first == FocusResult::Failed)
+    return end_session(SessionEndReason::FocusFailed, "no windows"); // FM-10
+
+  // InvalidTarget: the resolved window died between validation and focus.
+  // Continue apply-after-invalidation once more (REQ-F-008, §2.8 step-3
+  // symmetry). Bounded: a repeated InvalidTarget ends the session.
+  std::optional<FocusResult> second = resolve_and_focus();
+  if (!second)
+    return end_session(SessionEndReason::NoWindows, "no windows");
+  switch (*second) {
+  case FocusResult::Applied:
+    return end_session(SessionEndReason::Applied, "");
+  case FocusResult::Failed:
+    return end_session(SessionEndReason::FocusFailed, "no windows");
+  case FocusResult::InvalidTarget:
+    break;
+  }
+  return end_session(SessionEndReason::InvalidSelection, "no windows");
+}
+
+std::optional<FocusResult> SessionController::resolve_and_focus() {
+  prune_active();
   if (!snapshot_ || snapshot_->empty())
-    return end_session(SessionEndReason::NoWindows, "no windows"); // step 2, REQ-DISP-002
+    return std::nullopt;
 
   // Step 3: defensive repeat prune+clamp if the selection somehow stays invalid.
   if (!source_.is_valid(snapshot_->at(index_))) {
     prune_active();
     if (!snapshot_ || snapshot_->empty())
-      return end_session(SessionEndReason::NoWindows, "no windows");
+      return std::nullopt;
   }
   index_ = std::min(index_, snapshot_->size() - 1); // clamp toward same slot (ADR-014)
-
-  const FocusResult result = fg_.focus(snapshot_->at(index_)); // exactly once (REQ-F-006)
-  switch (result) {
-  case FocusResult::Applied:
-    return end_session(SessionEndReason::Applied, "");
-  case FocusResult::InvalidTarget:
-    return end_session(SessionEndReason::InvalidSelection, "no windows");
-  case FocusResult::Failed:
-    return end_session(SessionEndReason::FocusFailed, "no windows"); // FM-10
-  }
-  return {false, "no windows"};
+  return fg_.focus(snapshot_->at(index_));          // at most one success (REQ-F-006)
 }
 
 SessionController::CommandResult SessionController::cancel() {
@@ -92,6 +108,7 @@ SessionController::CommandResult SessionController::end_session(SessionEndReason
   snapshot_.reset();
   index_ = 0;
   session_origin_.reset();
+  last_end_reason_ = reason; // diagnostics (REQ-F-009, mru:status)
 
   if (snapshot_policy_.lock_history_on_session)
     tracker_.set_session_locked(false); // unlock (REQ-H-001)
@@ -105,14 +122,12 @@ void SessionController::prune_active() {
   if (!snapshot_)
     return;
 
-  std::vector<WindowRef> survivors;
-  survivors.reserve(snapshot_->size());
-  for (const WindowRef& ref : snapshot_->windows()) {
-    if (source_.is_valid(ref))
-      survivors.push_back(ref);
-  }
+  // Unify with the free helper: same stable-order, scope-preserving prune
+  // (REQ-SNAP-003/004).
+  const Scope scope = snapshot_->scope();
+  std::optional<Snapshot> next = pruned(*snapshot_, source_);
+  snapshot_ = next ? std::move(*next) : Snapshot(std::vector<WindowRef>{}, scope);
 
-  snapshot_ = Snapshot(std::move(survivors), snapshot_->scope());
   if (snapshot_->empty())
     index_ = 0;
   else if (index_ >= snapshot_->size())

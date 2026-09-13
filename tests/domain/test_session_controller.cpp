@@ -78,9 +78,9 @@ TEST(t_s_01_second_cycle_does_not_rebuild) {
   CHECK(f.sc.active_snapshot()->windows() == frozen);
 
   // session_id is monotonic across sessions (REQ-S-008)
-  f.sc.apply();
+(void) f.sc.apply();
   f.candidates({ref(9), ref(8)});
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
   CHECK(f.sc.session_id() == 2);
 }
 
@@ -88,7 +88,7 @@ TEST(t_s_01_second_cycle_does_not_rebuild) {
 TEST(t_s_02_apply_focuses_selected_and_ends) {
   Fixture f;
   f.candidates({ref(10), ref(20)}); // start_offset=Second -> index 1
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
   const WindowRef selected = f.sc.active_snapshot()->at(f.sc.index());
 
   const SessionController::CommandResult r = f.sc.apply();
@@ -97,6 +97,7 @@ TEST(t_s_02_apply_focuses_selected_and_ends) {
   CHECK(f.fg.focused[0] == selected);
   CHECK(f.ui.ends.size() == 1);
   CHECK(f.ui.ends[0] == UIEndReason::Applied);
+  CHECK(f.sc.last_end_reason() == mru::domain::SessionEndReason::Applied);
   CHECK(!f.sc.is_active());
 }
 
@@ -104,13 +105,14 @@ TEST(t_s_02_apply_focuses_selected_and_ends) {
 TEST(t_s_03_cancel_ends_without_focus) {
   Fixture f;
   f.candidates({ref(10), ref(20)});
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
 
   const SessionController::CommandResult r = f.sc.cancel();
   CHECK(r.ok);
   CHECK(f.fg.focused.empty());
   CHECK(f.ui.ends.size() == 1);
   CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+  CHECK(f.sc.last_end_reason() == mru::domain::SessionEndReason::UserCancel);
   CHECK(!f.sc.is_active());
 }
 
@@ -132,7 +134,7 @@ TEST(t_s_05_restore_cancels_to_valid_origin) {
   Fixture f(policy);
   f.candidates({ref(10), ref(20)});
   f.source.focused_result = {ref(10)}; // origin captured at session start
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
 
   const SessionController::CommandResult r = f.sc.cancel();
   CHECK(r.ok);
@@ -149,7 +151,7 @@ TEST(t_s_06_restore_invalid_origin_noop) {
   Fixture f(policy);
   f.candidates({ref(10), ref(20)});
   f.source.focused_result = {ref(99)}; // not in validity map -> invalid
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
 
   const SessionController::CommandResult r = f.sc.cancel();
   CHECK(r.ok);
@@ -162,7 +164,7 @@ TEST(t_s_06_restore_invalid_origin_noop) {
 TEST(t_s_07_active_cycle_ignores_scope_override) {
   Fixture f;
   f.candidates({ref(1), ref(2), ref(3)}); // default scope = Global
-  f.sc.cycle(Direction::Next);            // index = 1
+(void) f.sc.cycle(Direction::Next);            // index = 1
   const std::size_t before = f.sc.index();
   CHECK(f.sc.active_snapshot()->scope() == Scope::Global);
 
@@ -173,13 +175,49 @@ TEST(t_s_07_active_cycle_ignores_scope_override) {
   CHECK(f.sc.index() != before); // selection continues inside existing snapshot
 }
 
+// --- T-S-08: start_offset=First begins the session on slot 0 (REQ-SEL-001).
+TEST(t_s_08_start_offset_first_selects_slot_zero) {
+  SessionPolicy p;
+  p.start_offset = mru::domain::StartOffset::First;
+  Fixture f(p);
+  f.candidates({ref(10), ref(20)});
+
+(void) f.sc.cycle(Direction::Next);
+  CHECK(f.sc.is_active());
+  CHECK(f.sc.index() == 0);
+  CHECK(f.sc.active_snapshot()->at(0) == ref(10));
+  CHECK(f.ui.starts.size() == 1);
+  CHECK(f.ui.starts[0].second == 0);
+}
+
+// --- T-SEL-01: wrap=false clamps Next at the last slot and Prev at slot 0.
+TEST(t_sel_01_sc_wrap_false_clamps_at_edges) {
+  SessionPolicy p;
+  p.wrap = false;
+  Fixture f(p);
+  f.candidates({ref(10), ref(20), ref(30)});
+
+(void) f.sc.cycle(Direction::Next); // start_offset=Second -> slot 1
+(void) f.sc.cycle(Direction::Next); // slot 2
+(void) f.sc.cycle(Direction::Next); // clamped at 2
+  CHECK(f.sc.index() == 2);
+
+(void) f.sc.cancel();
+
+(void) f.sc.cycle(Direction::Next); // new session -> slot 1
+(void) f.sc.cycle(Direction::Prev); // slot 0
+(void) f.sc.cycle(Direction::Prev); // clamped at 0
+  CHECK(f.sc.index() == 0);
+  CHECK(f.sc.active_snapshot()->at(0) == ref(10));
+}
+
 // --- T-F-01: cycle never calls FocusGateway (REQ-F-003).
 TEST(t_f_01_cycle_never_focuses) {
   Fixture f;
   f.candidates({ref(1), ref(2), ref(3)});
-  f.sc.cycle(Direction::Next);
-  f.sc.cycle(Direction::Next);
-  f.sc.cycle(Direction::Prev);
+(void) f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Prev);
   CHECK(f.fg.focused.empty());
 }
 
@@ -187,10 +225,10 @@ TEST(t_f_01_cycle_never_focuses) {
 TEST(t_f_02_apply_single_focus) {
   Fixture f;
   f.candidates({ref(10), ref(20)});
-  f.sc.cycle(Direction::Next); // index 1
+(void) f.sc.cycle(Direction::Next); // index 1
   const WindowRef selected = f.sc.active_snapshot()->at(f.sc.index());
 
-  f.sc.apply();
+(void) f.sc.apply();
   CHECK(f.fg.focused.size() == 1);
   CHECK(f.fg.focused[0] == selected);
 }
@@ -199,7 +237,7 @@ TEST(t_f_02_apply_single_focus) {
 TEST(t_f_03_invalid_selection_prunes_to_survivor) {
   Fixture f;
   f.candidates({ref(10), ref(20), ref(30)});
-  f.sc.cycle(Direction::Next); // index 1 -> ref(20)
+(void) f.sc.cycle(Direction::Next); // index 1 -> ref(20)
   f.set_valid(ref(20), false); // selected invalid at apply time
 
   const SessionController::CommandResult r = f.sc.apply();
@@ -249,7 +287,7 @@ TEST(t_f_03_second_pass_prune_and_clamp) {
   HistoryTracker tracker(clock, [&](const WindowRef& r) { return source.is_valid(r); }, 50);
   SessionController sc(source, fg, ui, tracker, {});
 
-  sc.cycle(Direction::Next); // start_offset=Second -> index 1 = ref(20)
+(void) sc.cycle(Direction::Next); // start_offset=Second -> index 1 = ref(20)
   // 1st prune: ref(20) n==0 -> invalid, pruned; ref(10) n==0 valid, survives.
   // clamp: index 1 -> 0.
   // probe: ref(10) n==1 -> invalid -> 2nd prune: ref(10) n==2 valid, survives.
@@ -285,7 +323,7 @@ TEST(t_f_03_second_pass_empties_session_cancelled) {
   HistoryTracker tracker(clock, [&](const WindowRef& r) { return source.is_valid(r); }, 50);
   SessionController sc(source, fg, ui, tracker, {});
 
-  sc.cycle(Direction::Next); // single candidate -> index 0
+(void) sc.cycle(Direction::Next); // single candidate -> index 0
   const SessionController::CommandResult r = sc.apply();
   CHECK(!r.ok);
   CHECK(r.error == "no windows");
@@ -298,7 +336,7 @@ TEST(t_f_03_second_pass_empties_session_cancelled) {
 TEST(t_f_04_apply_empty_after_prune) {
   Fixture f;
   f.candidates({ref(10), ref(20)});
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
   f.set_valid(ref(10), false);
   f.set_valid(ref(20), false);
 
@@ -311,26 +349,47 @@ TEST(t_f_04_apply_empty_after_prune) {
   CHECK(!f.sc.is_active());
 }
 
-// --- T-F-05a: FocusResult::InvalidTarget -> InvalidSelection, one attempt only.
-TEST(t_f_05_invalid_target_ends_cancelled) {
+// --- T-F-05a: FocusResult::InvalidTarget -> bounded retry; repeated InvalidTarget
+// ends InvalidSelection (REQ-F-008 §2.8 symmetry, no successful focus, FM-10).
+TEST(t_f_05_invalid_target_retry_then_ends_cancelled) {
   Fixture f;
   f.candidates({ref(10), ref(20)});
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
   f.fg.result = FocusResult::InvalidTarget;
 
   const SessionController::CommandResult r = f.sc.apply();
   CHECK(!r.ok);
   CHECK(r.error == "no windows");
-  CHECK(f.fg.focused.size() == 1); // exactly one attempt, no second focus
+  CHECK(f.fg.focused.size() == 2); // bounded: one retry, still no success
+  CHECK(f.fg.focused[0] == f.fg.focused[1]);
   CHECK(f.ui.ends.size() == 1);
   CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
 }
 
-// --- T-F-05b: FocusResult::Failed -> FocusFailed, one attempt only.
+// --- T-F-05b: InvalidTarget race resolved by the retry -> survivor is focused
+// exactly once (success), session ends Applied (REQ-F-006 at-most-one success).
+TEST(t_f_05_invalid_target_retry_succeeds) {
+  Fixture f;
+  f.candidates({ref(10), ref(20)});
+(void) f.sc.cycle(Direction::Next); // index 1 -> ref(20)
+  const WindowRef selected = f.sc.active_snapshot()->at(f.sc.index());
+  f.fg.script = {FocusResult::InvalidTarget, FocusResult::Applied};
+
+  const SessionController::CommandResult r = f.sc.apply();
+  CHECK(r.ok);
+  CHECK(f.fg.focused.size() == 2);     // first attempt died, retry landed
+  CHECK(f.fg.focused[0] == selected);
+  CHECK(f.fg.focused[1] == selected);
+  CHECK(f.ui.ends.size() == 1);        // exactly one UI end (REQ-F-007)
+  CHECK(f.ui.ends[0] == UIEndReason::Applied);
+  CHECK(f.sc.last_end_reason() == mru::domain::SessionEndReason::Applied);
+}
+
+// --- T-F-05c: FocusResult::Failed -> FocusFailed, definitive, no retry (FM-10).
 TEST(t_f_05_focus_failed_ends_cancelled) {
   Fixture f;
   f.candidates({ref(10), ref(20)});
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
   f.fg.result = FocusResult::Failed;
 
   const SessionController::CommandResult r = f.sc.apply();
@@ -346,8 +405,8 @@ TEST(t_f_05_focus_failed_ends_cancelled) {
 TEST(t_re_01_apply_then_active_does_not_reopen) {
   Fixture f; // lock_history_on_session = true (default)
   f.candidates({ref(10), ref(20)});
-  f.sc.cycle(Direction::Next);
-  f.sc.apply();
+(void) f.sc.cycle(Direction::Next);
+(void) f.sc.apply();
   CHECK(!f.sc.is_active());
 
   f.sc.on_focus(ref(10)); // post-apply focus event
@@ -364,7 +423,7 @@ TEST(t_re_01_apply_then_active_does_not_reopen) {
 TEST(bonus_focus_during_active_session_is_ignored) {
   Fixture f; // lock_history_on_session = true
   f.candidates({ref(10), ref(20)});
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
 
   f.sc.on_focus(ref(20)); // must be swallowed by lock-in
   CHECK(f.tracker.pending_job() == mru::domain::kInvalidJobId);
@@ -377,7 +436,7 @@ TEST(bonus_focus_during_active_session_is_ignored) {
 TEST(bonus_on_window_invalid_prunes_and_clamps) {
   Fixture f;
   f.candidates({ref(10), ref(20), ref(30)});
-  f.sc.cycle(Direction::Next); // index 1 -> ref(20)
+(void) f.sc.cycle(Direction::Next); // index 1 -> ref(20)
   f.set_valid(ref(20), false);
 
   f.sc.on_window_invalid(ref(20));
@@ -392,7 +451,7 @@ TEST(bonus_on_window_invalid_prunes_and_clamps) {
 TEST(bonus_on_window_invalid_empties_session_cancelled) {
   Fixture f;
   f.candidates({ref(10)});
-  f.sc.cycle(Direction::Next);
+(void) f.sc.cycle(Direction::Next);
   f.set_valid(ref(10), false);
 
   f.sc.on_window_invalid(ref(10));

@@ -57,12 +57,17 @@ struct MockWindowSource : WindowSource {
 };
 
 struct MockFocusGateway : FocusGateway {
-  std::vector<WindowRef> focused;        // calls in order (REQ-F-006: at most one per apply)
+  std::vector<WindowRef> focused;         // calls in order (REQ-F-006: at most one success)
   FocusResult result = FocusResult::Applied;
+  std::vector<FocusResult> script;        // if non-empty, consumed in order; else `result`
 
   FocusResult focus(const WindowRef& r) override {
     focused.push_back(r);
-    return result;
+    if (script.empty())
+      return result;
+    const FocusResult next = script.front();
+    script.erase(script.begin());
+    return next;
   }
 };
 
