@@ -46,9 +46,14 @@ static std::int64_t cfg_int(const char *key, std::int64_t fallback) {
 
 static std::string cfg_str(const char *key, std::string_view fallback) {
     const auto *v = HyprlandAPI::getConfigValue(PHANDLE, key);
-    if (!v || !v->dataPtr())
+    if (!v)
         return std::string{fallback};
-    return std::string{*static_cast<Hyprlang::STRING *>(v->dataPtr())};
+    // Hyprlang 0.6.x: dataPtr() on STRING values throws std::bad_any_cast.
+    // Per hyprlang public.hpp, use getDataStaticPtr(): *retval is const char*.
+    void *const *p = v->getDataStaticPtr();
+    if (!p || !*p)
+        return std::string{fallback};
+    return std::string{static_cast<const char *>(*p)};
 }
 
 static PluginConfig read_config() {
