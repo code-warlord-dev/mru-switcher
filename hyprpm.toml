@@ -1,15 +1,15 @@
-# NOTE: build produces mru-switcher.so only after M2; until then use domain tests (MRU_BUILD_PLUGIN=OFF).
+# Pin: Hyprland v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f); plugin commit filled at tag time.
 [repository]
 name = "mru-switcher"
-authors = ["TBD"]
-# commit_pins = ["HYPRLAND_COMMIT_TBD = plugin_commit_tbd"]
+authors = ["mru-switcher contributors"]
+# commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = <plugin_commit_at_tag>"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
 authors = ["TBD"]
 output = "build/mru-switcher.so"
 build = [
-  "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release",
+  "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON",
   "cmake --build build -j"
 ]
 # Fill commit_pins when COMPAT.md has a real Hyprland pin (M2).

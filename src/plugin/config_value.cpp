@@ -36,4 +36,10 @@ ParsedUi parse_ui_backend(std::string_view s) {
     return {ParsedUi::Kind::Null, false}; // REQ-CFG-001 fallback to default
 }
 
+mru::domain::StartOffset parse_start_offset(std::string_view s) {
+    if (s == "first")
+        return mru::domain::StartOffset::First;
+    return mru::domain::StartOffset::Second; // includes "second"; fallback (REQ-SEL-002)
+}
+
 } // namespace mru::plugin

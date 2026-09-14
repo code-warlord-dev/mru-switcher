@@ -30,6 +30,11 @@ int main() {
     assert(parse_ui_backend("nope").kind == ParsedUi::Kind::Null);
     assert(!parse_ui_backend("nope").matched);
 
+  // REQ-SEL-002: start_offset parses first|second, unknown falls back to second
+  assert(parse_start_offset("first") == mru::domain::StartOffset::First);
+  assert(parse_start_offset("second") == mru::domain::StartOffset::Second);
+  assert(parse_start_offset("bogus") == mru::domain::StartOffset::Second);
+
     auto cfg = default_plugin_config();
     assert(cfg.debounce_ms == 400);
     assert(cfg.default_scope == Scope::Global);

@@ -15,7 +15,7 @@
 | Plugin version | Hyprland commit | Hyprland tag | CI/nest tested | Notes |
 |----------------|-----------------|--------------|----------------|-------|
 | 0.0.0 (docs) | — | — | n/a | M0 docs only |
-| 0.2.0 (planned) | **TBD — pin before M2 tag** | TBD | pending | First `.so` |
+| 0.2.0 (planned) | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | pending | First `.so`; headers at `/usr/include/hyprland` (distro `hyprland` pkg) |
 
 ## Internal API expectations (adapter)
 

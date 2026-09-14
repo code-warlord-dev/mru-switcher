@@ -3,6 +3,8 @@ project(mru-switcher VERSION 0.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Static libs are linked into the mru-switcher shared plugin; needs -fPIC.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MRU_BUILD_TESTS "Build domain unit tests" ON)
@@ -74,10 +76,26 @@ if(MRU_BUILD_TESTS)
 endif()
 
 if(MRU_BUILD_PLUGIN)
-  # M2 will define add_library(mru-switcher SHARED ...). Until then, fail closed so
-  # hyprpm/CI cannot report a green build without a .so.
-  message(FATAL_ERROR
-    "MRU_BUILD_PLUGIN=ON is not supported until M2 wires the shared library target.\n"
-    "  See docs/ROADMAP.md M2 and docs/COMPAT.md.\n"
-    "  Configure with -DMRU_BUILD_PLUGIN=OFF (default) for domain tests.")
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hyprland.cmake)
+
+  # Adapters that touch Hyprland internals (PHLWINDOW, globals).
+  add_library(mru_plugin_hypr STATIC
+    src/plugin/hypr/identity_registry.cpp
+    src/plugin/hypr/hypr_window_source.cpp
+    src/plugin/hypr/hypr_focus_gateway.cpp
+    src/plugin/hypr/hypr_scheduler.cpp)
+  target_include_directories(mru_plugin_hypr PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
+    ${HYPRLAND_INCLUDE_DIRS})
+  # Facade: final shared library (hyprpm output build/mru-switcher.so)
+  add_library(mru-switcher SHARED
+    src/plugin/mru_plugin.cpp)
+  target_include_directories(mru-switcher PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
+    ${HYPRLAND_INCLUDE_DIRS})
+  target_link_libraries(mru-switcher PRIVATE mru_plugin_core mru_plugin_hypr mru_domain)
+  set_target_properties(mru-switcher PROPERTIES PREFIX "" OUTPUT_NAME mru-switcher)
+  mru_warnings(mru-switcher)
 endif()
