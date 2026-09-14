@@ -9,6 +9,7 @@ namespace mru::plugin {
 struct PluginConfig {
     int debounce_ms = 400; // clamp [0,5000] (REQ-CFG-004)
     mru::domain::Scope default_scope = mru::domain::Scope::Global;
+    mru::domain::StartOffset start_offset = mru::domain::StartOffset::Second;
     bool wrap = true;
     bool lock_history_on_session = true;
     bool restore_focus_on_cancel = false;
@@ -28,5 +29,8 @@ struct ParsedUi {
     bool matched = false;
 };
 ParsedUi parse_ui_backend(std::string_view s);
+
+// REQ-SEL-002/REQ-S-009: `first`|`second`; unknown falls back to `second`.
+mru::domain::StartOffset parse_start_offset(std::string_view s);
 
 } // namespace mru::plugin

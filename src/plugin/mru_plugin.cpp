@@ -55,6 +55,7 @@ static PluginConfig read_config() {
     PluginConfig cfg;
     cfg.debounce_ms             = clamp_debounce_ms(static_cast<int>(cfg_int("plugin:mru-switcher:debounce_ms", 400)));
     cfg.default_scope           = parse_scope(cfg_str("plugin:mru-switcher:default_scope", "global"));
+    cfg.start_offset            = parse_start_offset(cfg_str("plugin:mru-switcher:start_offset", "second"));
     cfg.wrap                    = cfg_int("plugin:mru-switcher:wrap", 1) != 0;
     cfg.lock_history_on_session = cfg_int("plugin:mru-switcher:lock_history_on_session", 1) != 0;
     cfg.restore_focus_on_cancel = cfg_int("plugin:mru-switcher:restore_focus_on_cancel", 0) != 0;
@@ -70,6 +71,7 @@ static PluginConfig read_config() {
 static mru::domain::SessionPolicy policy_from_config(const PluginConfig &cfg) {
     mru::domain::SessionPolicy policy;
     policy.default_scope           = cfg.default_scope;
+    policy.start_offset            = cfg.start_offset; // REQ-SEL-002/REQ-S-009
     policy.wrap                    = cfg.wrap;
     policy.lock_history_on_session = cfg.lock_history_on_session;
     policy.restore_focus_on_cancel = cfg.restore_focus_on_cancel;
@@ -169,7 +171,9 @@ static void subscribe_events() {
 
     st.listeners.push_back(Event::bus()->m_events.config.reloaded.listen([]() {
         // REQ-CFG-002: refresh cached values; applies to the next session.
-        state().config = read_config();
+        auto &st = state();
+        st.config = read_config();
+        st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
     }));
 }
 
@@ -178,6 +182,19 @@ static void subscribe_events() {
 static void build_state() {
     auto &st = state();
     st.config    = read_config();
+
+    // REQ-UI-002: border/external are parsed but not implemented in M2; fall
+    // back to null and warn the user once (not on every reload).
+    if (st.config.ui_border || st.config.ui_external) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            HyprlandAPI::addNotification(PHANDLE,
+                "mru-switcher: ui=border/external not implemented in M2, falling back to ui=null",
+                CHyprColor{1, 0.7, 0, 1}, 5000);
+        }
+    }
+
     st.registry  = std::make_unique<WindowIdentityRegistry>();
     st.scheduler = std::make_unique<HyprlandSchedulerPort>();
     st.source    = std::make_unique<HyprlandWindowSource>(*st.registry, st.config);
