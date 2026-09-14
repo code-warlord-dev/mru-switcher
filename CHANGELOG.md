@@ -8,6 +8,7 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- M2 MVP plugin (PR #2): loadable `mru-switcher.so` — fail-closed hash check in `PLUGIN_INIT`, dispatchers `mru:cycle`/`mru:apply`/`mru:cancel` (addDispatcherV2), Event::bus subscriptions (window.active/close, config.reloaded), Hyprland adapters (WindowSource, FocusGateway, SchedulerPort via `CEventLoopTimer`), WindowIdentityRegistry (address+generation, ADR-013), Null UI with warn-once fallback for `border`/`external`, config surface under `plugin:mru-switcher:` incl. `start_offset` (REQ-SEL-002) and live `debounce_ms` reload
 - M1 domain core (pure C++, no Hyprland): `WindowRef` (address+generation, ADR-013), `Scope`/`Direction`/`StartOffset`/`SessionPolicy`, `Snapshot` (+prune helper), `SessionController` (Idle↔Active, REQ-S-001..011), `HistoryTracker` with debounce + lock-in, `SchedulerPort`/`FakeClock`
 - Domain ports (interfaces for M2 adapters): `WindowSource`, `FocusGateway` (`FocusResult`), `UIPort`
 - Unit tests T-S-01..07, T-F-01..05, T-RE-01, T-H-01..05, T-SEL-01..03, T-ID-01, T-H-seed (ctest 5/5 green)

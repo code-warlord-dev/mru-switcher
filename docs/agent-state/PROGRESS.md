@@ -32,18 +32,15 @@ Updated: 2026-09-14 (M2 Tasks 2-6 implemented on feat/m2-plugin; .so builds, cte
 - [x] Unit tests T-S-* / T-H-* / T-SEL-* / T-F-03/04 / T-ID-01 (ctest 5/5 green)
 - [x] Compliance review + MR merge to main (MR !1; polish: REQ-F-008 retry, last_end_reason, pruned() unify)
 
-## M2 MVP plugin
+## M2 MVP plugin (merged via PR #2; nested smoke pending)
 - [x] PLUGIN_INIT hash check + config registration
-- [ ] Adapters: HyprlandWindowSource, FocusGateway, SchedulerPort
-- [ ] Dispatchers mru:cycle / apply / cancel (addDispatcherV2, SDispatchResult)
-- [ ] Event::bus subscriptions (window.open/active/close/destroy, config.reloaded)
-- [ ] WindowRef registry with generation (ADR-013)
-- [ ] FocusGateway + Null UI (default ui=null; border/external fall back to null)
-- [ ] restore_focus_on_cancel wired (policy → SessionController)
-- [ ] Nested smoke (basic binds) on pinned Hyprland
-
-> Implemented on feat/m2-plugin (commits 5b980da..517a683; .so builds, ctest 7/7);
-> checkboxes above revert to unchecked per AGENTS §14.2 until merge to main.
+- [x] Adapters: HyprlandWindowSource, FocusGateway, SchedulerPort
+- [x] Dispatchers mru:cycle / apply / cancel (addDispatcherV2, SDispatchResult)
+- [x] Event::bus subscriptions (window.active/close, config.reloaded)
+- [x] WindowRef registry with generation (ADR-013)
+- [x] FocusGateway + Null UI (default ui=null; border/external fall back to null, warn-once)
+- [x] restore_focus_on_cancel wired (policy → SessionController)
+- [ ] Nested smoke (basic binds) on pinned Hyprland v0.56.2 (efb5099…)
 
 ## M3 Scopes + config
 - [ ] All scopes
