@@ -78,7 +78,10 @@ if(MRU_BUILD_PLUGIN)
 
   # Adapters that touch Hyprland internals (PHLWINDOW, globals).
   add_library(mru_plugin_hypr STATIC
-    src/plugin/hypr/identity_registry.cpp)
+    src/plugin/hypr/identity_registry.cpp
+    src/plugin/hypr/hypr_window_source.cpp
+    src/plugin/hypr/hypr_focus_gateway.cpp
+    src/plugin/hypr/hypr_scheduler.cpp)
   target_include_directories(mru_plugin_hypr PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
