@@ -74,10 +74,15 @@ if(MRU_BUILD_TESTS)
 endif()
 
 if(MRU_BUILD_PLUGIN)
-  # M2 will define add_library(mru-switcher SHARED ...). Until then, fail closed so
-  # hyprpm/CI cannot report a green build without a .so.
-  message(FATAL_ERROR
-    "MRU_BUILD_PLUGIN=ON is not supported until M2 wires the shared library target.\n"
-    "  See docs/ROADMAP.md M2 and docs/COMPAT.md.\n"
-    "  Configure with -DMRU_BUILD_PLUGIN=OFF (default) for domain tests.")
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Hyprland.cmake)
+
+  # Adapters that touch Hyprland internals (PHLWINDOW, globals).
+  add_library(mru_plugin_hypr STATIC
+    src/plugin/hypr/identity_registry.cpp)
+  target_include_directories(mru_plugin_hypr PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
+    ${HYPRLAND_INCLUDE_DIRS})
+  target_link_libraries(mru_plugin_hypr PUBLIC mru_plugin_core)
+  mru_warnings(mru_plugin_hypr)
 endif()
