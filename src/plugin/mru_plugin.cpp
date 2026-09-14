@@ -1,0 +1,224 @@
+#include "mru_plugin.hpp"
+
+#include <string_view>
+
+#include <hyprlang.hpp>
+
+#include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/plugins/PluginSystem.hpp>
+
+#include "mru/domain/scope.hpp"
+
+// The pinned Hyprland v0.56.2 marks getConfigValue/addConfigValue deprecated in
+// favor of the V2 config API; M2 intentionally uses the documented legacy path
+// (plan Task 6 Step 3) and migrates in M3.
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+HANDLE PHANDLE = nullptr;
+
+namespace mru::plugin {
+namespace {
+
+static PluginState &state() {
+    static PluginState s;
+    return s;
+}
+
+// --- hash check (fail closed) -------------------------------------------------
+
+static bool hash_ok() {
+    const char *h = __hyprland_api_get_hash();
+    const char *c = __hyprland_api_get_client_hash();
+    if (h && c && std::string_view(h) == std::string_view(c))
+        return true;
+    HyprlandAPI::addNotification(PHANDLE, "mru-switcher: header hash mismatch, refusing to load", CHyprColor{1, 0, 0, 1}, 5000);
+    return false;
+}
+
+// --- config (continuation of anonymous-namespace block) ------------------------
+
+static std::int64_t cfg_int(const char *key, std::int64_t fallback) {
+    const auto *v = HyprlandAPI::getConfigValue(PHANDLE, key);
+    if (!v || !v->dataPtr())
+        return fallback;
+    return *static_cast<Hyprlang::INT *>(v->dataPtr());
+}
+
+static std::string cfg_str(const char *key, std::string_view fallback) {
+    const auto *v = HyprlandAPI::getConfigValue(PHANDLE, key);
+    if (!v || !v->dataPtr())
+        return std::string{fallback};
+    return std::string{*static_cast<Hyprlang::STRING *>(v->dataPtr())};
+}
+
+static PluginConfig read_config() {
+    PluginConfig cfg;
+    cfg.debounce_ms             = clamp_debounce_ms(static_cast<int>(cfg_int("plugin:mru-switcher:debounce_ms", 400)));
+    cfg.default_scope           = parse_scope(cfg_str("plugin:mru-switcher:default_scope", "global"));
+    cfg.wrap                    = cfg_int("plugin:mru-switcher:wrap", 1) != 0;
+    cfg.lock_history_on_session = cfg_int("plugin:mru-switcher:lock_history_on_session", 1) != 0;
+    cfg.restore_focus_on_cancel = cfg_int("plugin:mru-switcher:restore_focus_on_cancel", 0) != 0;
+
+    const ParsedUi ui = parse_ui_backend(cfg_str("plugin:mru-switcher:ui", "null"));
+    cfg.ui_null     = ui.kind != ParsedUi::Kind::Border && ui.kind != ParsedUi::Kind::External; // M2 fallback (REQ-UI-002/003)
+    cfg.ui_border   = ui.kind == ParsedUi::Kind::Border;
+    cfg.ui_external = ui.kind == ParsedUi::Kind::External;
+    cfg.ui_matched  = ui.matched;
+    return cfg;
+}
+
+static mru::domain::SessionPolicy policy_from_config(const PluginConfig &cfg) {
+    mru::domain::SessionPolicy policy;
+    policy.default_scope           = cfg.default_scope;
+    policy.wrap                    = cfg.wrap;
+    policy.lock_history_on_session = cfg.lock_history_on_session;
+    policy.restore_focus_on_cancel = cfg.restore_focus_on_cancel;
+    return policy;
+}
+
+static void register_config_keys() {
+    // REQ-CFG-002: defaults under plugin:mru-switcher:, registered only in PLUGIN_INIT.
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:debounce_ms", Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(400)});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:default_scope", Hyprlang::CConfigValue{static_cast<Hyprlang::STRING>("global")});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:start_offset", Hyprlang::CConfigValue{static_cast<Hyprlang::STRING>("second")});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:wrap", Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(1)});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:ui", Hyprlang::CConfigValue{static_cast<Hyprlang::STRING>("null")});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:lock_history_on_session", Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(1)});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:restore_focus_on_cancel", Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(0)});
+}
+
+// --- dispatchers (REQ-DISP-001/002) --------------------------------------------
+
+static SDispatchResult ok_result() {
+    SDispatchResult r;
+    r.success = true;
+    return r;
+}
+
+static SDispatchResult err_result(std::string error) {
+    SDispatchResult r;
+    r.success = false;
+    r.error   = std::move(error);
+    return r;
+}
+
+static SDispatchResult dispatch_cycle(std::string args) {
+    const CycleArgs parsed = parse_cycle_args(args);
+    if (!parsed.ok)
+        return err_result(parsed.error);
+    const auto r = state().controller->cycle(parsed.dir, parsed.scope); // never focuses (REQ-F-003)
+    if (!r.ok)
+        return err_result(r.error);
+    return ok_result();
+}
+
+static SDispatchResult dispatch_apply(std::string) {
+    const auto r = state().controller->apply();
+    if (!r.ok)
+        return err_result(r.error);
+    return ok_result();
+}
+
+static SDispatchResult dispatch_cancel(std::string) {
+    const auto r = state().controller->cancel();
+    return r.ok ? ok_result() : err_result(r.error);
+}
+
+static void register_dispatchers() {
+    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:cycle", dispatch_cycle);
+    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:apply", dispatch_apply);
+    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:cancel", dispatch_cancel);
+}
+
+// --- Event::bus wiring (listeners kept alive in PluginState) -------------------
+
+static void subscribe_events() {
+    auto &st = state();
+
+    st.listeners.push_back(Event::bus()->m_events.window.open.listen([](PHLWINDOW w) {
+        if (w)
+            state().registry->register_window(w);
+    }));
+
+    st.listeners.push_back(Event::bus()->m_events.window.active.listen([](PHLWINDOW w, Desktop::eFocusReason) {
+        if (!w)
+            return;
+        auto &st       = state();
+        const auto ref = st.registry->register_window(w);
+        st.controller->on_focus(ref); // controller ignores while Active (lock-in)
+    }));
+
+    st.listeners.push_back(Event::bus()->m_events.window.close.listen([](PHLWINDOW w) {
+        if (!w)
+            return;
+        auto &st = state();
+        st.registry->on_window_close(w);
+        if (const auto ref = st.registry->last_ref(w))
+            st.controller->on_window_invalid(*ref);
+    }));
+
+    st.listeners.push_back(Event::bus()->m_events.window.destroy.listen([](PHLWINDOWREF w) {
+        const auto locked = w.lock();
+        if (!locked)
+            return;
+        auto &st = state();
+        st.registry->on_window_close(locked);
+        if (const auto ref = st.registry->last_ref(locked))
+            st.controller->on_window_invalid(*ref);
+    }));
+
+    st.listeners.push_back(Event::bus()->m_events.config.reloaded.listen([]() {
+        // REQ-CFG-002: refresh cached values; applies to the next session.
+        state().config = read_config();
+    }));
+}
+
+// --- wiring ---------------------------------------------------------------------
+
+static void build_state() {
+    auto &st = state();
+    st.config    = read_config();
+    st.registry  = std::make_unique<WindowIdentityRegistry>();
+    st.scheduler = std::make_unique<HyprlandSchedulerPort>();
+    st.source    = std::make_unique<HyprlandWindowSource>(*st.registry, st.config);
+    st.fg        = std::make_unique<HyprlandFocusGateway>(*st.registry);
+    st.ui        = std::make_unique<NullUI>();
+    st.tracker   = std::make_unique<mru::domain::HistoryTracker>(*st.scheduler,
+        [&st](const mru::domain::WindowRef &ref) { return st.source->is_valid(ref); },
+        static_cast<std::uint32_t>(st.config.debounce_ms));
+    st.controller = std::make_unique<mru::domain::SessionController>(*st.source, *st.fg, *st.ui, *st.tracker,
+        policy_from_config(st.config));
+
+    // seed the MRU order from the compositor history
+    st.tracker->seed(st.source->candidates(mru::domain::Scope::Global));
+}
+
+static void teardown_state() {
+    state() = PluginState{};
+}
+
+} // namespace
+} // namespace mru::plugin
+
+APICALL EXPORT std::string PLUGIN_API_VERSION() {
+    return HYPRLAND_API_VERSION;
+}
+
+APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
+    PHANDLE = handle;
+
+    if (!mru::plugin::hash_ok())
+        return {}; // empty description aborts init (fail closed)
+
+    mru::plugin::register_config_keys();
+    mru::plugin::register_dispatchers();
+    mru::plugin::build_state();
+    mru::plugin::subscribe_events();
+
+    return {"mru-switcher", "Niri-style MRU Alt+Tab (snapshot, apply-on-release, lock-in)", "mru", "0.2.0"};
+}
+
+APICALL EXPORT void PLUGIN_EXIT() {
+    mru::plugin::teardown_state(); // listeners first, scheduler last: no use-after-unload
+    PHANDLE = nullptr;
+}

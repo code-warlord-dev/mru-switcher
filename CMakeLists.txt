@@ -3,6 +3,8 @@ project(mru-switcher VERSION 0.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Static libs are linked into the mru-switcher shared plugin; needs -fPIC.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MRU_BUILD_TESTS "Build domain unit tests" ON)
@@ -86,6 +88,14 @@ if(MRU_BUILD_PLUGIN)
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
     ${HYPRLAND_INCLUDE_DIRS})
-  target_link_libraries(mru_plugin_hypr PUBLIC mru_plugin_core)
-  mru_warnings(mru_plugin_hypr)
+  # Facade: final shared library (hyprpm output build/mru-switcher.so)
+  add_library(mru-switcher SHARED
+    src/plugin/mru_plugin.cpp)
+  target_include_directories(mru-switcher PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
+    ${HYPRLAND_INCLUDE_DIRS})
+  target_link_libraries(mru-switcher PRIVATE mru_plugin_core mru_plugin_hypr mru_domain)
+  set_target_properties(mru-switcher PROPERTIES PREFIX "" OUTPUT_NAME mru-switcher)
+  mru_warnings(mru-switcher)
 endif()

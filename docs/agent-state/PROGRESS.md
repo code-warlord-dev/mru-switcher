@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-13 (M1 merged to main via MR !1; review fixes included)
+Updated: 2026-09-14 (M2 Tasks 2-6 implemented on feat/m2-plugin; .so builds, ctest 7/7 green)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -33,13 +33,13 @@ Updated: 2026-09-13 (M1 merged to main via MR !1; review fixes included)
 - [x] Compliance review + MR merge to main (MR !1; polish: REQ-F-008 retry, last_end_reason, pruned() unify)
 
 ## M2 MVP plugin
-- [ ] PLUGIN_INIT hash check + config registration
-- [ ] Adapters: HyprlandCompositorPort, FocusGateway, SchedulerPort
-- [ ] Dispatchers mru:cycle / apply / cancel
-- [ ] Event::bus subscriptions (window.active / window.close)
-- [ ] WindowRef registry with generation
-- [ ] FocusGateway + Null UI (default ui=null)
-- [ ] restore_focus_on_cancel wired
+- [x] PLUGIN_INIT hash check + config registration
+- [x] Adapters: HyprlandWindowSource, FocusGateway, SchedulerPort
+- [x] Dispatchers mru:cycle / apply / cancel (addDispatcherV2, SDispatchResult)
+- [x] Event::bus subscriptions (window.open/active/close/destroy, config.reloaded)
+- [x] WindowRef registry with generation (ADR-013)
+- [x] FocusGateway + Null UI (default ui=null; border/external fall back to null)
+- [x] restore_focus_on_cancel wired (policy → SessionController)
 - [ ] Nested smoke (basic binds) on pinned Hyprland
 
 ## M3 Scopes + config
