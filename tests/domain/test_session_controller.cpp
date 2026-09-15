@@ -497,6 +497,37 @@ TEST(bonus_on_window_invalid_empties_session_cancelled) {
     CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
 }
 
+// --- L-11: plugin_shutdown ends an active session before teardown: UI gets the
+// end event, state clears, history unlocks, and no focus is applied (REQ-F-006).
+TEST(bonus_plugin_shutdown_ends_active_session) {
+    Fixture f; // lock_history_on_session = true (default)
+    f.candidates({ref(10), ref(20)});
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    CHECK(f.sc.is_active());
+
+    f.sc.plugin_shutdown();
+    CHECK(!f.sc.is_active());
+    CHECK(!f.sc.active_snapshot().has_value());
+    CHECK(f.ui.ends.size() == 1);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+    CHECK(f.sc.last_end_reason() == mru::domain::SessionEndReason::PluginShutdown);
+    CHECK(f.fg.focused.empty()); // never focuses
+
+    // lock released by shutdown: a focus event commits after debounce
+    f.sc.on_focus(ref(20));
+    f.clock.advance(50);
+    CHECK(!f.tracker.order().empty());
+}
+
+// --- L-11: plugin_shutdown while Idle is a no-op.
+TEST(bonus_plugin_shutdown_when_idle_is_noop) {
+    Fixture f;
+    f.sc.plugin_shutdown();
+    CHECK(!f.sc.is_active());
+    CHECK(f.ui.ends.empty());
+    CHECK(!f.sc.last_end_reason().has_value());
+}
+
 // --- Bonus: apply while Idle is an idempotent success no-op (FM-12).
 TEST(bonus_apply_and_cancel_idempotent_when_idle) {
     Fixture f;

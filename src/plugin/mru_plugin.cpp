@@ -319,6 +319,9 @@ static void teardown_state() {
     // declaration order and free the scheduler before the tracker's
     // cancel_pending() dereferences it (REQ-H-008).
     st.listeners.clear(); // stop all callbacks first
+    if (st.controller)
+        st.controller->plugin_shutdown(); // L-11: end an active session (UI on_session_end +
+                                          // state reset) while controller/ui/tracker are alive
     st.controller.reset();
     st.ui.reset();
     st.fg.reset();

@@ -50,6 +50,10 @@ class SessionController {
     [[nodiscard]] CommandResult apply();
     // Transition to Idle without applying the selection (REQ-S-005).
     [[nodiscard]] CommandResult cancel();
+    // PLUGIN_EXIT path (L-11): end an active session so the UI still receives
+    // on_session_end(Cancelled) and active_/snapshot_ are cleared while the
+    // controller and its ports are alive. Never focuses (REQ-F-006). No-op Idle.
+    void plugin_shutdown();
 
     // Focus events from the facade: ignored while Active (lock-in, REQ-H-001,
     // REQ-RE-003); forwarded to HistoryTracker when Idle.
