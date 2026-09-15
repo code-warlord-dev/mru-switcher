@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 
 #include <cstddef>
 #include <optional>
@@ -69,6 +70,28 @@ struct MockFocusGateway : FocusGateway {
         script.erase(script.begin());
         return next;
     }
+};
+
+// ReentrantFocusGateway: emulates the compositor emitting a synchronous
+// window.active *inside* FocusGateway::focus() (as Hyprland does within
+// fullWindowFocus). The callback re-enters SessionController::on_focus, which
+// must be swallowed by lock-in while a session is Active (REQ-RE-003) and must
+// not corrupt state during apply / plugin_shutdown (audit BLOCKER-2 check).
+struct ReentrantFocusGateway : FocusGateway {
+    std::function<void(const WindowRef &)> on_reentrant_focus; // caller sets up reentry
+    std::vector<WindowRef> focused;
+    FocusResult result = FocusResult::Applied;
+
+    FocusResult focus(const WindowRef &r) override {
+        focused.push_back(r);
+        if (on_reentrant_focus && !reentered) {
+            reentered = true;
+            on_reentrant_focus(r); // synchronous window.active inside focus()
+        }
+        return result;
+    }
+
+    bool reentered = false;
 };
 
 struct MockUIPort : UIPort {
