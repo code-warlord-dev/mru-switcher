@@ -54,12 +54,15 @@
 | REQ-ID-003 | T-ID-01, T-merge-03 | equality | M2 |
 | REQ-ID-004 | T-ID-01 | snapshot stores ref | M1 |
 | REQ-ID-005 | T-ID-01 | validate | M2 |
+| REQ-ID-006 | T-ID-02 | weak-ref lock() validity (ADR-016) | M2 |
 | REQ-SC-001 | T-SC-01 | scope resolve | M3 |
 | REQ-SC-002 global | T-SC-01, nest | ScopeResolver | M2 (nest) |
 | REQ-SC-002 monitor | T-SC-01 | ScopeResolver | M3 |
 | REQ-SC-002 workspace | T-SC-01 | ScopeResolver | M3 |
 | REQ-SC-002 visible | T-SC-01 | ScopeResolver | M3 |
 | REQ-SC-002 app | T-SC-02 | **class** only | M3 |
+| REQ-SC-002a | T-SC-03 | special ws only while shown (ADR-016) | M3 |
+| REQ-SC-002b | T-SC-04 | byte-exact class compare (ADR-016) | M3 |
 | REQ-SC-003 | T-SC-03 | unknown scope fail | M3 |
 | REQ-DISP-001 | T-DISP-01, nest | omitted direction = next | M2 |
 | REQ-DISP-002 | T-F-04 | empty apply -> no windows | M2 |

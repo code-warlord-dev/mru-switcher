@@ -93,12 +93,17 @@ Deliverables:
 
 ### M3 — Scopes + config + status
 
-**Goal:** Full config surface and all scopes.
+**Goal:** Full config surface and all scopes. Scope behavior, validity, and config surface decisions are defined in **ADR-016** (weak-lock identity __1__, scope predicate __2__, special workspaces __3__, app class __4__, config keys __5__, migration sequence __6__-__7__).
 
 Deliverables:
 
+- Pure domain `scope_matches` predicate with `WindowMeta`/`FocusContext` (ADR-016 __2__); `is_candidate()` requires `m_isMapped` and `!isHidden()` (L-8, REQ-SNAP-002)
+- Special workspace rule: window on special workspace is candidate only while shown (ADR-016 __3__, REQ-SC-002a)
+- `app` scope: byte-exact class compare, empty focus → global (ADR-016 __4__, REQ-SC-002b)
+- Identity validity by weak `lock()` not `closed` flag (ADR-016 __1__, REQ-ID-006)
+- hyprlang V2 migration **before** scope work (ADR-016 __6__)
+- Remaining `plugin:mru-switcher:*` keys (Q4, reserved keys labeled); `external_socket` registered, documented reserved (ADR-016 __5__)
 - Scopes: `global` | `monitor` | `workspace` | `visible` | `app`
-- All `plugin:mru-switcher:*` keys from SPEC
 - `mru:status` dispatcher
 - Config reload behaviour documented and tested
 - USER.md validated against real behaviour
