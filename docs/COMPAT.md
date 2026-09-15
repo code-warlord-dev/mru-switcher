@@ -74,6 +74,13 @@ bind = ALT, Escape, mru:cancel
 
 ### Observations
 
+- **Startup config-parse errors (red error frame):** when the nest config already binds `mru:*` dispatchers
+  (`bind = ALT, TAB, mru:cycle` …) and the plugin is then loaded manually with `hyprctl plugin load`, the
+  **initial** config parse logs `Invalid dispatcher: mru:cycle/apply/cancel` and Hyprland shows the red
+  error frame. This is startup-order noise, **not** a plugin defect: the plugin is not yet registered at
+  parse time. After `plugin load` the built-in `config.reloaded` re-resolves the binds and the dispatchers
+  work normally (all matrix commands above pass). Avoided automatically on a hyprpm install, where the
+  plugin loads before the config is parsed. No code change in M2 — documented here.
 - First `dispatch` right after `plugin load` may report `Invalid dispatcher` until the post-load config reload finishes; second attempt is fine. No code change in M2 — documented here.
 - Registry `by_address_` grows monotonically (closed entries not cleaned). Acceptable for M2; GC candidate for post-M3.
 
