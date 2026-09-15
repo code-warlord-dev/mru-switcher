@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
-project(mru-switcher VERSION 0.0.0 LANGUAGES CXX)
+project(mru-switcher VERSION 0.2.0 LANGUAGES CXX)
+
+# Single source of truth for the plugin version string (L-13): CMake's
+# PROJECT_VERSION is configured into a header consumed by PLUGIN_INIT.
+configure_file(cmake/mru-version.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/generated/mru_version.hpp @ONLY)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -116,6 +120,7 @@ if(MRU_BUILD_PLUGIN)
   target_include_directories(mru-switcher PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${HYPRLAND_INCLUDE_DIRS})
   target_link_libraries(mru-switcher PRIVATE mru_plugin_core mru_plugin_hypr mru_domain)
   set_target_properties(mru-switcher PROPERTIES PREFIX "" OUTPUT_NAME mru-switcher)

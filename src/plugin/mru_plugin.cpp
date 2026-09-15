@@ -8,6 +8,7 @@
 #include <hyprland/src/plugins/PluginSystem.hpp>
 
 #include "mru/domain/scope.hpp"
+#include "mru_version.hpp"
 #include "status_format.hpp"
 
 // The pinned Hyprland v0.56.2 marks getConfigValue/addConfigValue deprecated in
@@ -358,7 +359,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         return {};
     }
 
-    return {"mru-switcher", "Niri-style MRU Alt+Tab (snapshot, apply-on-release, lock-in)", "mru", "0.2.0"};
+    return {"mru-switcher", "Niri-style MRU Alt+Tab (snapshot, apply-on-release, lock-in)", "mru",
+            MRU_SWITCHER_VERSION};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

@@ -37,14 +37,106 @@ jobs:
           if [ ${#files[@]} -eq 0 ]; then echo "No sources"; exit 0; fi
           clang-format-22 --dry-run -Werror "${files[@]}"
 
+  sanitize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain (clang 22 from apt.llvm.org)
+        run: |
+          wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | \
+            sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" | \
+            sudo tee /etc/apt/sources.list.d/llvm-22.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-22 cmake ninja-build
+      - name: Install sanitizer runtimes (ASan/UBSan)
+        run: sudo apt-get install -y --no-install-recommends libclang-rt-22-dev
+      - name: Configure (ASan + UBSan)
+        run: |
+          cmake -S . -B build-san -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
+            -DMRU_BUILD_TESTS=ON \
+            -DMRU_BUILD_PLUGIN=OFF \
+            -DMRU_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-san -j
+      - name: Test
+        run: ctest --test-dir build-san --output-on-failure
+
+  gcc:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain (system gcc)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends g++ cmake ninja-build
+      - name: Configure
+        run: |
+          cmake -S . -B build-gcc -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DMRU_BUILD_TESTS=ON \
+            -DMRU_BUILD_PLUGIN=OFF \
+            -DMRU_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-gcc -j
+      - name: Test
+        run: ctest --test-dir build-gcc --output-on-failure
+
+  plugin-build:
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Init pacman + install Hyprland headers (pinned release)
+        run: |
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed \
+            base-devel git cmake ninja pkgconf \
+            hyprland hyprutils \
+            pango cairo libdrm libinput libxkbcommon \
+            wayland wayland-protocols pixman \
+            aquamarine hyprcursor hyprgraphics hyprlang
+      - name: Assert pinned Hyprland headers (ADR-010/Q2)
+        run: |
+          have="$(pkg-config --modversion hyprland)"
+          want="0.56.2"
+          echo "pkg-config hyprland: ${have}"
+          if [ "$have" != "$want" ]; then
+            echo "::error::CI Hyprland headers ${have} != pinned ${want}; update pin + VERSION-MAP + docs/HYPRLAND-PLUGIN-SYSTEM.md"
+            exit 1
+          fi
+      - name: Configure (real .so build)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DMRU_BUILD_TESTS=ON \
+            -DMRU_BUILD_PLUGIN=ON \
+            -DMRU_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build -j
+      - name: Verify .so artifact
+        run: |
+          test -f build/mru-switcher.so || { echo "mru-switcher.so missing"; exit 1; }
+          file build/mru-switcher.so | grep -q 'ELF.*shared object' || { echo "not a shared object"; file build/mru-switcher.so; exit 1; }
+          echo "artifact OK:"
+          file build/mru-switcher.so
+      - name: Test (domain + plugin core against real headers)
+        run: ctest --test-dir build --output-on-failure
+
   domain-deps:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Forbid hyprland includes in domain
+      - name: Forbid hyprland/hyprutils includes in domain
         run: |
-          if grep -RIn '#include <hyprland' include/mru/domain src/domain 2>/dev/null; then
-            echo "domain must not include hyprland headers"; exit 1
+          if grep -RInE '#include[ <"](hyprland|hyprutils)' include/mru/domain src/domain 2>/dev/null; then
+            echo "domain must not include hyprland/hyprutils headers"; exit 1
           fi
           echo OK
 
@@ -69,7 +161,11 @@ jobs:
           echo OK
       - name: Plugin core stays Hyprland-free (ADR-007)
         run: |
-          if grep -n "#include <hyprland" src/plugin/*.cpp src/plugin/*.hpp | grep -v "^src/plugin/mru_plugin.cpp:"; then
-            echo "plugin core must stay Hyprland-free (only the facade src/plugin/mru_plugin.cpp may include hyprland headers)"; exit 1
+          # The plugin core library (config_value, dispatch_args, status_format,
+          # mru_merge) must stay Hyprland-free; only the facade (mru_plugin.cpp
+          # and its header mru_plugin.hpp) may pull hyprland/hyprutils types.
+          if grep -nE '#include[ <"](hyprland|hyprutils)' src/plugin/*.cpp src/plugin/*.hpp \
+              | grep -vE '^src/plugin/(mru_plugin\.cpp|mru_plugin\.hpp):' ; then
+            echo "plugin core must stay Hyprland-free (only facade mru_plugin.{cpp,hpp} may include hyprland/hyprutils)"; exit 1
           fi
           echo OK
