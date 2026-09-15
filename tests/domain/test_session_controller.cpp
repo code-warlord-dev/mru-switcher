@@ -421,6 +421,41 @@ TEST(t_re_01_apply_then_active_does_not_reopen) {
     CHECK(order[0] == ref(10));
 }
 
+// --- T-RE-04 (BLOCKER-2 regression): the applied window must reach the MRU head.
+// FocusGateway::focus() emits a synchronous window.active that lock-in swallows
+// (REQ-H-001) while Active, so complete_apply() promotes it explicitly once the
+// session ends. Without the fix the applied window is absent from order_.
+TEST(t_re_04_apply_promotes_applied_to_mru_head) {
+    Fixture f; // lock_history_on_session = true (default)
+    f.candidates({ref(10), ref(20)});
+    (void)f.sc.cycle(Direction::Next); // start_offset=Second -> index 1 -> ref(20)
+    const WindowRef applied = f.sc.active_snapshot()->at(f.sc.index());
+
+    (void)f.sc.apply();
+    CHECK(!f.sc.is_active());
+    f.clock.advance(50); // debounce fires; applied window committed at head
+
+    const auto &order = f.tracker.order();
+    CHECK(order.size() == 1);
+    CHECK(order.front() == applied);
+}
+
+// --- T-RE-05 (BLOCKER-2, invalidated apply): promotion happens for the *final*
+// applied target (apply-after-invalidation surrogate), not the stale slot.
+TEST(t_re_05_apply_after_invalidation_promotes_survivor) {
+    Fixture f;
+    f.candidates({ref(10), ref(20), ref(30)});
+    (void)f.sc.cycle(Direction::Next); // index 1 -> ref(20)
+    f.set_valid(ref(20), false);       // selected invalid at apply time
+
+    (void)f.sc.apply(); // clamps to survivor ref(30)
+    f.clock.advance(50);
+
+    const auto &order = f.tracker.order();
+    CHECK(order.size() == 1);
+    CHECK(order.front() == ref(30));
+}
+
 // --- Bonus: lock-in ignores focus events while a session is Active.
 TEST(bonus_focus_during_active_session_is_ignored) {
     Fixture f; // lock_history_on_session = true
