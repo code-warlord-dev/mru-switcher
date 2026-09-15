@@ -5,25 +5,47 @@
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
 
-namespace mru::plugin {
+#include "mru_merge.hpp"
 
-HyprlandWindowSource::HyprlandWindowSource(WindowIdentityRegistry &registry, const PluginConfig &cfg)
-    : registry_(registry), cfg_(cfg) {}
+namespace mru::plugin {
+namespace {
+
+// REQ-SNAP-002 (M2 subset): a window is a candidate when it is live and visible.
+bool is_candidate(const PHLWINDOW &w) {
+    return w && !w->isHidden();
+}
+
+} // namespace
+
+HyprlandWindowSource::HyprlandWindowSource(WindowIdentityRegistry &registry, const PluginConfig &cfg,
+                                           const mru::domain::HistoryTracker &tracker)
+    : registry_(registry), cfg_(cfg), tracker_(tracker) {}
 
 std::vector<mru::domain::WindowRef> HyprlandWindowSource::candidates(mru::domain::Scope scope) const {
     if (scope != mru::domain::Scope::Global)
-        return {}; // M2: global only; other scopes wired in M3
-    std::vector<mru::domain::WindowRef> out;
-    const auto                         &history = Desktop::History::windowTracker()->fullHistory();
-    out.reserve(history.size());
-    for (auto it = history.rbegin(); it != history.rend(); ++it) {
-        const auto w = it->lock();
-        if (!w || !registry_.is_known(address_of(w)))
-            continue;
-        if (const auto ref = registry_.last_ref(w))
-            out.push_back(*ref);
+        return {}; // M2: global only; M3 adds the other scopes (ADR-015 extension point)
+
+    std::vector<mru::domain::WindowRef> fallback; // newest-first enumeration
+    if (const auto history = Desktop::History::windowTracker()) {
+        const auto &entries = history->fullHistory(); // oldest -> newest
+        fallback.reserve(entries.size());
+        for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+            const auto w = it->lock();
+            if (!is_candidate(w))
+                continue;
+            fallback.push_back(registry_.register_window(w)); // register on sight (REQ-H-004b)
+        }
     }
-    return out;
+    for (const auto &ref : registry_.live_refs_newest_first())
+        fallback.push_back(ref); // opened post-load, not focused yet
+
+    std::vector<mru::domain::WindowRef> primary; // plugin-owned MRU (REQ-H-004a)
+    for (const auto &ref : tracker_.order()) {
+        if (const auto w = registry_.resolve(ref); w.has_value() && is_candidate(*w))
+            primary.push_back(ref);
+    }
+
+    return merge_mru_order(primary, fallback);
 }
 
 bool HyprlandWindowSource::is_valid(const mru::domain::WindowRef &ref) const {

@@ -58,7 +58,11 @@ if(MRU_BUILD_TESTS)
 endif()
 
 # --- Plugin pure helpers (no Hyprland headers; unit-testable) ---
-add_library(mru_plugin_core STATIC src/plugin/config_value.cpp src/plugin/dispatch_args.cpp src/plugin/status_format.cpp)
+add_library(mru_plugin_core STATIC
+  src/plugin/config_value.cpp
+  src/plugin/dispatch_args.cpp
+  src/plugin/status_format.cpp
+  src/plugin/mru_merge.cpp)
 target_include_directories(mru_plugin_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)
 target_link_libraries(mru_plugin_core PUBLIC mru_domain)
 mru_warnings(mru_plugin_core)
@@ -81,6 +85,12 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(plugin_status_format PRIVATE mru_plugin_core)
   mru_warnings(plugin_status_format)
   add_test(NAME plugin_status_format COMMAND plugin_status_format)
+
+  add_executable(plugin_mru_merge tests/plugin/test_mru_merge.cpp)
+  target_include_directories(plugin_mru_merge PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_mru_merge PRIVATE mru_plugin_core)
+  mru_warnings(plugin_mru_merge)
+  add_test(NAME plugin_mru_merge COMMAND plugin_mru_merge)
 endif()
 
 if(MRU_BUILD_PLUGIN)
@@ -96,6 +106,10 @@ if(MRU_BUILD_PLUGIN)
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
     ${HYPRLAND_INCLUDE_DIRS})
+  # hypr_window_source.cpp calls mru_plugin_core's merge_mru_order; declaring the
+  # static-library dependency makes CMake order the link line so the final .so
+  # resolves it (otherwise the core archive is processed before it is needed).
+  target_link_libraries(mru_plugin_hypr PUBLIC mru_plugin_core)
   # Facade: final shared library (hyprpm output build/mru-switcher.so)
   add_library(mru-switcher SHARED
     src/plugin/mru_plugin.cpp)

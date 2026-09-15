@@ -227,16 +227,17 @@ static void build_state() {
 
     st.registry = std::make_unique<WindowIdentityRegistry>();
     st.scheduler = std::make_unique<HyprlandSchedulerPort>();
-    st.source = std::make_unique<HyprlandWindowSource>(*st.registry, st.config);
+    st.tracker = std::make_unique<mru::domain::HistoryTracker>(
+        *st.scheduler, [&st](const mru::domain::WindowRef &ref) { return st.registry->resolve(ref).has_value(); },
+        static_cast<std::uint32_t>(st.config.debounce_ms));
+    st.source = std::make_unique<HyprlandWindowSource>(*st.registry, st.config, *st.tracker);
     st.fg = std::make_unique<HyprlandFocusGateway>(*st.registry);
     st.ui = std::make_unique<NullUI>();
-    st.tracker = std::make_unique<mru::domain::HistoryTracker>(
-        *st.scheduler, [&st](const mru::domain::WindowRef &ref) { return st.source->is_valid(ref); },
-        static_cast<std::uint32_t>(st.config.debounce_ms));
     st.controller = std::make_unique<mru::domain::SessionController>(*st.source, *st.fg, *st.ui, *st.tracker,
                                                                      policy_from_config(st.config));
 
-    // seed the MRU order from the compositor history
+    // Seed the plugin-owned MRU list from the compositor history, registering every
+    // window found on the way (REQ-H-004b, ADR-015).
     st.tracker->seed(st.source->candidates(mru::domain::Scope::Global));
 }
 
