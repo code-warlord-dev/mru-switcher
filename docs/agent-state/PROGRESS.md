@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-15 (M2 closeout Tasks 0-7 complete, nested smoke done, PR pending)
+Updated: 2026-09-15 (M2 audit closeout: CI .so build + sanitizers + gcc + L-12/13/15 merged)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -55,7 +55,10 @@ Updated: 2026-09-15 (M2 closeout Tasks 0-7 complete, nested smoke done, PR pendi
 - [x] SESSION.md updated
 - [x] M2 audit report: docs/agent-state/reports/2026-09-15-m2-audit.md
 - [x] Nested smoke on Hyprland v0.56.2 (efb5099) — all dispatchers + invariants verified
-- [ ] PR + self-review + merge into main (Task 9)
+- [x] M2 audit: BLOCKERs/HIGH/MEDIUM fixed (#5-#7)
+- [x] M2 audit closeout: CI plugin-build (.so vs pinned headers, arch container) + sanitize (ASan/UBSan) + gcc jobs (#8)
+- [x] L-12 guard regex (hyprutils + quoted), L-13 single-source version, L-15 mise pin (#8)
+- [ ] LOW triage L-1..17 + reentrant FocusGateway test + tag v0.2.1
 
 ## M3 Scopes + config
 - [ ] All scopes (monitor, workspace, visible, app)
