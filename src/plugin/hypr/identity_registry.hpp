@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 #include <hyprutils/memory/SharedPtr.hpp>
 
@@ -31,15 +32,20 @@ class WindowIdentityRegistry {
     // Marks the window closed: future resolve() fails for its current generation.
     void on_window_close(PHLWINDOW w);
     bool is_known(std::uint64_t addr) const;
+    // Live identities, most recently registered first: fallback enumeration order
+    // for windows the plugin has not seen focus events for yet (ADR-015).
+    std::vector<WindowRef> live_refs_newest_first() const;
 
   private:
     struct Entry {
-        WindowRef          ref{};
-        std::uint64_t      next_generation = 1;
-        bool               closed          = false;
-        PHLWINDOW          window;
+        WindowRef ref{};
+        std::uint64_t next_generation = 1;
+        std::uint64_t seq = 0; // monotonic registration order (ADR-015)
+        bool closed = false;
+        PHLWINDOW window;
     };
     std::unordered_map<std::uint64_t, Entry> by_address_;
+    std::uint64_t seq_counter_ = 0;
 };
 
 } // namespace mru::plugin

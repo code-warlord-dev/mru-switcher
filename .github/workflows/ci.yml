@@ -48,15 +48,28 @@ jobs:
           fi
           echo OK
 
-  plugin-flag-fails-closed:
+  plugin-guards:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Install cmake
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake
-      - name: MRU_BUILD_PLUGIN=ON must fail until M2
+      - name: MRU_BUILD_PLUGIN=ON declares the mru-switcher target
         run: |
-          if cmake -S . -B build-plugin -DMRU_BUILD_PLUGIN=ON; then
-            echo "Expected FATAL_ERROR"; exit 1
+          cmake -S . -B build-plugin -DMRU_BUILD_PLUGIN=ON
+          cmake --build build-plugin --target help | grep -q 'mru-switcher' || { echo "target mru-switcher missing"; exit 1; }
+          echo "target present"
+      - name: Config keys are namespaced and registered in one place (ADR-008)
+        run: |
+          if grep -Rn "addConfigValue" src include | grep -v "^src/plugin/mru_plugin.cpp:"; then
+            echo "addConfigValue must only appear in src/plugin/mru_plugin.cpp"; exit 1
           fi
-          echo "configure failed as expected"
+          bad=$(grep -o 'addConfigValue(PHANDLE, "[^"]*"' src/plugin/mru_plugin.cpp | grep -v 'plugin:mru-switcher:' || true)
+          if [ -n "$bad" ]; then echo "keys outside plugin:mru-switcher: -> $bad"; exit 1; fi
+          echo OK
+      - name: Plugin core stays Hyprland-free (ADR-007)
+        run: |
+          if grep -n "#include <hyprland" src/plugin/*.cpp src/plugin/*.hpp | grep -v "^src/plugin/mru_plugin.cpp:"; then
+            echo "plugin core must stay Hyprland-free (only the facade src/plugin/mru_plugin.cpp may include hyprland headers)"; exit 1
+          fi
+          echo OK

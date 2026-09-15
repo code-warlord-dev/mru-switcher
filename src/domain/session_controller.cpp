@@ -149,4 +149,8 @@ void SessionController::on_window_invalid(const WindowRef &ref) {
         end_session(SessionEndReason::NoWindows, "no windows"); // REQ-S-006 -> Cancelled
 }
 
+void SessionController::set_policy(SessionPolicy policy) {
+    policy_ = policy;
+}
+
 } // namespace mru::domain

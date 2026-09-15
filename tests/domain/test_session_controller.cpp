@@ -22,6 +22,7 @@ using mru::domain::HistoryTracker;
 using mru::domain::Scope;
 using mru::domain::SessionController;
 using mru::domain::SessionPolicy;
+using mru::domain::StartOffset;
 using mru::domain::UIEndReason;
 using mru::domain::WindowRef;
 using mru::domain::WindowSource;
@@ -473,6 +474,39 @@ TEST(bonus_apply_and_cancel_idempotent_when_idle) {
     const SessionController::CommandResult c = f.sc.cancel();
     CHECK(c.ok);
     CHECK(f.ui.ends.empty());
+}
+
+// --- T-CFG-02: a policy refresh affects the *next* session only (REQ-CFG-002, REQ-S-009).
+TEST(t_cfg_02_reload_policy_applies_to_next_session_only) {
+    Fixture f; // defaults: start_offset = second, wrap = true
+    f.candidates({ref(1), ref(2), ref(3)});
+
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    EQ(f.sc.index(), 1u);
+    (void)f.sc.cycle(Direction::Next);
+    EQ(f.sc.index(), 2u);
+
+    SessionPolicy reloaded;
+    reloaded.start_offset = StartOffset::First;
+    reloaded.wrap = false;
+    f.sc.set_policy(reloaded);
+
+    // Active session keeps the frozen policy: wrap still wraps 2 -> 0.
+    (void)f.sc.cycle(Direction::Next);
+    EQ(f.sc.index(), 0u);
+    (void)f.sc.cancel();
+
+    // Next session picks the reloaded policy: start_offset = first -> index 0.
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    EQ(f.sc.index(), 0u);
+
+    // wrap = false clamps at the end instead of wrapping.
+    (void)f.sc.cycle(Direction::Next);
+    EQ(f.sc.index(), 1u);
+    (void)f.sc.cycle(Direction::Next);
+    EQ(f.sc.index(), 2u);
+    (void)f.sc.cycle(Direction::Next);
+    EQ(f.sc.index(), 2u);
 }
 
 } // namespace

@@ -28,35 +28,24 @@ static std::optional<Direction> dir_of(std::string_view s) {
 CycleArgs parse_cycle_args(std::string_view args) {
     const auto toks = tokens_of(args);
     CycleArgs out;
-    out.ok = true;
+    out.ok = true; // no tokens == "next" with the default scope (REQ-DISP-001)
 
     std::size_t i = 0;
     if (i < toks.size()) {
-        if (const auto d = dir_of(toks[i])) {
-            out.dir = *d;
+        if (const auto dir = dir_of(toks[i])) { // direction is optional
+            out.dir = *dir;
             ++i;
-        }
-        // NOTE: plan referenced mru::domain::parse_scope (doesn't exist).
-        // Corrected to mru::plugin::parse_scope (config_value.hpp, REQ-CFG-001).
-        // "global" alone is silently consumed (test_e: bare scope → no scope set).
-        else if (mru::plugin::parse_scope(toks[i]) != mru::domain::Scope::Global || toks[i] != "global") {
-            out.ok = false;
-            out.error = "unknown direction: " + toks[i];
-            return out;
-        } else {
-            ++i; // bare "global" is a no-op; default scope applied implicitly
         }
     }
 
     if (i < toks.size()) {
-        const std::string_view sc = toks[i];
-        const mru::domain::Scope parsed = mru::plugin::parse_scope(sc);
-        if (sc == "global" || sc == "monitor" || sc == "workspace" || sc == "visible" || sc == "app") {
-            out.scope = parsed;
+        // REQ-DISP-003: a scope token may be given without an explicit direction.
+        if (const auto scope = mru::plugin::parse_scope_token(toks[i])) {
+            out.scope = *scope;
             ++i;
         } else {
             out.ok = false;
-            out.error = "unknown scope: " + toks[i];
+            out.error = "unknown argument: " + toks[i];
             return out;
         }
     }

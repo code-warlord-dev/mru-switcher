@@ -16,7 +16,8 @@ struct CycleArgs {
 };
 
 // Grammar: mru:cycle [next|prev] [global|monitor|workspace|visible|app]
-// Direction omitted -> next (REQ-DISP-001). Scope without direction is invalid.
+// Direction is optional and defaults to next (REQ-DISP-001); a scope token may be
+// given alone (REQ-DISP-003). Anything else fails with a clear error.
 CycleArgs parse_cycle_args(std::string_view args);
 
 } // namespace mru::plugin

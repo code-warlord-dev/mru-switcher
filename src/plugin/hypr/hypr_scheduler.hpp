@@ -21,11 +21,11 @@ class HyprlandSchedulerPort : public mru::domain::SchedulerPort {
     ~HyprlandSchedulerPort() override;
 
     mru::domain::JobId schedule_after(std::uint32_t delay_ms, std::function<void()> cb) override;
-    void               cancel(mru::domain::JobId id) override;
+    void cancel(mru::domain::JobId id) override;
 
   private:
     std::unordered_map<mru::domain::JobId, Hyprutils::Memory::CSharedPointer<CEventLoopTimer>> timers_;
-    mru::domain::JobId                                          next_id_ = 1;
+    mru::domain::JobId next_id_ = 1;
 };
 
 } // namespace mru::plugin
