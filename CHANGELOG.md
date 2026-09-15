@@ -58,6 +58,11 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 - `mru:cycle workspace` failed with `unknown direction: workspace` — scope token without direction now accepted (D6)
 - `mru:status` documented in SPEC/USER.md/API.md but not registered as dispatcher (D7)
 - STRING config read via `dataPtr()` threw `std::bad_any_cast` on hyprlang 0.6.x — fixed via `getDataStaticPtr()` (#3)
+- **Audit BLOCKER-1 (UAF in teardown):** `PluginState` members were destroyed in declaration order with the scheduler first, so `HistoryTracker::cancel_pending()` dereferenced a destroyed scheduler. `teardown_state()` now tears down in explicit reverse order with `scheduler.reset()` last (#5)
+- **Audit BLOCKER-2 (MRU head after apply):** `apply()` focused the selected window while history lock-in was still held, so the applied window never became the MRU head. `complete_apply()` now ends the session (unlocking history) before `tracker_.on_focus(applied)` (#6); reentrant `window.active` inside focus is swallowed by lock-in (T-RE-06, #10)
+- **Audit HIGH-3 (registry lifetime):** `WindowIdentityRegistry` held strong `PHLWINDOW` refs and grew `by_address_` forever; switched to weak `PHLWINDOWREF` with `lock()`-based ABA protection and `prune_closed()` (#7); weak-lock identity formalized later in ADR-016
+- **Audit HIGH-4 (exception barrier):** no `try/catch` at compositor entry points (`PLUGIN_INIT`, dispatchers, Event::bus listeners) — exceptions across the C ABI terminate the compositor. Added `guarded()`/`guarded_listener()` and enclosed `PLUGIN_INIT`/`PLUGIN_EXIT` (#7)
+- **Audit HIGH-5 (dispatcher ordering):** dispatchers were registered before `build_state()`; a failed state build left `controller` null at first dispatch. Now `config → build_state → subscribe_events → register_dispatchers`, with dispatchers null-checking `controller` (#7)
 - Duplicate `### Changed` heading in changelog
 - FM-01 dual success/error contract
 - `PLUGIN_EXIT` now ends an active session before teardown — UI receives `on_session_end(Cancelled)`, state is cleared, and history unlocks; `SessionEndReason::PluginShutdown` is finally used (L-11)
