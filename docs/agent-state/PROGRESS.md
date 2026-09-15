@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-15 (M2 audit closeout: CI .so build + sanitizers + gcc + L-12/13/15 merged)
+Updated: 2026-09-15 (v0.2.0 tagged — M2 complete + audit closeout, LOW triage done; next ADR-016)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -58,7 +58,8 @@ Updated: 2026-09-15 (M2 audit closeout: CI .so build + sanitizers + gcc + L-12/1
 - [x] M2 audit: BLOCKERs/HIGH/MEDIUM fixed (#5-#7)
 - [x] M2 audit closeout: CI plugin-build (.so vs pinned headers, arch container) + sanitize (ASan/UBSan) + gcc jobs (#8)
 - [x] L-12 guard regex (hyprutils + quoted), L-13 single-source version, L-15 mise pin (#8)
-- [ ] LOW triage L-1..17 + reentrant FocusGateway test + tag v0.2.1
+- [x] LOW triage L-1..L-17 (except L-12/13/15) + reentrant plugin_shutdown tests (#9)
+- [x] Release v0.2.0 tagged (first release, M2 + audit closeout) — §16.2 via human gate
 
 ## M3 Scopes + config
 - [ ] All scopes (monitor, workspace, visible, app)
