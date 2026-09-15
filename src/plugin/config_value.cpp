@@ -9,8 +9,10 @@ PluginConfig default_plugin_config() {
     return {};
 }
 
-mru::domain::Scope parse_scope(std::string_view s) {
+std::optional<mru::domain::Scope> parse_scope_token(std::string_view s) {
     using mru::domain::Scope;
+    if (s == "global")
+        return Scope::Global;
     if (s == "monitor")
         return Scope::Monitor;
     if (s == "workspace")
@@ -19,7 +21,11 @@ mru::domain::Scope parse_scope(std::string_view s) {
         return Scope::Visible;
     if (s == "app")
         return Scope::App;
-    return Scope::Global; // includes "global"; fallback for unknown (REQ-CFG-001)
+    return std::nullopt;
+}
+
+mru::domain::Scope parse_scope(std::string_view s) {
+    return parse_scope_token(s).value_or(mru::domain::Scope::Global); // REQ-CFG-001 fallback
 }
 
 int clamp_debounce_ms(int raw) {

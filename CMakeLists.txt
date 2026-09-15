@@ -65,11 +65,13 @@ mru_warnings(mru_plugin_core)
 
 if(MRU_BUILD_TESTS)
   add_executable(plugin_config_value tests/plugin/test_config_value.cpp)
+  target_include_directories(plugin_config_value PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
   target_link_libraries(plugin_config_value PRIVATE mru_plugin_core)
   mru_warnings(plugin_config_value)
   add_test(NAME plugin_config_value COMMAND plugin_config_value)
 
   add_executable(plugin_dispatch_args tests/plugin/test_dispatch_args.cpp)
+  target_include_directories(plugin_dispatch_args PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
   target_link_libraries(plugin_dispatch_args PRIVATE mru_plugin_core)
   mru_warnings(plugin_dispatch_args)
   add_test(NAME plugin_dispatch_args COMMAND plugin_dispatch_args)

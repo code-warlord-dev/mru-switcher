@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string_view>
 
 #include "mru/domain/scope.hpp"
@@ -21,6 +22,9 @@ struct PluginConfig {
 
 PluginConfig default_plugin_config();
 mru::domain::Scope parse_scope(std::string_view s);
+// Strict scope token for dispatcher arguments: std::nullopt when unknown
+// (REQ-DISP-003). Config parsing keeps the fallback path via parse_scope().
+std::optional<mru::domain::Scope> parse_scope_token(std::string_view s);
 int clamp_debounce_ms(int raw);
 
 struct ParsedUi {
