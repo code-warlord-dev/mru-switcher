@@ -244,7 +244,21 @@ static void build_state() {
 }
 
 static void teardown_state() {
-    state() = PluginState{};
+    auto &st = state();
+
+    // Explicit reverse-order teardown (mru_plugin.hpp PluginState contract):
+    // listeners first, scheduler last — implicit destruction would run in
+    // declaration order and free the scheduler before the tracker's
+    // cancel_pending() dereferences it (REQ-H-008).
+    st.listeners.clear(); // stop all callbacks first
+    st.controller.reset();
+    st.ui.reset();
+    st.fg.reset();
+    st.source.reset();
+    st.tracker.reset(); // cancel_pending() still sees a live scheduler
+    st.registry.reset();
+    st.scheduler.reset(); // destroyed last
+    st.config = PluginConfig{};
 }
 
 } // namespace
@@ -269,6 +283,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
-    mru::plugin::teardown_state(); // listeners first, scheduler last: no use-after-unload
+    mru::plugin::teardown_state(); // explicit reverse-order teardown: listeners first, scheduler last: no
+                                   // use-after-unload
     PHANDLE = nullptr;
 }
