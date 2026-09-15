@@ -249,3 +249,31 @@ M2 wired `HyprlandWindowSource::candidates()` straight to `Desktop::History::win
 - The first Alt+Tab after login or plugin load works with pre-existing windows.  
 - M3 scope filters plug into the fallback enumeration instead of replacing the ordering model.  
 - The registry keeps one entry per address with a generation counter (ADR-013) and now also tracks registration sequence for deterministic fallback ordering.
+
+## ADR-016: M3 design gate — weak-lock identity, scope predicate, config v2
+
+**Status:** Accepted
+
+**Context:**  
+The M2 audit (Q1–Q5 design gate, auditor-01 §14; auditor-02 "Ответы на Q1–Q5") resolved the M3 architecture before implementation. Four threads converge here:
+
+1. **HIGH-3 (registry lifetime):** `#7` switched `WindowIdentityRegistry` to weak `PHLWINDOWREF` with `lock()`-based ABA protection and `prune_closed()`, but the *normative* validity rule was left open: "валидность identity определяется `lock()` слабой ссылки, а не флагом `closed`" (auditor-02) had to be stated as a decision, not an accident of the fix.
+2. **Q1 (scope model):** scope predicates must stay in the domain, tested free of the compositor (the `merge_mru_order` pattern, ADR-015).
+3. **Q2/Q3 (special workspaces + `app`):** SPEC leaves scratchpad-in-`global`/`monitor`/`workspace` undecided and is silent on byte-exact class comparison.
+4. **Q4/Q5 (config surface + hyprlang V2):** full config surface now, hyprlang V2 migration before behavioral scope work.
+
+**Decision:**
+
+1. **Weak-lock identity is normative.** A `WindowRef` with a live weak reference (`lock()` non-null) is **valid** regardless of the `closed`/destroy flag; `resolve()` returning empty means the identity is invalid. The `closed` flag only controls entry cleanup and pruning — it never decides validity (REQ-H-003, REQ-RE-003). ABA is prevented by the generation counter (ADR-013) paired with the weak `lock()` check at the same address.
+2. **Scope model:** a pure, Hyprland-free predicate `bool scope_matches(Scope, const WindowMeta&, const FocusContext&)` in the domain core (ADR-007). `WindowMeta` carries **opaque** `monitor_id`/`workspace_id` (`uint64`), `mapped`, `hidden`, and `app_class`; the domain only compares, never interprets Hyprland types. `FocusContext` (current monitor, current workspace, active workspace set) is captured **once at snapshot time** and passed by value — never recomputed per window. The adapter's single duty is `PHLWINDOW → WindowMeta`.
+3. **Special workspaces (scratchpad) in all five scopes:** a window on a special workspace is a candidate in *any* scope **only while** that workspace is currently shown on a monitor — the same rule as `visible`. A hidden scratchpad is excluded from `global`, `monitor`, `workspace`, and `visible` alike. Rationale: "you see it — it's in the ring; you don't — it isn't"; the alternative "always exclude scratchpad" contradicts user expectation for Alt+Tab.
+4. **`app` scope:** compares `candidate.app_class == focus.app_class` **by byte, case-sensitively** (pinned in SPEC so nobody "fixes" it to case-insensitive later). Empty focus class degrades to `global`; empty candidate class never matches. The focused window is intentionally a candidate itself (with `start_offset=second` this gives the in-app toggle).
+5. **Config surface (Q4):** full `plugin:mru-switcher:` surface registered in M3; reserved-not-implemented keys (e.g. `external_socket`) are registered but **documented in USER.md and API.md as `reserved — no effect until M5`** so `hyprctl getoption` matches the README.
+6. **hyprlang V2 (Q5) precedes scope work.** Sequence: (0) config-v2 migration in isolation, (1) scope-predicate (pure domain + tests), (2) scope-adapter (`WindowMeta`, remaining keys, special-workspace rule). Rationale: isolate `.so` load-time config risk (past `bad_any_cast`, #3) from behavioral changes.
+7. **`m_isMapped` completes `is_candidate()`** next to `!isHidden()` so the check matches REQ-SNAP-002 exactly (the L-8 fix applied the mapped bit; M3 keeps it in the predicate path).
+
+**Consequences:**
+- Registry validity no longer depends on close-event ordering; a missed/delayed `close` cannot make a dead window valid, and a strong ref can no longer mask ABA (H-3 fixed normatively, not accidentally).
+- Scope behavior is unit-testable without the compositor; only the `PHLWINDOW → WindowMeta` mapping needs nested smoke (explicitly accepted risk, tracked in issue #12-style follow-ups).
+- Scratchpad/`app` semantics become deterministic and pinned in SPEC, closing the Q2/Q3 holes before user reports.
+- M3 work is sequenced into three small branches (config-v2 → scope-predicate → scope-adapter), each independently reviewable/mergeable.

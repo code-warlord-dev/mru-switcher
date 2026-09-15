@@ -124,11 +124,15 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 
 | Scope | Include window if |
 |-------|-------------------|
-| `global` | Valid (mapped, not hidden, not fading) |
-| `monitor` | Valid AND on current monitor |
-| `workspace` | Valid AND on current workspace |
-| `visible` | Valid AND on a currently visible workspace |
+| `global` | Valid (mapped, not hidden, not fading) AND window is not on a hidden special workspace |
+| `monitor` | Valid AND on current monitor AND window is not on a hidden special workspace |
+| `workspace` | Valid AND on current workspace AND window is not on a hidden special workspace |
+| `visible` | Valid AND on a currently visible workspace (member of the visible workspace set) |
 | `app` | Valid AND same **`class`** (not `initialClass`) as the focused window at snapshot time; if no focused window, behave as `global` |
+
+**REQ-SC-002a** Special workspaces (scratchpad): a window on a special workspace is a candidate in **any** scope **only while** that special workspace is currently shown on a monitor (i.e. it is a member of the visible workspace set at snapshot time). A hidden special workspace excludes its windows from `global`, `monitor`, `workspace`, and `visible` alike. "You see it — it is in the ring; you don't — it is not." (ADR-016 __3__)
+
+**REQ-SC-002b** `app` class comparison is **byte-exact and case-sensitive** (`candidate.m_class == focus.m_class`); it SHALL NOT be made case-insensitive later without a new ADR + SPEC change. A focus with an empty class degrades to `global`; a candidate with an empty class never matches. The focused window is itself a candidate (intentional: with `start_offset=second` it yields the in-app toggle). (ADR-016 __4__)
 
 **REQ-SC-003** Unknown scope token SHALL cause `mru:cycle` to fail with a clear error string (session not started).
 
@@ -146,6 +150,8 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 **REQ-ID-004** Snapshot entries store `WindowRef`, not raw `PHLWINDOW*`. Adapters may cache weak pointers only as an optimization and MUST re-validate via REQ-F-005 before focus.
 
 **REQ-ID-005** Validity check for a ref: adapter finds a live mapped window with the same address **and** the same generation; otherwise invalid.
+
+**REQ-ID-006** Identity validity is decided by the **weak reference `lock()`**, not by a `closed`/destroy flag: a ref whose cached weak ref resolves (`.lock()` non-null) with a matching generation is valid **regardless of any arrival/delivery of a `close` event**; an empty `lock()` makes the identity invalid even if the `closed` flag never fired. (ADR-016 __1__) The `closed` flag only drives entry cleanup and pruning — it never overrides weak-lock validity.
 
 ### 2.8 Apply-after-invalidation
 
@@ -304,7 +310,7 @@ Registered only in `PLUGIN_INIT`. Types follow Hyprland config value types used 
 | `ui` | string | `null` | `null` \| `border` \| `external` — see REQ-UI-002 |
 | `lock_history_on_session` | bool/int | `true` | Enable lock-in while Active |
 | `restore_focus_on_cancel` | bool/int | `false` | On cancel, focus `session_origin` if still valid |
-| `external_socket` | string | (empty) | Path for External UI protocol (M5) |
+| `external_socket` | string | (empty) | Path for External UI protocol — **reserved, no effect until M5** (registered so `hyprctl getoption` shows the documented surface; ADR-016 __5__) |
 
 **REQ-CFG-001** Invalid string enums SHOULD fall back to default and MAY notify once.
 
@@ -408,6 +414,9 @@ When `restore_focus_on_cancel = true`:
 | T-S-07 | Active cycle ignores different scope token |
 | T-RE-01 | apply then synthetic active does not reopen session |
 | T-SC-02 | app scope matches class only |
+| T-SC-03 | special workspace window is candidate only while its workspace is shown (ADR-016 __3__) |
+| T-SC-04 | app class compare is byte-exact and case-sensitive; empty focus class degrades to global (ADR-016 __4__) |
+| T-ID-02 | ref validity is decided by weak-ref lock(), not the closed flag (REQ-ID-006, ADR-016 __1__) |
 
 ---
 
