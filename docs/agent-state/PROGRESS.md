@@ -1,10 +1,10 @@
 # Progress
-Updated: 2026-09-14 (M2 Tasks 2-6 implemented on feat/m2-plugin; .so builds, ctest 7/7 green)
+Updated: 2026-09-15 (M2 closeout Tasks 0-7 complete, nested smoke done, PR pending)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
 - [x] SPEC.md (v0.2 design gate)
-- [x] DECISIONS.md (ADRs through ADR-014)
+- [x] DECISIONS.md (ADRs through ADR-015)
 - [x] ROADMAP.md (M2 Null UI + pin clarified)
 - [x] USER.md / API.md / DIAGRAMS.md
 - [x] HYPRLAND-PLUGIN-SYSTEM.md
@@ -32,21 +32,36 @@ Updated: 2026-09-14 (M2 Tasks 2-6 implemented on feat/m2-plugin; .so builds, cte
 - [x] Unit tests T-S-* / T-H-* / T-SEL-* / T-F-03/04 / T-ID-01 (ctest 5/5 green)
 - [x] Compliance review + MR merge to main (MR !1; polish: REQ-F-008 retry, last_end_reason, pruned() unify)
 
-## M2 MVP plugin (merged via PR #2; nested smoke pending)
+## M2 MVP plugin
 - [x] PLUGIN_INIT hash check + config registration
 - [x] Adapters: HyprlandWindowSource, FocusGateway, SchedulerPort
 - [x] Dispatchers mru:cycle / apply / cancel (addDispatcherV2, SDispatchResult)
 - [x] Event::bus subscriptions (window.active/close, config.reloaded)
 - [x] WindowRef registry with generation (ADR-013)
 - [x] FocusGateway + Null UI (default ui=null; border/external fall back to null, warn-once)
-- [x] restore_focus_on_cancel wired (policy → SessionController)
-- [ ] Nested smoke (basic binds) on pinned Hyprland v0.56.2 (efb5099…)
+- [x] restore_focus_on_cancel wired (policy -> SessionController)
+- [x] STRING config via getDataStaticPtr (fix bad_any_cast on hyprlang 0.6.x, #3)
+- [x] D1: CI plugin-guards job replaces stale fail-closed job
+- [x] D2: clang-format pass on all source files
+- [x] D3: plugin tests rewritten with shared framework (NDEBUG-proof)
+- [x] D4: candidate order from plugin-owned MRU + register-on-sight (ADR-015)
+- [x] D5: config reload refreshes SessionPolicy for next session (REQ-CFG-002)
+- [x] D6: scope token without direction accepted (REQ-DISP-003)
+- [x] D7: mru:status dispatcher with SPEC 3.4 payload
+- [x] REQ-TRACE.md updated for M2 test IDs
+- [x] CHANGELOG.md updated with all M2 closeout items
+- [x] COMPAT.md: nest-tested row for 0.2.0 / v0.56.2
+- [x] PROGRESS.md updated
+- [x] SESSION.md updated
+- [x] M2 audit report: docs/agent-state/reports/2026-09-15-m2-audit.md
+- [x] Nested smoke on Hyprland v0.56.2 (efb5099) — all dispatchers + invariants verified
+- [ ] PR + self-review + merge into main (Task 9)
 
 ## M3 Scopes + config
-- [ ] All scopes
+- [ ] All scopes (monitor, workspace, visible, app)
 - [ ] Full plugin:mru-switcher config surface
-- [ ] mru:status
-- [ ] Config reload behavior documented
+- [ ] Config reload behavior documented + tested
+- [ ] hyprlang V2 config API migration
 
 ## M4 Border UI
 - [ ] BorderHighlightUI
@@ -56,8 +71,9 @@ Updated: 2026-09-14 (M2 Tasks 2-6 implemented on feat/m2-plugin; .so builds, cte
 ## M5 External overlay
 - [ ] Protocol draft frozen
 - [ ] ExternalOverlayUI + fallback
+- [ ] external_socket config key
 
-## M6 Hardening → v1.0
+## M6 Hardening -> v1.0
 - [ ] CI unit tests
 - [ ] hyprpm manifest / pins
 - [ ] Stress cases

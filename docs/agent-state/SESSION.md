@@ -1,11 +1,11 @@
 # Session State
-Updated: 2026-09-14T15:20:00Z
-Human goal: довести проект до полного MVP (M2 завершить полностью)
-Active milestone: M2 (остался только nested smoke — Task 7)
-Branch: main (PR #2 squash-merged: 9e345a0)
-PR: #2 merged
+Updated: 2026-09-15T12:00:00Z
+Human goal: завершить M2 полностью (code + docs + nested smoke + PR)
+Active milestone: M2 (code + docs + nested smoke done; PR pending)
+Branch: feat/m2-closeout (29 files changed, +1925 / -175)
+PR: none yet (Task 9)
 Blocked: none
-Next action: Task 7 nested smoke (hyprland-nested-dev skill) на Hyprland v0.56.2 → закрыть M2 → M3
-SPEC focus: REQ-DISP-001/002, REQ-CFG-001..004, REQ-UI-001..003, REQ-F-003/005, REQ-S-011
+Next action: Task 9 — push branch + open PR against main
+SPEC focus: REQ-SNAP-001a, REQ-H-004a/b, REQ-CFG-002, REQ-DISP-001/003, SPEC 3.4
 Open questions: none
-Last artifact: PR #2 (review: 2×S1 fixed, S3 backlog: registry growth, mru:status ticket)
+Last artifact: docs/agent-state/reports/2026-09-15-m2-audit.md

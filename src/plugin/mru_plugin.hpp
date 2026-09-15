@@ -17,13 +17,13 @@
 namespace mru::plugin {
 
 // All plugin-owned state. Function-local static in mru_plugin.cpp; explicitly
-// torn down in PLUGIN_EXIT. Member order = reverse destruction order: listeners,
-// config, controller, ui, fg, source, tracker, registry, scheduler. The tracker
-// holds a Validator closing over the registry and a SchedulerPort&, so it must be
-// destroyed before both — and the source holds a HistoryTracker&, so the tracker
-// must outlive it (ADR-015).
+// torn down in PLUGIN_EXIT. Destruction runs in *reverse* declaration order:
+// listeners -> controller -> ui -> fg -> source -> tracker -> registry ->
+// scheduler. Invariants: the tracker holds a Validator closing over the registry
+// and a SchedulerPort&, so it must be destroyed before both; the source holds a
+// HistoryTracker&, so the tracker must outlive it (ADR-015).
 struct PluginState {
-    std::unique_ptr<HyprlandSchedulerPort> scheduler;
+    std::unique_ptr<HyprlandSchedulerPort> scheduler; // destroyed last
     std::unique_ptr<WindowIdentityRegistry> registry;
     std::unique_ptr<mru::domain::HistoryTracker> tracker; // must outlive source
     std::unique_ptr<HyprlandWindowSource> source;
@@ -31,7 +31,7 @@ struct PluginState {
     std::unique_ptr<NullUI> ui;
     std::unique_ptr<mru::domain::SessionController> controller;
     PluginConfig config;
-    std::vector<Hyprutils::Signal::CHyprSignalListener> listeners;
+    std::vector<Hyprutils::Signal::CHyprSignalListener> listeners; // destroyed first
 };
 
 } // namespace mru::plugin
