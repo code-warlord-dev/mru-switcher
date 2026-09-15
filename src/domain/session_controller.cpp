@@ -49,7 +49,7 @@ SessionController::CommandResult SessionController::apply() {
     if (!first)
         return end_session(SessionEndReason::NoWindows, "no windows"); // step 2
     if (*first == FocusResult::Applied)
-        return end_session(SessionEndReason::Applied, "");
+        return complete_apply();
     if (*first == FocusResult::Failed)
         return end_session(SessionEndReason::FocusFailed, "no windows"); // FM-10
 
@@ -61,13 +61,25 @@ SessionController::CommandResult SessionController::apply() {
         return end_session(SessionEndReason::NoWindows, "no windows");
     switch (*second) {
     case FocusResult::Applied:
-        return end_session(SessionEndReason::Applied, "");
+        return complete_apply();
     case FocusResult::Failed:
         return end_session(SessionEndReason::FocusFailed, "no windows");
     case FocusResult::InvalidTarget:
         break;
     }
     return end_session(SessionEndReason::InvalidSelection, "no windows");
+}
+
+SessionController::CommandResult SessionController::complete_apply() {
+    const WindowRef applied = snapshot_->at(index_); // capture before end_session
+    const CommandResult result = end_session(SessionEndReason::Applied, "");
+    // REQ-RE-003 / BLOCKER-2: the compositor emits a synchronous window.active
+    // inside FocusGateway::focus(), but lock-in (REQ-H-001) swallows it while the
+    // session is still Active — the applied window would never reach the MRU head.
+    // Promote it explicitly once history is unlocked; a later duplicate window.active
+    // for the same identity is idempotent in HistoryTracker::commit.
+    tracker_.on_focus(applied);
+    return result;
 }
 
 std::optional<FocusResult> SessionController::resolve_and_focus() {

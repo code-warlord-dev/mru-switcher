@@ -72,6 +72,11 @@ class SessionController {
   private:
     CommandResult begin_session(Scope scope);
     CommandResult end_session(SessionEndReason reason, std::string_view error);
+    // Promote the applied window to the MRU head after the session ends.
+    // The FocusGateway emits a synchronous window.active during the focus call,
+    // but lock-in (REQ-H-001) swallows it while Active, so without this the
+    // applied window would never reach the head (BLOCKER-2, REQ-RE-003).
+    CommandResult complete_apply();
     void prune_active();
     // Apply-after-invalidation (§2.8): prune, defensive re-prune + clamp, then a
     // single focus attempt. std::nullopt when the snapshot emptied (no focus).
