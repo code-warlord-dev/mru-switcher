@@ -16,7 +16,7 @@ namespace mru::plugin {
 using mru::domain::WindowRef;
 
 // Raw pointer value of the underlying CWindow (stable id on this pin, ADR-013).
-std::uint64_t address_of(PHLWINDOW w);
+std::uint64_t address_of(const PHLWINDOW &w);
 
 // Address + generation identity bookkeeping for windows seen by the plugin
 // (REQ-F-005). A live window keeps a stable WindowRef; a closed window invalidates
@@ -24,13 +24,16 @@ std::uint64_t address_of(PHLWINDOW w);
 class WindowIdentityRegistry {
   public:
     // Registers (or re-returns the identity of) a live window.
-    WindowRef register_window(PHLWINDOW w);
-    // Last known identity for a window, if the plugin has seen it.
-    std::optional<WindowRef> last_ref(PHLWINDOW w) const;
-    // Resolves a WindowRef to the live window; nullopt when closed or stale generation.
-    std::optional<PHLWINDOW> resolve(const WindowRef &ref) const;
+    WindowRef register_window(const PHLWINDOW &w);
+    // Last known identity for a window, if the plugin has seen it (even closed).
+    std::optional<WindowRef> last_ref(const PHLWINDOW &w) const;
+    // Single-lookup variant of last_ref that skips closed windows (L-7): the
+    // identity of a window the plugin has seen and that is not yet closed.
+    std::optional<WindowRef> live_ref(const PHLWINDOW &w) const;
+    // Resolves a WindowRef to the live window; null when closed or stale generation.
+    PHLWINDOW resolve(const WindowRef &ref) const;
     // Marks the window closed: future resolve() fails for its current generation.
-    void on_window_close(PHLWINDOW w);
+    void on_window_close(const PHLWINDOW &w);
     // HIGH-3: drop entries that are closed AND whose weak ref is dead, bounding
     // by_address_ growth. Call after close/destroy batches.
     void prune_closed();

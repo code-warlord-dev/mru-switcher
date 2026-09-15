@@ -8,11 +8,11 @@
 
 namespace mru::plugin {
 
-std::uint64_t address_of(PHLWINDOW w) {
+std::uint64_t address_of(const PHLWINDOW &w) {
     return reinterpret_cast<std::uint64_t>(w.get());
 }
 
-WindowRef WindowIdentityRegistry::register_window(PHLWINDOW w) {
+WindowRef WindowIdentityRegistry::register_window(const PHLWINDOW &w) {
     const std::uint64_t addr = address_of(w);
     auto &entry = by_address_[addr];
     // Same address AND the same live object: identity stays stable (no generation
@@ -29,24 +29,31 @@ WindowRef WindowIdentityRegistry::register_window(PHLWINDOW w) {
     return entry.ref;
 }
 
-std::optional<WindowRef> WindowIdentityRegistry::last_ref(PHLWINDOW w) const {
+std::optional<WindowRef> WindowIdentityRegistry::last_ref(const PHLWINDOW &w) const {
     const auto it = by_address_.find(address_of(w));
     if (it == by_address_.end())
         return std::nullopt;
     return it->second.ref;
 }
 
-std::optional<PHLWINDOW> WindowIdentityRegistry::resolve(const WindowRef &ref) const {
+std::optional<WindowRef> WindowIdentityRegistry::live_ref(const PHLWINDOW &w) const {
+    const auto it = by_address_.find(address_of(w));
+    if (it == by_address_.end() || it->second.closed)
+        return std::nullopt; // unseen or already closed (L-7)
+    return it->second.ref;
+}
+
+PHLWINDOW WindowIdentityRegistry::resolve(const WindowRef &ref) const {
     const auto it = by_address_.find(ref.address);
     if (it == by_address_.end() || it->second.closed || it->second.ref.generation != ref.generation)
-        return std::nullopt; // invalid identity (REQ-F-005)
+        return {}; // invalid identity (REQ-F-005)
     // HIGH-3: validity is ultimately decided by the weak ref. lock() is null as
     // soon as the CWindow dies, so this is robust even when no close event was
     // observed (ADR-016, §HIGH-3).
     return it->second.window.lock();
 }
 
-void WindowIdentityRegistry::on_window_close(PHLWINDOW w) {
+void WindowIdentityRegistry::on_window_close(const PHLWINDOW &w) {
     const auto it = by_address_.find(address_of(w));
     if (it != by_address_.end())
         it->second.closed = true;
