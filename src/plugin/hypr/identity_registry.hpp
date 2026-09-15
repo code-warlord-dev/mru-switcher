@@ -31,6 +31,9 @@ class WindowIdentityRegistry {
     std::optional<PHLWINDOW> resolve(const WindowRef &ref) const;
     // Marks the window closed: future resolve() fails for its current generation.
     void on_window_close(PHLWINDOW w);
+    // HIGH-3: drop entries that are closed AND whose weak ref is dead, bounding
+    // by_address_ growth. Call after close/destroy batches.
+    void prune_closed();
     bool is_known(std::uint64_t addr) const;
     // Live identities, most recently registered first: fallback enumeration order
     // for windows the plugin has not seen focus events for yet (ADR-015).
@@ -42,7 +45,7 @@ class WindowIdentityRegistry {
         std::uint64_t next_generation = 1;
         std::uint64_t seq = 0; // monotonic registration order (ADR-015)
         bool closed = false;
-        PHLWINDOW window;
+        PHLWINDOWREF window; // weak: validity by lock(), not lifetime (HIGH-3, ADR-016)
     };
     std::unordered_map<std::uint64_t, Entry> by_address_;
     std::uint64_t seq_counter_ = 0;

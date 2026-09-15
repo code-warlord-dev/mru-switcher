@@ -51,7 +51,7 @@ SessionController::CommandResult SessionController::apply() {
     if (*first == FocusResult::Applied)
         return complete_apply();
     if (*first == FocusResult::Failed)
-        return end_session(SessionEndReason::FocusFailed, "no windows"); // FM-10
+        return end_session(SessionEndReason::FocusFailed, "focus failed"); // MEDIUM-8, FM-10
 
     // InvalidTarget: the resolved window died between validation and focus.
     // Continue apply-after-invalidation once more (REQ-F-008, §2.8 step-3
@@ -63,11 +63,11 @@ SessionController::CommandResult SessionController::apply() {
     case FocusResult::Applied:
         return complete_apply();
     case FocusResult::Failed:
-        return end_session(SessionEndReason::FocusFailed, "no windows");
+        return end_session(SessionEndReason::FocusFailed, "focus failed"); // MEDIUM-8
     case FocusResult::InvalidTarget:
         break;
     }
-    return end_session(SessionEndReason::InvalidSelection, "no windows");
+    return end_session(SessionEndReason::InvalidSelection, "selection invalid"); // MEDIUM-8
 }
 
 SessionController::CommandResult SessionController::complete_apply() {

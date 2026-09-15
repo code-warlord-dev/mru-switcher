@@ -361,8 +361,8 @@ TEST(t_f_05_invalid_target_retry_then_ends_cancelled) {
 
     const SessionController::CommandResult r = f.sc.apply();
     CHECK(!r.ok);
-    CHECK(r.error == "no windows");
-    CHECK(f.fg.focused.size() == 2); // bounded: one retry, still no success
+    CHECK(r.error == "selection invalid"); // MEDIUM-8: truthful InvalidSelection diagnosis
+    CHECK(f.fg.focused.size() == 2);       // bounded: one retry, still no success
     CHECK(f.fg.focused[0] == f.fg.focused[1]);
     CHECK(f.ui.ends.size() == 1);
     CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
@@ -396,7 +396,7 @@ TEST(t_f_05_focus_failed_ends_cancelled) {
 
     const SessionController::CommandResult r = f.sc.apply();
     CHECK(!r.ok);
-    CHECK(r.error == "no windows");
+    CHECK(r.error == "focus failed"); // MEDIUM-8: truthful FocusFailed diagnosis
     CHECK(f.fg.focused.size() == 1);
     CHECK(f.ui.ends.size() == 1);
     CHECK(f.ui.ends[0] == UIEndReason::Cancelled);

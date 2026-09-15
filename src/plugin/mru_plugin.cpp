@@ -60,8 +60,23 @@ static std::string cfg_str(const char *key, std::string_view fallback) {
 
 static PluginConfig read_config() {
     PluginConfig cfg;
-    cfg.debounce_ms = clamp_debounce_ms(static_cast<int>(cfg_int("plugin:mru-switcher:debounce_ms", 400)));
+    cfg.debounce_ms = clamp_debounce_ms(cfg_int("plugin:mru-switcher:debounce_ms", 400));
     cfg.default_scope = parse_scope(cfg_str("plugin:mru-switcher:default_scope", "global"));
+    // MEDIUM-7: only global is implemented until M3. A documented-but-unimplemented
+    // scope must not silently produce "no windows" on every Alt+Tab — fall back to
+    // global and warn once (mirror of the ui=border/external handling below).
+    if (cfg.default_scope != mru::domain::Scope::Global) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            HyprlandAPI::addNotification(PHANDLE,
+                                         std::string("mru-switcher: scope '") +
+                                             std::string(scope_name(cfg.default_scope)) +
+                                             "' not implemented until M3, falling back to 'global'",
+                                         CHyprColor{1, 0.7, 0, 1}, 5000);
+        }
+        cfg.default_scope = mru::domain::Scope::Global;
+    }
     cfg.start_offset = parse_start_offset(cfg_str("plugin:mru-switcher:start_offset", "second"));
     cfg.wrap = cfg_int("plugin:mru-switcher:wrap", 1) != 0;
     cfg.lock_history_on_session = cfg_int("plugin:mru-switcher:lock_history_on_session", 1) != 0;
@@ -119,10 +134,26 @@ static SDispatchResult err_result(std::string error) {
     return r;
 }
 
+// HIGH-4: an exception escaping into the compositor through a C-ABI-like entry
+// point is std::terminate at best, UB at worst — one malformed config line must
+// not take down a user session. Every dispatcher and listener runs behind a
+// barrier that converts exceptions into an error result / notification.
+template <class F> static SDispatchResult guarded(F &&f) noexcept {
+    try {
+        return f();
+    } catch (const std::exception &e) {
+        return err_result(std::string("internal error: ") + e.what());
+    } catch (...) {
+        return err_result("internal error");
+    }
+}
+
 static SDispatchResult dispatch_cycle(std::string args) {
     const CycleArgs parsed = parse_cycle_args(args);
     if (!parsed.ok)
         return err_result(parsed.error);
+    if (!state().controller) // HIGH-5: never deref null after partial init
+        return err_result("mru-switcher: not initialized");
     const auto r = state().controller->cycle(parsed.dir, parsed.scope); // never focuses (REQ-F-003)
     if (!r.ok)
         return err_result(r.error);
@@ -130,6 +161,8 @@ static SDispatchResult dispatch_cycle(std::string args) {
 }
 
 static SDispatchResult dispatch_apply(std::string) {
+    if (!state().controller)
+        return err_result("mru-switcher: not initialized");
     const auto r = state().controller->apply();
     if (!r.ok)
         return err_result(r.error);
@@ -137,12 +170,16 @@ static SDispatchResult dispatch_apply(std::string) {
 }
 
 static SDispatchResult dispatch_cancel(std::string) {
+    if (!state().controller)
+        return err_result("mru-switcher: not initialized");
     const auto r = state().controller->cancel();
     return r.ok ? ok_result() : err_result(r.error);
 }
 
 static SDispatchResult dispatch_status(std::string) {
     auto &st = state();
+    if (!st.controller)
+        return err_result("mru-switcher: not initialized");
     const auto &snapshot = st.controller->active_snapshot();
     const bool active = st.controller->is_active() && snapshot.has_value();
 
@@ -156,56 +193,86 @@ static SDispatchResult dispatch_status(std::string) {
 }
 
 static void register_dispatchers() {
-    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:cycle", dispatch_cycle);
-    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:apply", dispatch_apply);
-    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:cancel", dispatch_cancel);
-    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:status", dispatch_status);
+    // HIGH-4/5: every entry is wrapped; dispatchers are registered only after
+    // build_state() so a dispatch can never observe a half-built state.
+    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:cycle",
+                                 [](std::string a) { return guarded([&] { return dispatch_cycle(std::move(a)); }); });
+    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:apply",
+                                 [](std::string a) { return guarded([&] { return dispatch_apply(std::move(a)); }); });
+    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:cancel",
+                                 [](std::string a) { return guarded([&] { return dispatch_cancel(std::move(a)); }); });
+    HyprlandAPI::addDispatcherV2(PHANDLE, "mru:status",
+                                 [](std::string a) { return guarded([&] { return dispatch_status(std::move(a)); }); });
 }
 
 // --- Event::bus wiring (listeners kept alive in PluginState) -------------------
+
+// HIGH-4: a listener that throws would resume into the compositor's event
+// dispatch. Swallow, log a tear-off notification (never propagate).
+static void guarded_listener(std::string_view tag, const std::function<void(void)> &fn) {
+    try {
+        fn();
+    } catch (const std::exception &e) {
+        HyprlandAPI::addNotification(PHANDLE, std::string("mru-switcher: ") + std::string(tag) + ": " + e.what(),
+                                     CHyprColor{1, 0, 0, 1}, 5000);
+    } catch (...) {
+        HyprlandAPI::addNotification(PHANDLE, std::string("mru-switcher: ") + std::string(tag) + ": internal error",
+                                     CHyprColor{1, 0, 0, 1}, 5000);
+    }
+}
 
 static void subscribe_events() {
     auto &st = state();
 
     st.listeners.push_back(Event::bus()->m_events.window.open.listen([](PHLWINDOW w) {
-        if (w)
-            state().registry->register_window(w);
+        guarded_listener("window.open", [&] {
+            if (w)
+                state().registry->register_window(w);
+        });
     }));
 
     st.listeners.push_back(Event::bus()->m_events.window.active.listen([](PHLWINDOW w, Desktop::eFocusReason) {
-        if (!w)
-            return;
-        auto &st = state();
-        const auto ref = st.registry->register_window(w);
-        st.controller->on_focus(ref); // controller ignores while Active (lock-in)
+        guarded_listener("window.active", [&] {
+            if (!w)
+                return;
+            auto &st = state();
+            const auto ref = st.registry->register_window(w);
+            st.controller->on_focus(ref); // controller ignores while Active (lock-in)
+        });
     }));
 
     st.listeners.push_back(Event::bus()->m_events.window.close.listen([](PHLWINDOW w) {
-        if (!w)
-            return;
-        auto &st = state();
-        st.registry->on_window_close(w);
-        if (const auto ref = st.registry->last_ref(w))
-            st.controller->on_window_invalid(*ref);
+        guarded_listener("window.close", [&] {
+            if (!w)
+                return;
+            auto &st = state();
+            st.registry->on_window_close(w);
+            if (const auto ref = st.registry->last_ref(w))
+                st.controller->on_window_invalid(*ref);
+        });
     }));
 
     st.listeners.push_back(Event::bus()->m_events.window.destroy.listen([](PHLWINDOWREF w) {
-        const auto locked = w.lock();
-        if (!locked)
-            return;
-        auto &st = state();
-        st.registry->on_window_close(locked);
-        if (const auto ref = st.registry->last_ref(locked))
-            st.controller->on_window_invalid(*ref);
+        guarded_listener("window.destroy", [&] {
+            const auto locked = w.lock();
+            if (!locked)
+                return;
+            auto &st = state();
+            st.registry->on_window_close(locked);
+            if (const auto ref = st.registry->last_ref(locked))
+                st.controller->on_window_invalid(*ref);
+        });
     }));
 
     st.listeners.push_back(Event::bus()->m_events.config.reloaded.listen([]() {
-        // REQ-CFG-002: refresh cached values. The active session is untouched
-        // (REQ-S-009); new values apply to the next session and to later debounce windows.
-        auto &st = state();
-        st.config = read_config();
-        st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
-        st.controller->set_policy(policy_from_config(st.config));
+        guarded_listener("config.reloaded", [&] {
+            // REQ-CFG-002: refresh cached values. The active session is untouched
+            // (REQ-S-009); new values apply to the next session and to later debounce windows.
+            auto &st = state();
+            st.config = read_config();
+            st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
+            st.controller->set_policy(policy_from_config(st.config));
+        });
     }));
 }
 
@@ -271,19 +338,34 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     PHANDLE = handle;
 
-    if (!mru::plugin::hash_ok())
-        return {}; // empty description aborts init (fail closed)
+    try {
+        if (!mru::plugin::hash_ok())
+            return {}; // empty description aborts init (fail closed)
 
-    mru::plugin::register_config_keys();
-    mru::plugin::register_dispatchers();
-    mru::plugin::build_state();
-    mru::plugin::subscribe_events();
+        mru::plugin::register_config_keys(); // must precede build_state (reads config)
+        mru::plugin::build_state();          // constructs all members, seeds MRU (HIGH-5)
+        mru::plugin::subscribe_events();     // HIGH-5: listeners after state exists
+        mru::plugin::register_dispatchers(); // HIGH-5: dispatchers after state exists
+    } catch (const std::exception &e) {
+        mru::plugin::teardown_state();
+        HyprlandAPI::addNotification(PHANDLE, std::string("mru-switcher: init failed: ") + e.what(),
+                                     CHyprColor{1, 0, 0, 1}, 5000);
+        return {}; // fail closed (HIGH-4)
+    } catch (...) {
+        mru::plugin::teardown_state();
+        HyprlandAPI::addNotification(PHANDLE, "mru-switcher: init failed (internal error)", CHyprColor{1, 0, 0, 1},
+                                     5000);
+        return {};
+    }
 
     return {"mru-switcher", "Niri-style MRU Alt+Tab (snapshot, apply-on-release, lock-in)", "mru", "0.2.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
-    mru::plugin::teardown_state(); // explicit reverse-order teardown: listeners first, scheduler last: no
-                                   // use-after-unload
+    try {
+        mru::plugin::teardown_state(); // listeners first, scheduler last: no use-after-unload
+    } catch (...) {
+        // best-effort: swallow to satisfy C-ABI boundary (HIGH-4)
+    }
     PHANDLE = nullptr;
 }

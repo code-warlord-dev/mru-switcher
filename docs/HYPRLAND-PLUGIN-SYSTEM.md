@@ -218,6 +218,24 @@ Increases coupling; avoid when public API or bus suffices.
 - Plugin code that touches compositor state must run on that thread (dispatchers, event listeners).
 - Background threads are only acceptable for fully detached work (e.g. writing a file) with **no** compositor callbacks from those threads.
 
+### 6.1 `CEventLoopTimer` semantics (pinned: Hyprland v0.56.2 `efb5099`)
+
+Source: header inspection (`EventLoopTimer.hpp`, `EventLoopManager.hpp`); no compositor source `.cpp` available on the pinned tag.
+
+```cpp
+CEventLoopTimer(
+    std::optional<Time::steady_dur> timeout,
+    std::function<void(SP<CEventLoopTimer> self, void* data)> cb_,
+    void* data_);
+```
+
+- `g_pEventLoopManager->addTimer(SP<CEventLoopTimer>)` — the manager holds its own strong reference.
+- `g_pEventLoopManager->removeTimer(SP<CEventLoopTimer>)` — explicit removal.
+- Manager header comment: *"Note: will remove the timer if the ptr is lost"* — the manager tracks and auto-removes when the last strong ref dies.
+- `cancel()` disarms the timer; the callback will not fire.
+
+**Scheduler contract (MEDIUM-6, symmetric teardown):** the HyprlandSchedulerPort callback receives `SP<CEventLoopTimer> self` from the manager. On fire: (1) copy `self` to local, (2) `removeTimer(self)`, (3) erase bookkeeping, (4) run user callback. This keeps the timer object alive through the callback and avoids relying on the manager's implicit cleanup semantics. Verified safe: `cancel()` already calls `removeTimer` from outside the callback path, so calling it during dispatch is expected by the manager API.
+
 ---
 
 ## 7. Permissions and trust
@@ -306,3 +324,4 @@ Design rules for MRU (see ARCHITECTURE.md / DECISIONS.md):
 | Date | Note |
 |------|------|
 | 2026-09-13 | Initial reference for MRU Switcher documentation set |
+| 2026-09-15 | Add §6.1: CEventLoopTimer semantics on pinned v0.56.2 (MEDIUM-6 findings) |
