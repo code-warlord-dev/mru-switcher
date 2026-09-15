@@ -11,11 +11,6 @@
 #include "mru_version.hpp"
 #include "status_format.hpp"
 
-// The pinned Hyprland v0.56.2 marks getConfigValue/addConfigValue deprecated in
-// favor of the V2 config API; M2 intentionally uses the documented legacy path
-// (plan Task 6 Step 3) and migrates in M3.
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
 HANDLE PHANDLE = nullptr;
 
 namespace mru::plugin {
@@ -38,7 +33,12 @@ static bool hash_ok() {
     return false;
 }
 
-// --- config (continuation of anonymous-namespace block) ------------------------
+// The pinned Hyprland v0.56.2 marks getConfigValue/addConfigValue deprecated in
+// favor of the V2 config API; M2 intentionally uses the documented legacy path
+// (plan Task 6 Step 3) and migrates in M3. These are the only deprecated-API
+// call sites, so the ignore is scoped push/pop — not the whole TU (L-9).
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 static std::int64_t cfg_int(const char *key, std::int64_t fallback) {
     const auto *v = HyprlandAPI::getConfigValue(PHANDLE, key);
@@ -58,6 +58,8 @@ static std::string cfg_str(const char *key, std::string_view fallback) {
         return std::string{fallback};
     return std::string{static_cast<const char *>(*p)};
 }
+
+#pragma GCC diagnostic pop
 
 static PluginConfig read_config() {
     PluginConfig cfg;
@@ -102,6 +104,9 @@ static mru::domain::SessionPolicy policy_from_config(const PluginConfig &cfg) {
     return policy;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 static void register_config_keys() {
     // REQ-CFG-002: defaults under plugin:mru-switcher:, registered only in PLUGIN_INIT.
     HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:debounce_ms",
@@ -119,6 +124,8 @@ static void register_config_keys() {
     HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:restore_focus_on_cancel",
                                 Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(0)});
 }
+
+#pragma GCC diagnostic pop
 
 // --- dispatchers (REQ-DISP-001/002) --------------------------------------------
 
