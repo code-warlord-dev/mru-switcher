@@ -1,2 +1,2 @@
 [tools]
-cmake = "latest"
+cmake = "4.4.3"

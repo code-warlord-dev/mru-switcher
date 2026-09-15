@@ -21,6 +21,9 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Changed
 
+- CI builds the real `mru-switcher.so` against pinned Hyprland headers (Arch container, `plugin-build` job); adds ASan/UBSan and GCC test jobs; extends ADR-007/domain include guards to `hyprutils` and quoted includes (L-12)
+- Plugin version now comes from a single source: CMake `project(VERSION …)` → `cmake/mru-version.hpp.in` → `PLUGIN_INIT` (was hard-coded `"0.2.0"` while CMake said `0.0.0`, L-13)
+- `mise.toml` pins `cmake` to a concrete version instead of `latest` (L-15)
 - Documentation set (ARCHITECTURE, SPEC, ADRs, ROADMAP, USER, API, diagrams)
 - Hyprland plugin system reference
 - Agent skills (project) and AGENTS.md orchestrator contract
