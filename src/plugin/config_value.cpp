@@ -44,8 +44,11 @@ std::string_view scope_name(mru::domain::Scope scope) {
     return "global";
 }
 
-int clamp_debounce_ms(int raw) {
-    return std::clamp(raw, 0, 5000); // REQ-CFG-004
+int clamp_debounce_ms(std::int64_t raw) {
+    // MEDIUM-9: clamp on the full-width value BEFORE narrowing to int, so huge or
+    // negative INT64 config values land on 0/5000 instead of truncating to a 32-bit
+    // bit-pattern and slipping past the clamp (e.g. 4294967296 -> 0 as int).
+    return static_cast<int>(std::clamp<std::int64_t>(raw, 0, 5000)); // REQ-CFG-004
 }
 
 ParsedUi parse_ui_backend(std::string_view s) {

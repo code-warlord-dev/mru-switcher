@@ -14,6 +14,14 @@ TEST(cfg_01_debounce_clamped) {
     EQ(clamp_debounce_ms(9999), 5000);
 }
 
+// MEDIUM-9: clamp on the full 64-bit value BEFORE narrowing to int. A value like
+// 4294967296 (2^32) would previously be narrowed to 0 (UB/implementation-defined)
+// and then pass the int clamp as a valid zero.
+TEST(cfg_01b_debounce_wide_value_clamped) {
+    EQ(clamp_debounce_ms(4294967296LL), 5000);
+    EQ(clamp_debounce_ms(-4294967296LL), 0);
+}
+
 // REQ-CFG-001: unknown scope falls back to default; known ones parse
 TEST(cfg_02_scope_parse) {
     EQ(parse_scope("global"), Scope::Global);

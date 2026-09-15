@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string_view>
 
@@ -25,7 +26,7 @@ mru::domain::Scope parse_scope(std::string_view s);
 // Strict scope token for dispatcher arguments: std::nullopt when unknown
 // (REQ-DISP-003). Config parsing keeps the fallback path via parse_scope().
 std::optional<mru::domain::Scope> parse_scope_token(std::string_view s);
-int clamp_debounce_ms(int raw);
+int clamp_debounce_ms(std::int64_t raw); // clamps [0,5000] before truncation (MEDIUM-9)
 
 // Inverse of parse_scope_token for diagnostics (mru:status, SPEC §3.4).
 std::string_view scope_name(mru::domain::Scope scope);
