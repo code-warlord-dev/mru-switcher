@@ -200,10 +200,12 @@ static void subscribe_events() {
     }));
 
     st.listeners.push_back(Event::bus()->m_events.config.reloaded.listen([]() {
-        // REQ-CFG-002: refresh cached values; applies to the next session.
+        // REQ-CFG-002: refresh cached values. The active session is untouched
+        // (REQ-S-009); new values apply to the next session and to later debounce windows.
         auto &st = state();
         st.config = read_config();
         st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
+        st.controller->set_policy(policy_from_config(st.config));
     }));
 }
 

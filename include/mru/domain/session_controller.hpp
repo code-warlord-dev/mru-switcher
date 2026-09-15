@@ -56,6 +56,9 @@ class SessionController {
     void on_focus(const WindowRef &ref);
     // Prune the active snapshot when a window closes (FM-04); empty ends session.
     void on_window_invalid(const WindowRef &ref);
+    // REQ-CFG-002 / REQ-S-009: refresh the live policy applied to *new* sessions.
+    // The active session keeps the snapshot policy frozen at session start.
+    void set_policy(SessionPolicy policy);
 
     bool is_active() const { return active_; }
     std::uint64_t session_id() const { return session_id_; } // monotonic (REQ-S-008)
