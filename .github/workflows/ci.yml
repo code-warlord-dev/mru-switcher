@@ -49,6 +49,8 @@ jobs:
             sudo tee /etc/apt/sources.list.d/llvm-22.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends clang-22 cmake ninja-build
+      - name: Install sanitizer runtimes (ASan/UBSan)
+        run: sudo apt-get install -y --no-install-recommends libclang-rt-22-dev
       - name: Configure (ASan + UBSan)
         run: |
           cmake -S . -B build-san -G Ninja \
