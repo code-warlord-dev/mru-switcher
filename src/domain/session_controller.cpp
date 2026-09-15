@@ -1,6 +1,7 @@
 #include "mru/domain/session_controller.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <utility>
 
 #include "mru/domain/selection.hpp"
@@ -18,6 +19,8 @@ SessionController::CommandResult SessionController::cycle(Direction dir, std::op
     // REQ-S-010: a scope token that differs from the frozen session scope is
     // ignored; the existing Snapshot is reused and selection still advances.
     // (SPEC 2.1, T-S-07; plan Task 7 early-return corrected to SPEC behaviour.)
+    assert(snapshot_); // active_ implies a live snapshot (same invariant the
+                       // null check in on_window_invalid() guards; L-10)
     index_ = advance_index(index_, dir, snapshot_policy_.wrap, snapshot_->size());
     ui_.on_selection_changed(index_);
     return {true, ""};
@@ -109,6 +112,12 @@ SessionController::CommandResult SessionController::cancel() {
         fg_.focus(*origin); // REQ-R-001; invalid origin is a no-op (REQ-R-002, T-S-06)
 
     return {true, ""};
+}
+
+void SessionController::plugin_shutdown() {
+    if (!active_)
+        return; // nothing to end (L-11)
+    end_session(SessionEndReason::PluginShutdown, "");
 }
 
 SessionController::CommandResult SessionController::end_session(SessionEndReason reason, std::string_view error) {

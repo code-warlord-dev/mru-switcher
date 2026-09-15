@@ -6,10 +6,13 @@ authors = ["mru-switcher contributors"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
+# Release checklist (AGENTS.md §16.2, ROADMAP M6): authors is a hyprpm publish
+# blocker (audit L-14) — replace "TBD" with real maintainer handles before any
+# tag/publish; commit_pins below is filled at tag time from the COMPAT.md pin.
 authors = ["TBD"]
 output = "build/mru-switcher.so"
 build = [
   "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON",
   "cmake --build build -j"
 ]
-# Fill commit_pins when COMPAT.md has a real Hyprland pin (M2).
+# Fill commit_pins at tag time from docs/COMPAT.md (0.2.0 / v0.56.2).

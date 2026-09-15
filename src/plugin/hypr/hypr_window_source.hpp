@@ -3,7 +3,6 @@
 #include <optional>
 #include <vector>
 
-#include "config_value.hpp"
 #include "identity_registry.hpp"
 #include "mru/domain/history_tracker.hpp"
 #include "mru/domain/window_source.hpp"
@@ -16,8 +15,7 @@ namespace mru::plugin {
 // (REQ-H-004b) for windows opened before plugin load.
 class HyprlandWindowSource : public mru::domain::WindowSource {
   public:
-    HyprlandWindowSource(WindowIdentityRegistry &registry, const PluginConfig &cfg,
-                         const mru::domain::HistoryTracker &tracker);
+    HyprlandWindowSource(WindowIdentityRegistry &registry, const mru::domain::HistoryTracker &tracker);
     ~HyprlandWindowSource() override = default;
 
     std::vector<mru::domain::WindowRef> candidates(mru::domain::Scope scope) const override;
@@ -26,7 +24,6 @@ class HyprlandWindowSource : public mru::domain::WindowSource {
 
   private:
     WindowIdentityRegistry &registry_;
-    const PluginConfig &cfg_;
     const mru::domain::HistoryTracker &tracker_;
 };
 

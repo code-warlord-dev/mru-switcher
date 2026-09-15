@@ -10,16 +10,16 @@
 namespace mru::plugin {
 namespace {
 
-// REQ-SNAP-002 (M2 subset): a window is a candidate when it is live and visible.
+// REQ-SNAP-002 (M2 subset): a window is a candidate when it is live, mapped,
+// and not hidden (m_isMapped is the pinned-0.56.2 exposed bit; L-8).
 bool is_candidate(const PHLWINDOW &w) {
-    return w && !w->isHidden();
+    return w && w->m_isMapped && !w->isHidden();
 }
 
 } // namespace
 
-HyprlandWindowSource::HyprlandWindowSource(WindowIdentityRegistry &registry, const PluginConfig &cfg,
-                                           const mru::domain::HistoryTracker &tracker)
-    : registry_(registry), cfg_(cfg), tracker_(tracker) {}
+HyprlandWindowSource::HyprlandWindowSource(WindowIdentityRegistry &registry, const mru::domain::HistoryTracker &tracker)
+    : registry_(registry), tracker_(tracker) {}
 
 std::vector<mru::domain::WindowRef> HyprlandWindowSource::candidates(mru::domain::Scope scope) const {
     if (scope != mru::domain::Scope::Global)
@@ -41,7 +41,8 @@ std::vector<mru::domain::WindowRef> HyprlandWindowSource::candidates(mru::domain
 
     std::vector<mru::domain::WindowRef> primary; // plugin-owned MRU (REQ-H-004a)
     for (const auto &ref : tracker_.order()) {
-        if (const auto w = registry_.resolve(ref); w.has_value() && is_candidate(*w))
+        const auto w = registry_.resolve(ref);
+        if (w && is_candidate(w))
             primary.push_back(ref);
     }
 
@@ -49,16 +50,14 @@ std::vector<mru::domain::WindowRef> HyprlandWindowSource::candidates(mru::domain
 }
 
 bool HyprlandWindowSource::is_valid(const mru::domain::WindowRef &ref) const {
-    return registry_.resolve(ref).has_value();
+    return static_cast<bool>(registry_.resolve(ref));
 }
 
 std::optional<mru::domain::WindowRef> HyprlandWindowSource::focused() const {
     const auto w = Desktop::focusState()->window();
     if (!w)
         return std::nullopt;
-    if (!registry_.is_known(address_of(w)))
-        return std::nullopt;
-    return registry_.last_ref(w);
+    return registry_.live_ref(w); // single-slot lookup, skips closed (L-7)
 }
 
 } // namespace mru::plugin

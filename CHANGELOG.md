@@ -56,6 +56,15 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 - STRING config read via `dataPtr()` threw `std::bad_any_cast` on hyprlang 0.6.x — fixed via `getDataStaticPtr()` (#3)
 - Duplicate `### Changed` heading in changelog
 - FM-01 dual success/error contract
+- `PLUGIN_EXIT` now ends an active session before teardown — UI receives `on_session_end(Cancelled)`, state is cleared, and history unlocks; `SessionEndReason::PluginShutdown` is finally used (L-11)
+- `Snapshot::at()` no longer throws into the compositor — bounds are a documented caller contract enforced by assert (L-3)
+- `cycle()` asserts the active-snapshot invariant instead of silently dereferencing a possibly-null snapshot (L-10)
+- `focused()` uses a single registry lookup and no longer returns the identity of a closed window (L-7)
+- `is_candidate()` now requires the mapped bit (`m_isMapped`) per REQ-SNAP-002 "mapped, not hidden, not fading" (L-8)
+- `resolve()` returns `PHLWINDOW` directly instead of `optional<PHLWINDOW>`, and `PHLWINDOW` is passed by `const&` in all registry methods (L-4/L-5)
+- Removed the unused `cfg_` dead dependency from `HyprlandWindowSource` (L-6)
+- `FakeClock::advance()` runs due jobs in `(run_at, id)` order, matching its documented contract (L-1)
+- The `-Wdeprecated-declarations` suppression in the facade is now scoped push/pop around only the legacy config-API call sites (L-9)
 
 ## [0.0.0] - 2026-09-13
 
