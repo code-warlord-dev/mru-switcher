@@ -39,13 +39,13 @@ Under the hood (so it keeps working after a week of real use, not only in a demo
 - **Stable identity** — `address + generation`, so a recycled window id cannot steal focus  
 - **Scopes** — global / monitor / workspace / visible / app when you need a narrower ring  
 
-Dispatch surface (planned / SPEC): `mru:cycle`, `mru:apply`, `mru:cancel`, `mru:status`.
+Dispatch surface (implemented in M2, SPEC §3.3): `mru:cycle`, `mru:apply`, `mru:cancel`, `mru:status`.
 
 ---
 
 ## Project status
 
-This repository is past **design gate (M0)** and ready for **M1 domain implementation**. Normative contracts live in `docs/`; the loadable `.so` is **M2**. See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md).
+M0 (design gate), **M1** (pure domain core + tests) and **M2** (loadable `.so`, Null UI, four dispatchers) are **done on `main`**. Next: **M3** (scopes + full config surface). The loadable plugin is pinned to Hyprland **v0.56.2** ([docs/COMPAT.md](docs/COMPAT.md)); CI builds the `.so` and runs the domain + plugin-core tests. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md) and [docs/VERSION-MAP.md](docs/VERSION-MAP.md).
 
 | If you are… | Start here |
 |-------------|------------|
@@ -141,11 +141,11 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-`MRU_BUILD_PLUGIN=ON` **fails configure** until M2 wires the `.so` target (see [CMakeLists.txt](CMakeLists.txt), [hyprpm.toml](hyprpm.toml)).
+Building the plugin (a real `.so`) requires the pinned Hyprland headers (v0.56.2, see [docs/COMPAT.md](docs/COMPAT.md)). With them, `MRU_BUILD_PLUGIN=ON` configures and builds `build/mru-switcher.so` — the CI `plugin-build` job does exactly this. Without those headers, leave the option off (the default) and run the tests above.
 
 ---
 
-## Dispatchers (planned)
+## Dispatchers (implemented)
 
 ```text
 mru:cycle  [next|prev] [scope?]   # omitted direction = next
@@ -160,12 +160,13 @@ Example binds: see [docs/USER.md](docs/USER.md).
 
 ## Roadmap (short)
 
-| Milestone | Focus |
-|-----------|--------|
-| M0 | Docs, skills, AGENTS, consistency |
-| M1 | Domain + unit tests |
-| M2 | Loadable plugin (Null UI), COMPAT pin |
-| M3–M6 | Scopes, border UI, overlay, v1.0 |
+| Milestone | Focus | Status |
+|-----------|--------|--------|
+| M0 | Docs, skills, AGENTS, consistency | ✅ done |
+| M1 | Domain + unit tests | ✅ done |
+| M2 | Loadable plugin (Null UI), COMPAT pin | ✅ done |
+| M3 | Scopes + full config surface | **next** |
+| M4–M6 | Border UI, overlay, v1.0 | planned |
 
 Details: [docs/ROADMAP.md](docs/ROADMAP.md), progress: [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md).
 
