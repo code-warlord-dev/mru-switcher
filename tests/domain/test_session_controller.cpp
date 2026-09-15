@@ -456,6 +456,49 @@ TEST(t_re_05_apply_after_invalidation_promotes_survivor) {
     CHECK(order.front() == ref(30));
 }
 
+// --- T-RE-06 (audit BLOCKER-2 adapter check): a compositor emitting a
+// *synchronous* window.active from inside FocusGateway::focus() (as Hyprland
+// does through fullWindowFocus) must be swallowed by lock-in and must not
+// corrupt state: the applied window is still promoted to the MRU head once the
+// controller ends the session, and the reentrant event does not reopen it.
+TEST(t_re_06_reentrant_active_inside_focus_is_safe) {
+    mru::test::ReentrantFocusGateway fg;
+    mru::test::MockWindowSource source;
+    mru::test::MockUIPort ui;
+    FakeClock clock;
+    HistoryTracker tracker(clock, [&](const WindowRef &r) { return source.is_valid(r); }, 50);
+
+    source.candidates_result = {ref(10), ref(20)};
+    source.validity.emplace_back(ref(10), true);
+    source.validity.emplace_back(ref(20), true);
+
+    SessionController scl(source, fg, ui, tracker, {}); // lock_history_on_session = true
+    ui.ends.clear();
+
+    (void)scl.cycle(Direction::Next); // index 1 -> ref(20)
+    const WindowRef applied = scl.active_snapshot()->at(scl.index());
+    CHECK(applied == ref(20));
+
+    // Simulate the compositor: while we focus, it synchronously fires the
+    // window.active event for the same window (re-enters through on_focus).
+    fg.on_reentrant_focus = [&](const WindowRef &r) { scl.on_focus(r); };
+
+    (void)scl.apply();
+    CHECK(fg.reentered);           // the reentrancy path actually ran
+    CHECK(fg.focused.size() == 1); // exactly one focus call
+    CHECK(!scl.is_active());       // reentrant active did not reopen the session
+    CHECK(scl.last_end_reason() == mru::domain::SessionEndReason::Applied);
+
+    clock.advance(50); // debounce fires
+    const auto &order = tracker.order();
+    CHECK(order.size() == 1);
+    CHECK(order.front() == applied); // promoted to MRU head despite swallowed sync event
+}
+
+// --- T-RE-07 removed: plugin_shutdown coverage already exists as
+// bonus_plugin_shutdown_ends_active_session + bonus_plugin_shutdown_when_idle_is_noop
+// (added with L-11); T-RE-06 is the unique audit-requested reentrancy test.
+
 // --- Bonus: lock-in ignores focus events while a session is Active.
 TEST(bonus_focus_during_active_session_is_ignored) {
     Fixture f; // lock_history_on_session = true
