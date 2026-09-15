@@ -1,11 +1,11 @@
 # Session State
-Updated: 2026-09-15T23:05:00Z
-Human goal: M2 audit fully closed + honest accounting; then ADR-016 -> M3
-Active milestone: M2 — audit verification complete (B1/B2/H4/H5 verified in v0.2.0, T-RE-06 added)
-Branch: main (clean, 6cf2242)
-PR: #10 merged (squash) — T-RE-06 reentrant protection + verified audit statuses
-Blocked: nested smoke unavailable (aquamarine 0.56.2) — B2 adapter-side sync NOT verified on live compositor (admitted assumption, fix-register B2 row)
-Next action: respond to human on the 3 audit questions; then ADR-016 (Q1-Q5) -> M3
-SPEC focus: ADR-016 findings; M3 scopes/config sections
-Open questions: does the human want a v0.2.1 patch for the docs-only registered gap, or defer (recommended)?
-Last artifact: docs/agent-state/audit/fix-register.md (verified B1/B2/H3/H4/H5); PR #10
+Updated: 2026-09-15T23:55:00Z
+Human goal: M3 — plan + implement in three sequenced branches (ADR-016 __6__)
+Active milestone: M3 (config-v2 -> scope-predicate -> scope-adapter)
+Branch: main (clean, edbf206)
+PR: #13 merged (squash, human gate) — ADR-016 + SPEC/REQ-TRACE/ROADMAP pins
+Blocked: none (nested smoke still unavailable; B2 adapter-side deferred, issue #12)
+Next action: M3 ticket #1 plan -> feat/m3-config-v2 (hyprlang V2 migration, isolated load risk)
+SPEC focus: REQ-SC-002a/b, REQ-ID-006 (NEW, ADR-016); M3 ROADMAP deliverables
+Open questions: none
+Last artifact: docs/DECISIONS.md ADR-016; docs/SPEC.md pins; docs/ROADMAP.md M3
