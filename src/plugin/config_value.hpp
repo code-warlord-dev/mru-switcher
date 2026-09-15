@@ -27,6 +27,9 @@ mru::domain::Scope parse_scope(std::string_view s);
 std::optional<mru::domain::Scope> parse_scope_token(std::string_view s);
 int clamp_debounce_ms(int raw);
 
+// Inverse of parse_scope_token for diagnostics (mru:status, SPEC §3.4).
+std::string_view scope_name(mru::domain::Scope scope);
+
 struct ParsedUi {
     enum class Kind { Null, Border, External };
     Kind kind = Kind::Null;

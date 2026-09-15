@@ -28,6 +28,22 @@ mru::domain::Scope parse_scope(std::string_view s) {
     return parse_scope_token(s).value_or(mru::domain::Scope::Global); // REQ-CFG-001 fallback
 }
 
+std::string_view scope_name(mru::domain::Scope scope) {
+    switch (scope) {
+    case mru::domain::Scope::Global:
+        return "global";
+    case mru::domain::Scope::Monitor:
+        return "monitor";
+    case mru::domain::Scope::Workspace:
+        return "workspace";
+    case mru::domain::Scope::Visible:
+        return "visible";
+    case mru::domain::Scope::App:
+        return "app";
+    }
+    return "global";
+}
+
 int clamp_debounce_ms(int raw) {
     return std::clamp(raw, 0, 5000); // REQ-CFG-004
 }

@@ -58,7 +58,7 @@ if(MRU_BUILD_TESTS)
 endif()
 
 # --- Plugin pure helpers (no Hyprland headers; unit-testable) ---
-add_library(mru_plugin_core STATIC src/plugin/config_value.cpp src/plugin/dispatch_args.cpp)
+add_library(mru_plugin_core STATIC src/plugin/config_value.cpp src/plugin/dispatch_args.cpp src/plugin/status_format.cpp)
 target_include_directories(mru_plugin_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)
 target_link_libraries(mru_plugin_core PUBLIC mru_domain)
 mru_warnings(mru_plugin_core)
@@ -75,6 +75,12 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(plugin_dispatch_args PRIVATE mru_plugin_core)
   mru_warnings(plugin_dispatch_args)
   add_test(NAME plugin_dispatch_args COMMAND plugin_dispatch_args)
+
+  add_executable(plugin_status_format tests/plugin/test_status_format.cpp)
+  target_include_directories(plugin_status_format PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_status_format PRIVATE mru_plugin_core)
+  mru_warnings(plugin_status_format)
+  add_test(NAME plugin_status_format COMMAND plugin_status_format)
 endif()
 
 if(MRU_BUILD_PLUGIN)
