@@ -10,6 +10,8 @@ std::vector<mru::domain::WindowRef> merge_mru_order(const std::vector<mru::domai
     out.reserve(primary.size() + fallback.size());
 
     const auto push_unique = [&out](const mru::domain::WindowRef &ref) {
+        // std::find here is O(n²) over the merged list; the input is tens of
+        // windows at most, so an unordered_set would be blind optimization (L-17).
         if (std::find(out.begin(), out.end(), ref) == out.end())
             out.push_back(ref);
     };
