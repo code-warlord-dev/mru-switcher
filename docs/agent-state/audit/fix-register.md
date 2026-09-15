@@ -19,7 +19,41 @@
 | L-12 | LOW | Guard regex catches only `#include <hyprland`; misses `hyprutils` and quoted includes (ADR-007/domain) | `.github/workflows/ci.yml` | ✅ | #8 |
 | L-13 | LOW | Version string duplicated: CMake `0.0.0` vs `PLUGIN_INIT` `"0.2.0"`; single source needed | `CMakeLists.txt`, `cmake/mru-version.hpp.in`, `src/plugin/mru_plugin.cpp` | ✅ | #8 |
 | L-15 | LOW | `mise.toml` uses `cmake = "latest"` (not a pin) | `mise.toml` | ✅ | #8 |
-| L-1..17 | LOW | see auditor-02 §5 | multiple | in progress | — |
+| L-1 | LOW | `fake_clock.cpp` comment promises time-order but `advance()` runs in insertion order | `src/domain/fake_clock.cpp` | ✅ | TBA (fix/low-triage) |
+| L-2 | LOW | `run_all()` declared without `inline` in a header (ODR risk on 2-TU builds) | `tests/domain/test_framework.hpp` | ✅ | TBA (fix/low-triage) |
+| L-3 | LOW | `Snapshot::at()` uses throwing `vector::at()` behind a caller contract | `src/domain/snapshot.cpp` | ✅ | TBA (fix/low-triage) |
+| L-4 | LOW | `PHLWINDOW` passed by value in every registry method (shared_ptr refcount on hot path) | `src/plugin/hypr/identity_registry.*` | ✅ | TBA (fix/low-triage) |
+| L-5 | LOW | `resolve()` returns `std::optional<PHLWINDOW>` on an already-nullable type | `src/plugin/hypr/identity_registry.*`, `hypr_window_source.cpp`, `hypr_focus_gateway.cpp`, `mru_plugin.cpp` | ✅ | TBA (fix/low-triage) |
+| L-6 | LOW | Unused `cfg_` member dead dependency in `HyprlandWindowSource` | `src/plugin/hypr/hypr_window_source.*`, `mru_plugin.cpp` | ✅ | TBA (fix/low-triage) |
+| L-7 | LOW | `focused()` does `is_known()`+`last_ref()` double lookup and returns identity for closed windows | `src/plugin/hypr/identity_registry.*`, `hypr_window_source.cpp` | ✅ | TBA (fix/low-triage) |
+| L-8 | LOW | `is_candidate()` missing the `m_isMapped` bit required by REQ-SNAP-002 | `src/plugin/hypr/hypr_window_source.cpp` | ✅ | TBA (fix/low-triage) |
+| L-9 | LOW | `#pragma GCC diagnostic ignored "-Wdeprecated-declarations"` covers the whole TU | `src/plugin/mru_plugin.cpp` | ✅ | TBA (fix/low-triage) |
+| L-10 | LOW | `cycle()` active branch derefs `snapshot_` without the null-check `on_window_invalid()` has | `src/domain/session_controller.cpp` | ✅ | TBA (fix/low-triage) |
+| L-11 | LOW | `SessionEndReason::PluginShutdown` unused; `PLUGIN_EXIT` leaves an active session dangling | `src/domain/session_controller.*`, `src/plugin/mru_plugin.cpp` | ✅ | TBA (fix/low-triage) |
+| L-14 | LOW | `hyprpm.toml` `authors = ["TBD"]` — hyprpm publish blocker, needs release-checklist note | `hyprpm.toml` | ✅ | TBA (fix/low-triage) |
+| L-16 | LOW | README claims M0-only, "`.so` is M2", "`MRU_BUILD_PLUGIN=ON` fails configure" — all stale | `README.md` | ✅ | TBA (fix/low-triage) |
+| L-17 | LOW | `merge_mru_order` O(n²) — needs a "fine for tens of windows" note, no blind optimization | `src/plugin/mru_merge.cpp` | ✅ | TBA (fix/low-triage) |
+
+## LOW fixes — resolution notes (fix/low-triage)
+
+| # | Resolution |
+|---|------------|
+| L-1 | `advance()` collects `(run_at, id)` pairs and sorts them; comment now matches implementation (time order, schedule order on ties). |
+| L-2 | `inline int run_all()` in header. |
+| L-3 | Contract + assert: `at()` now uses `assert(i < size())` + `operator[]`; throwing `vector::at()` removed from that path, throw is intentionally not documented (caller pre: `i < size()` in header). |
+| L-4 | All `PHLWINDOW` parameters (and free `address_of`) take `const PHLWINDOW&`, covering the hot `candidates()` path. |
+| L-5 | `resolve()` returns `PHLWINDOW` directly (`{}` = unresolved); all 4 call sites updated (`w && is_candidate(w)`, `static_cast<bool>(...)`, focus passes `w` directly). |
+| L-6 | `cfg_` member + constructor param + `config_value.hpp` include removed from `HyprlandWindowSource`; facade call updated. |
+| L-7 | New single-lookup `live_ref(const PHLWINDOW&)` (find once, skip closed) replaces `is_known()+last_ref()`; `last_ref()` unchanged for the close/destroy listeners that legally need the identity of a just-closed window. |
+| L-8 | `is_candidate()` now requires `w->m_isMapped` (public member on pinned 0.56.2; there is no `mapped()` accessor). |
+| L-9 | `ignore` wrapped in push/pop around only the two deprecated-API call sites (`cfg_int`/`cfg_str`, `register_config_keys`). |
+| L-10 | `assert(snapshot_)` before the active-branch deref, matching the invariant `on_window_invalid()` guards. |
+| L-11 | New `SessionController::plugin_shutdown()` (no-op when Idle) ends the active session with `SessionEndReason::PluginShutdown`; `teardown_state()` calls it before `controller.reset()` so `on_session_end(Cancelled)` fires, `active_`/`snapshot_` clear, and history unlocks while controller/ui/tracker are still alive. Tests: `bonus_plugin_shutdown_ends_active_session`, `bonus_plugin_shutdown_when_idle_is_noop`. |
+| L-14 | `authors = ["TBD"]` kept (do not fake); comment now points at the release checklist (AGENTS.md §16.2 / ROADMAP M6) to fill authors + `commit_pins` before any tag/publish. |
+| L-16 | README status rewritten: M0/M1/M2 done, M3 next, `.so` builds with `MRU_BUILD_PLUGIN=ON` against the v0.56.2 pin; dispatchers section marked implemented; roadmap table shows statuses. |
+| L-17 | Short comment on the `std::find` dedup: O(n²) is fine for tens of windows; deliberately no `unordered_set`. |
+
+**Remaining:** none from §5 except L-12/L-13/L-15 (already merged in #8). `SessionEndReason::PluginShutdown` handled by `format_status` since #7.
 
 ## Design-gate answers to consolidate in ADR-016 (after fixes)
 
