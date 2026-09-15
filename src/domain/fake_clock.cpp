@@ -1,6 +1,7 @@
 #include "mru/domain/fake_clock.hpp"
 
 #include <algorithm>
+#include <utility>
 
 namespace mru::domain {
 
@@ -17,16 +18,20 @@ void FakeClock::cancel(JobId id) {
 void FakeClock::advance(std::uint32_t ms) {
     now_ += ms;
 
-    // Snapshot the due job ids, then run them in time order (insertion order on
-    // ties). Jobs scheduled by callbacks during this sweep are not re-run.
-    std::vector<JobId> due;
+    // Snapshot the due jobs, then run them in time order — (run_at, id), so a
+    // test can depend on the sweep order and ties resolve by schedule order
+    // rather than vector insertion order. Jobs scheduled by callbacks during
+    // this sweep are not re-run.
+    std::vector<std::pair<std::uint32_t, JobId>> due;
     due.reserve(jobs_.size());
     for (const auto &job : jobs_) {
         if (job.run_at <= now_)
-            due.push_back(job.id);
+            due.emplace_back(job.run_at, job.id);
     }
+    std::sort(due.begin(), due.end());
 
-    for (JobId id : due) {
+    for (const auto &entry : due) {
+        const JobId id = entry.second;
         const auto it = std::find_if(jobs_.begin(), jobs_.end(), [id](const Job &j) { return j.id == id; });
         if (it == jobs_.end())
             continue; // cancelled while pending

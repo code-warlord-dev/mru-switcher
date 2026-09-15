@@ -30,7 +30,7 @@ template <typename T> std::string fmt(const T &v) {
         return "<value>";
 }
 
-int run_all() {
+inline int run_all() {
     int total = 0;
     for (const auto &c : registry()) {
         c.fn();

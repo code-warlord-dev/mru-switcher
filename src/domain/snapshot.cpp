@@ -1,5 +1,7 @@
 #include "mru/domain/snapshot.hpp"
 
+#include <cassert>
+
 #include "mru/domain/window_source.hpp"
 
 namespace mru::domain {
@@ -19,7 +21,11 @@ bool Snapshot::empty() const {
 }
 
 const WindowRef &Snapshot::at(std::size_t i) const {
-    return windows_.at(i);
+    assert(i < size()); // NOLINT: caller contract (`pre: i < size()`); bounds are
+                        // checked by the domain before every call, so the
+                        // throwing vector::at() would be a silent contract break
+                        // and an exception thrown into the compositor (HIGH-4).
+    return windows_[i];
 }
 
 Scope Snapshot::scope() const {
