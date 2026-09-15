@@ -58,6 +58,8 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 
 **REQ-SNAP-001** Snapshot order SHALL be MRU-first (most recently committed window first), using HistoryTracker state at construction time.
 
+**REQ-SNAP-001a** Candidate enumeration SHALL return the plugin-owned MRU order first and other in-scope valid windows after it, without duplicating identities (ADR-015).
+
 **REQ-SNAP-002** Snapshot SHALL contain only windows that pass the effective Scope filter and validity checks (mapped, not hidden, not fading out — exact criteria in adapter).
 
 **REQ-SNAP-003** Snapshot SHALL be immutable for the lifetime of the session except for **pruning** of identities that become invalid.
@@ -100,7 +102,7 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 
 **REQ-H-004a** The plugin **owns** the semantic MRU list used for Alt+Tab. Compositor history is seed/reconciliation only when available, not a live source of truth during the session.
 
-**REQ-H-004b** On plugin init, HistoryTracker SHALL attempt to seed from the compositor history source; if unavailable or empty, start empty and populate from subsequent focus events.
+**REQ-H-004b** On plugin init, HistoryTracker SHALL attempt to seed from the compositor history source; if unavailable or empty, start empty and populate from subsequent focus events. Windows discovered while enumerating candidates SHALL be registered on sight so that windows opened before plugin load participate from the first snapshot (ADR-015).
 
 **REQ-H-004c** History contains at most one entry per currently known live `WindowRef` identity; destroyed identities are removed (no separate max-length config required for v1).
 
@@ -242,6 +244,8 @@ mru:cycle [next|prev] [global|monitor|workspace|visible|app]
 
 - **Direction:** if omitted, MUST default to `next` (normative). Binds SHOULD still pass an explicit direction for clarity.
 - Scope optional (§2.6).
+
+**REQ-DISP-003** A scope token MAY be passed without an explicit direction token; direction then defaults to `next` (REQ-DISP-001). Any token that is neither a known direction nor a known scope SHALL fail with a clear error.
 
 **Results:**
 

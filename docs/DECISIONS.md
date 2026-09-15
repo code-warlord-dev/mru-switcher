@@ -228,3 +228,24 @@ On apply with invalid selection: prune all invalid snapshot entries; clamp index
 
 **Consequences:**  
 Predictable UX; simple to test (T-F-03/04).
+
+---
+
+## ADR-015: Candidate order = plugin-owned MRU first, adapter enumeration appended
+
+**Status:** Accepted  
+
+**Context:**  
+M2 wired `HyprlandWindowSource::candidates()` straight to `Desktop::History::windowTracker()->fullHistory()`, so snapshot order came from the compositor and the plugin-owned `HistoryTracker` (debounce + lock-in, ADR-003) had no effect on Alt+Tab. The same adapter also filtered candidates through `registry_.is_known()`, which is empty right after plugin load, so every window opened before load was invisible until focused again. Reproduced in a nested session on the pinned Hyprland (`efb5099…`, v0.56.2): three windows open, `hyprctl plugin load` → `ok`, then `hyprctl dispatch 'mru:cycle next'` → `no windows`; after opening one more window post-load the same command returns `ok`.
+
+**Decision:**  
+1. The plugin-owned `HistoryTracker` order is the **primary** candidate order (REQ-H-004a). The adapter enumerates in-scope windows only as a **fallback tail** and never reorders the tracker prefix.  
+2. The adapter registers every window it enumerates (“register on sight”), so windows that existed before plugin load become known on the first snapshot build (REQ-H-004b); the `is_known` filter is removed.  
+3. The ordering/merging logic lives in a Hyprland-free helper (`mru::plugin::merge_mru_order`) so it is unit-testable without the compositor (ADR-007).  
+4. Adapter-side validity for M2 `global` scope = window exists, is registered, and `!isHidden()` (REQ-SNAP-002 subset); monitor/workspace/visible/class predicates are M3 and extend the same enumerate → filter → merge path.
+
+**Consequences:**  
+- Debounce and lock-in now visibly affect Alt+Tab order, which is what ADR-003 promises.  
+- The first Alt+Tab after login or plugin load works with pre-existing windows.  
+- M3 scope filters plug into the fallback enumeration instead of replacing the ordering model.  
+- The registry keeps one entry per address with a generation counter (ADR-013) and now also tracks registration sequence for deterministic fallback ordering.
