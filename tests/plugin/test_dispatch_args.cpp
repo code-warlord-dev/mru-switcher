@@ -65,6 +65,27 @@ TEST(disp_04_invalid_args) {
     CHECK(!j.ok);
 }
 
+// T-SC-05 (M3-S3, S3-5): the unknown-token parse error is distinct from the
+// grammar errors. A scope-position token that is neither a direction nor a
+// valid scope token yields "unknown scope token"; the extra-token case still
+// yields "too many arguments" (distinct errors, REQ-DISP-003, REQ-SC-003).
+TEST(disp_05_unknown_scope_token) {
+    const auto f = parse_cycle_args("bogus");
+    CHECK(!f.ok);
+    CHECK(f.error.find("unknown scope token") != std::string::npos);
+
+    const auto h = parse_cycle_args("next bogus");
+    CHECK(!h.ok);
+    CHECK(h.error.find("unknown scope token") != std::string::npos);
+
+    const auto m = parse_cycle_args("next workspace extra");
+    CHECK(!m.ok);
+    // REQ-SC-003: distinct from the T-SC-05 message — the extra-token error
+    // does not name a scope token.
+    CHECK(m.error.find("unknown scope token") == std::string::npos);
+    CHECK(m.error != h.error);
+}
+
 } // namespace
 
 int main() {
