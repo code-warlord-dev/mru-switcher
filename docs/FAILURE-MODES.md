@@ -11,7 +11,7 @@ For each mode: **trigger → session state → dispatcher result → UI → hist
 | FM-02 | All snapshot windows closed | Idle | fail `"no windows"` | `Cancelled` | clear session | T-F-04, REQ-S-006 |
 | FM-03 | Focused window closes while Idle | Idle | n/a | n/a | HistoryTracker: pending debounce cancelled if that ref (REQ-H-009) | T-H-05 |
 | FM-04 | Workspace/monitor disappears | Active or Idle | cycle may rebuild only on **new** session; active snapshot pruned of invalid | selection_changed if prune mid-UI optional | prune invalid refs | T-F-03 + scope tests M3 |
-| FM-05 | Config reload mid-session | Active unchanged | n/a | n/a | Policy/config for **next** session only (REQ-CFG-002) | config reload test M3 |
+| FM-05 | Config reload mid-session | Active unchanged | n/a | n/a | Policy/config for **next** session only (REQ-CFG-002/003, REQ-S-009) | T-CFG-02 |
 | FM-06 | Plugin unload while Active | destroyed | n/a | best-effort end not guaranteed if process eject | cancel all SchedulerPort jobs; no UAF | T-H-04 |
 | FM-07 | Plugin fault/eject | process-dependent | n/a | n/a | PLUGIN_EXIT may not run; prefer registrations Hyprland tears down | manual / nest |
 | FM-08 | External socket dead/corrupt (M5) | unchanged | cycle/apply still work | fallback null semantics; no crash | ignore bad peer | M5 + T-UI-01 pattern |

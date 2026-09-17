@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-17 (M3-S3 scope adapter merged — PR #21, issue #20 closed; M3 closeout remaining)
+Updated: 2026-09-17 (M3 complete — S1/S2/S3 merged, closeout docs+reload verified; release v0.3.0 pending human gate)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -68,8 +68,8 @@ Updated: 2026-09-17 (M3-S3 scope adapter merged — PR #21, issue #20 closed; M3
 - [x] M3-S2: pure domain scope predicate (issue #18) — WindowMeta, FocusContext, scope_matches, uniform special-ws rule, T-SC-01..04
 - [x] M3-S3: scope adapter (WindowMeta mapping, remaining keys, T-SC-05 parse) — PR #21, issue #20; live nest §7 8/8 PASS
 - [x] Full plugin:mru-switcher config surface — 8/8 documented SPEC §4 keys incl. `external_socket`
-- [ ] Config reload behavior documented + tested
-- [ ] USER.md validated against real behavior (ROADMAP M3 deliverable)
+- [x] Config reload behavior documented + tested — USER.md §Config reload; unit T-CFG-02 + live nest `reports/2026-09-17-m3-reload-smoke.md` (REQ-CFG-002/003, REQ-S-009)
+- [x] USER.md validated against real behavior (ROADMAP M3 deliverable) — `reports/2026-09-17-m3-closeout.md`
 
 ## M4 Border UI
 - [ ] BorderHighlightUI
