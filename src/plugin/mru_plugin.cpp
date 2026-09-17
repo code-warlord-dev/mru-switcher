@@ -259,10 +259,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
             return {}; // empty description aborts init (fail closed)
 
         if (!mru::plugin::config::register_all(PHANDLE, mru::plugin::state().config_v2)) {
-            // fail closed: a half-registered config surface must not load
-            HyprlandAPI::addNotification(PHANDLE, "mru-switcher: failed to register config values",
-                                         CHyprColor{1, 0, 0, 1}, 5000);
-            return {};
+            // fail closed: an empty PLUGIN_DESCRIPTION_INFO does not unload the plugin
+            // on this pin (loadPluginInternal lacks an empty-check), so throw — the
+            // compositor unwinds PLUGIN_INIT and unloads us; the catch below runs
+            // teardown_state() and shows the notification.
+            throw std::runtime_error("mru-switcher: failed to register config values");
         }
         mru::plugin::build_state();          // constructs all members, seeds MRU (HIGH-5)
         mru::plugin::subscribe_events();     // HIGH-5: listeners after state exists

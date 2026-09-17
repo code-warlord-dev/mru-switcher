@@ -168,17 +168,17 @@ jobs:
           # mru_merge) must stay Hyprland-free; only the .so facade (mru_plugin.cpp/hpp)
           # and the V2 config layer (config_v2.cpp/hpp, which reads Hyprland config
           # values) may pull hyprland/hyprutils types.
-          if grep -nE '#include[ <"](hyprland|hyprutils)' src/plugin/*.cpp src/plugin/*.hpp \
+          if grep -nE '#include[ <"]*hypr(land|utils)' src/plugin/*.cpp src/plugin/*.hpp \
               | grep -vE '^src/plugin/(mru_plugin\.cpp|mru_plugin\.hpp|config_v2\.cpp|config_v2\.hpp):' ; then
             echo "plugin core must stay Hyprland-free (only facade mru_plugin.{cpp,hpp} and config layer config_v2.{cpp,hpp} may include hyprland/hyprutils)"; exit 1
           fi
           echo OK
       - name: Forbid V1 config reads and raw ptr() casts (RP-1, RP-3)
         run: |
-          # V2 is the only config backend: the V1 API (getConfigValue / dataPtr)
-          # and CConfigValue::ptr() (a hard RASSERT on std::string) must not
+          # V2 is the only config backend: the V1 API (getConfigValue / addConfigValue /
+          # dataPtr) and CConfigValue::ptr() (a hard RASSERT on std::string) must not
           # reappear under src/.
-          if grep -RnE 'getConfigValue|\.dataPtr\(|->ptr\(' src; then
-            echo "V1 config API (getConfigValue/dataPtr) and ->ptr() config access are forbidden"; exit 1
+          if grep -RnE 'getConfigValue|addConfigValue\(|\.dataPtr\(|->[[:space:]]*ptr\(' src; then
+            echo "V1 config API (getConfigValue/addConfigValue/dataPtr) and ->ptr() config access are forbidden"; exit 1
           fi
           echo OK
