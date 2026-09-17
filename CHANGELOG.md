@@ -16,7 +16,7 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 - M3-S2 pure domain scope layer (issue #18): `WindowMeta` (opaque `monitor_id`/`workspace_id` `uint64`, `mapped`, `hidden`, `app_class`), snapshot-time `FocusContext` (passed by const ref, never recomputed), and stateless free function `scope_matches()` (REQ-SC-002/002a/002b, ADR-016). Uniform special-workspace rule covers all five scopes; `app` is byte-exact case-sensitive with empty-class folds (T-SC-01..04, domain tests)
 - M3-S3 adapter wiring (issue #20): `HyprlandWindowSource` now translates pinned-0.56.2 `PHLWINDOW` → `WindowMeta` (`monitor_id`, `workspace_id`, `mapped`, `app_class = m_class`) and filters both candidate paths through `scope_matches()` (REQ-SC-002/002a/002b). `FocusContext` is built once per snapshot in `current_focus()`; the visible-workspace set comes from a single `State::monitorState()->monitors()` enumeration (active + active-special) and is the same vector `hidden` is derived from, so adapter/domain drift is impossible by construction. `global` remains M2-identical (drop-in)
-- M3-S4 config surface complete: `plugin:mru-switcher:external_socket` registered (default `""`, reserved for M5, no effect until then), completing the documented 8-key SPEC §4 surface (ADR-016 __5__)
+- M3-S3 (S3-4) config surface complete: `plugin:mru-switcher:external_socket` registered (default `""`, reserved for M5, no effect until then), completing the documented 8-key SPEC §4 surface (ADR-016 __5__)
 
 <!-- placeholder for post-v0.2.0 changes -->
 

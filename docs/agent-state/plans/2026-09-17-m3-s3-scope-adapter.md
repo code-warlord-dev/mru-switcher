@@ -224,16 +224,17 @@ REQ-TRACE updates (same PR): REQ-SC-002 rows (M3 + nest), REQ-SC-002a (T-SC-03 +
 
 **Acceptance gates for S3 (all must hold before push; restates the §1 DoD as a checklist):**
 
-- [ ] **Step 0** committed (dispatch_args message + `disp_05_unknown_scope_token`).
-- [ ] `unit` matrix green (MRU_BUILD_PLUGIN=OFF build + `ctest --test-dir build --output-on-failure`).
-- [ ] `plugin-build` matrix green (MRU_BUILD_PLUGIN=ON; pkg-config hyprland = 0.56.2) + same `ctest`.
-- [ ] `domain-deps` guard: `rg '#include[ <"]*hypr(land|utils)' src/domain include/mru/domain` → no matches.
-- [ ] `plugin-guards`: `addConfigValueV2` only in config_v2/mru_plugin; keys only `plugin:mru-switcher:`; no V1 API.
-- [ ] `clang-format-22 --dry-run -Werror` clean on every touched `.cpp/.hpp`.
-- [ ] `sanitize` (ASan+UBSan, clang++-22, PLUGIN=OFF) green.
-- [ ] **§7 live in the nest** (COMPAT.md recipe): steps 1-8 PASS, incl. 8-key `getoption` surface and the M2 drop-in regression.
-- [ ] `docs/REQ-TRACE.md` rows updated (T-SC-05 parse=unit / behavior=nest split noted).
-- [ ] `CHANGELOG.md` Unreleased bullet + `PROGRESS.md` M3-S3 checkbox (on merge) + `SESSION.md` refreshed.
+- [x] **Step 0** committed (dispatch_args message + `disp_05_unknown_scope_token`).
+- [x] `unit` matrix green (MRU_BUILD_PLUGIN=OFF build + `ctest --test-dir build --output-on-failure`) — 10/10.
+- [x] `plugin-build` matrix green (MRU_BUILD_PLUGIN=ON; pkg-config hyprland = 0.56.2) + same `ctest` — 10/10.
+- [x] `domain-deps` guard: `rg '#include[ <"]*hypr(land|utils)' src/domain include/mru/domain` → no matches.
+- [x] `plugin-guards`: `addConfigValueV2` only in config_v2/mru_plugin; keys only `plugin:mru-switcher:`; no V1 API.
+- [x] `clang-format-22 --dry-run -Werror` clean on every touched `.cpp/.hpp`.
+- [x] `sanitize` (ASan+UBSan, clang++-22, PLUGIN=OFF) green — 10/10.
+- [x] **§7 live in the nest** (COMPAT.md recipe): steps 1-8 PASS, incl. 8-key `getoption` surface and the M2 drop-in regression — `reports/2026-09-17-m3-s3-nest-smoke.md` (8/8 PASS).
+- [x] `docs/REQ-TRACE.md` rows updated (T-SC-05 parse=unit / behavior=nest split noted).
+- [x] Review: plugin-spec-compliance + code-review APPROVE WITH NITS — `reports/2026-09-17-m3-s3-review.md`.
+- [x] `CHANGELOG.md` Unreleased bullet + `PROGRESS.md` M3-S3 checkbox (on merge) + `SESSION.md` refreshed.
 
 **Per-file edit list:**
 - Modify: `src/plugin/dispatch_args.cpp:47-48`, `tests/plugin/test_dispatch_args.cpp` (add T-SC-05 tests),

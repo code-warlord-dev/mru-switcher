@@ -66,7 +66,7 @@ Updated: 2026-09-17 (live nest restored — M2 matrix + invariants re-verified 2
 - [ ] All scopes (monitor, workspace, visible, app)
 - [x] M3-S1: hyprlang V2 config API migration (issue #16)
 - [x] M3-S2: pure domain scope predicate (issue #18) — WindowMeta, FocusContext, scope_matches, uniform special-ws rule, T-SC-01..04
-- [ ] M3-S3: scope adapter (WindowMeta mapping, remaining keys, debug_scope) — REQ-SC-003/T-SC-05 parse (live nest §7 now runnable as of 2026-09-17)
+- [ ] M3-S3: scope adapter (WindowMeta mapping, remaining keys, T-SC-05 parse) — REQ-SC-003/T-SC-05 parse (live nest §7 now runnable as of 2026-09-17)
 - [ ] Full plugin:mru-switcher config surface
 - [ ] Config reload behavior documented + tested
 
