@@ -56,14 +56,14 @@
 | REQ-ID-005 | T-ID-01 | validate | M2 |
 | REQ-ID-006 | T-ID-02 | weak-ref lock() validity (ADR-016) | M2 |
 | REQ-SC-001 | T-SC-01 | scope resolve | M3 |
-| REQ-SC-002 global | T-SC-01, nest | ScopeResolver | M2 (nest) |
-| REQ-SC-002 monitor | T-SC-01 | ScopeResolver | M3 |
-| REQ-SC-002 workspace | T-SC-01 | ScopeResolver | M3 |
-| REQ-SC-002 visible | T-SC-01 | ScopeResolver | M3 |
-| REQ-SC-002 app | T-SC-02 | **class** only | M3 |
-| REQ-SC-002a | T-SC-03 | special ws only while shown (ADR-016) | M3 |
-| REQ-SC-002b | T-SC-04 | byte-exact class compare (ADR-016) | M3 |
-| REQ-SC-003 | T-SC-05 (M3-S3) | unknown scope fail | M3 |
+| REQ-SC-002 global | T-SC-01, nest | ScopeResolver; adapter filter, M2-identical drop-in | M3 (M2 nest) |
+| REQ-SC-002 monitor | T-SC-01, nest 2/4/6 | ScopeResolver; adapter FocusContext anchors | M3 |
+| REQ-SC-002 workspace | T-SC-01, nest 2/4/6 | ScopeResolver; adapter FocusContext anchors | M3 |
+| REQ-SC-002 visible | T-SC-01, nest 4/6 | ScopeResolver; adapter single-enumeration visible_set | M3 |
+| REQ-SC-002 app | T-SC-02, nest 5 | **class** only (adapter maps `m_class`) | M3 |
+| REQ-SC-002a | T-SC-03, nest 2-3 | special ws only while shown (ADR-016); `hidden` from the same visible_set | M3 |
+| REQ-SC-002b | T-SC-04, nest 5 | byte-exact class compare (ADR-016); `app_class = m_class` | M3 |
+| REQ-SC-003 | T-SC-05 parse (unit) / nest 7 (behavior) | unknown scope fail; dispatcher behavior is nest-only | M3 |
 | REQ-DISP-001 | T-DISP-01, nest | omitted direction = next | M2 |
 | REQ-DISP-002 | T-F-04 | empty apply -> no windows | M2 |
 | REQ-DISP-003 | T-DISP-03, nest | scope without direction | M2 |
@@ -103,6 +103,12 @@
 | T-S-06 | restore origin invalid | M2 |
 | T-S-07 | Active cycle ignores new scope token | M2 |
 | T-S-08 | start_offset first selects slot 0 | M2 |
+| T-SC-01 | five-scope membership (global/monitor/workspace/visible/app) | M3 |
+| T-SC-02 | app class compare + empty-class fold | M3 |
+| T-SC-03 | special workspace shown vs hidden (REQ-SC-002a) | M3 |
+| T-SC-04 | byte-exact case-sensitive class (REQ-SC-002b) | M3 |
+| T-SC-05 (parse) | unknown scope token error is distinct from grammar errors | M3 |
+| T-SC-05 (behavior) | dispatcher fails, session not started — nest-only (no automatic coverage) | M3 |
 | T-SEL-01 | wrap false clamp at edges | M1 |
 | T-SEL-02 | wrap next/prev | M1 |
 | T-SEL-03 | wrap false clamp | M1 |
