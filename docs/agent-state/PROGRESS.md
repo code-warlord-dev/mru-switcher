@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-17 (live nest restored — M2 matrix + invariants re-verified 2026-09-17; M3-S3 in progress)
+Updated: 2026-09-17 (M3-S3 scope adapter merged — PR #21, issue #20 closed; M3 closeout remaining)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -63,12 +63,13 @@ Updated: 2026-09-17 (live nest restored — M2 matrix + invariants re-verified 2
 - [x] Release v0.2.0 tagged (first release, M2 + audit closeout) — §16.2 via human gate
 
 ## M3 Scopes + config
-- [ ] All scopes (monitor, workspace, visible, app)
+- [x] All scopes (monitor, workspace, visible, app) — M3-S3 adapter filter + live nest §7
 - [x] M3-S1: hyprlang V2 config API migration (issue #16)
 - [x] M3-S2: pure domain scope predicate (issue #18) — WindowMeta, FocusContext, scope_matches, uniform special-ws rule, T-SC-01..04
-- [ ] M3-S3: scope adapter (WindowMeta mapping, remaining keys, T-SC-05 parse) — REQ-SC-003/T-SC-05 parse (live nest §7 now runnable as of 2026-09-17)
-- [ ] Full plugin:mru-switcher config surface
+- [x] M3-S3: scope adapter (WindowMeta mapping, remaining keys, T-SC-05 parse) — PR #21, issue #20; live nest §7 8/8 PASS
+- [x] Full plugin:mru-switcher config surface — 8/8 documented SPEC §4 keys incl. `external_socket`
 - [ ] Config reload behavior documented + tested
+- [ ] USER.md validated against real behavior (ROADMAP M3 deliverable)
 
 ## M4 Border UI
 - [ ] BorderHighlightUI
