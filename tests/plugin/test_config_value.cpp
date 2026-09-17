@@ -39,7 +39,8 @@ TEST(cfg_03_scope_token_strict) {
     CHECK(!parse_scope_token("bogus").has_value());
 }
 
-// REQ-UI-002/003: null matches; border/external match but are not implemented in M2
+// REQ-UI-002/003: null matches; border selects the M4 border backend; external
+// still folds back to null.
 TEST(cfg_04_ui_backend_parse) {
     CHECK(parse_ui_backend("null").matched);
     EQ(parse_ui_backend("null").kind, ParsedUi::Kind::Null);
@@ -48,6 +49,32 @@ TEST(cfg_04_ui_backend_parse) {
     CHECK(parse_ui_backend("external").matched);
     EQ(parse_ui_backend("nope").kind, ParsedUi::Kind::Null);
     CHECK(!parse_ui_backend("nope").matched);
+}
+
+// REQ-UI-003 / REQ-UI-002: effective backend selection (border vs null/external).
+TEST(t_ui_03_effective_backend_selection) {
+    PluginConfig cfg = default_plugin_config();
+    EQ(effective_ui_backend(cfg), UiBackend::Null); // default ui=null
+
+    cfg.ui_border = true;
+    EQ(effective_ui_backend(cfg), UiBackend::Border);
+
+    cfg.ui_border = false;
+    cfg.ui_external = true; // unimplemented until M5 -> null fallback
+    EQ(effective_ui_backend(cfg), UiBackend::Null);
+}
+
+// REQ-UI-007: unknown/reserved border styles behave as solid and signal a warning.
+TEST(t_ui_07_border_style_solid_fallback) {
+    const ParsedBorderStyle solid = parse_border_style("solid");
+    EQ(solid.style, BorderStyle::Solid);
+    CHECK(!solid.should_warn);
+
+    for (const char *reserved : {"pulse", "dim", "bogus"}) {
+        const ParsedBorderStyle parsed = parse_border_style(reserved);
+        EQ(parsed.style, BorderStyle::Solid);
+        CHECK(parsed.should_warn);
+    }
 }
 
 // REQ-SEL-002: start_offset parses first|second, unknown falls back to second
@@ -67,6 +94,14 @@ TEST(cfg_06_defaults) {
     CHECK(cfg.ui_null);
     CHECK(!cfg.ui_border);
     CHECK(!cfg.ui_external);
+}
+
+// REQ-UI-008: M4 border config defaults.
+TEST(cfg_07_border_defaults) {
+    const auto cfg = default_plugin_config();
+    EQ(cfg.border_style, BorderStyle::Solid);
+    CHECK(cfg.border_color == "0xffffd9a0");
+    EQ(cfg.border_size, -1);
 }
 
 } // namespace

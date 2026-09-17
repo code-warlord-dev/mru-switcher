@@ -20,6 +20,12 @@ struct Values {
     SP<Config::Values::String> default_scope;
     SP<Config::Values::String> start_offset;
     SP<Config::Values::String> ui;
+    // REQ-UI-008: border highlight surface (M4). border_color is a String, not a
+    // Config::Values::Color: the value is passed verbatim to the `setprop` colour
+    // grammar (hex 0xAARRGGBB / rgb() / rgba()), so it must not be normalized.
+    SP<Config::Values::String> border_style;
+    SP<Config::Values::String> border_color;
+    SP<Config::Values::Int> border_size;
     SP<Config::Values::Bool> wrap;
     SP<Config::Values::Bool> lock_history_on_session;
     SP<Config::Values::Bool> restore_focus_on_cancel;
@@ -59,7 +65,7 @@ auto read(const SP<V> &value) {
     return value->value();
 }
 
-// Registers the 8 documented keys; fail closed on the first registration error
+// Registers the 11 documented keys; fail closed on the first registration error
 // (short-circuit): PLUGIN_INIT aborts with a notification instead of half-registering.
 bool register_all(HANDLE handle, Values &out);
 

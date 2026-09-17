@@ -15,6 +15,9 @@ constexpr const char *KEY_DEFAULT_SCOPE = "plugin:mru-switcher:default_scope";
 constexpr const char *KEY_START_OFFSET = "plugin:mru-switcher:start_offset";
 constexpr const char *KEY_WRAP = "plugin:mru-switcher:wrap";
 constexpr const char *KEY_UI = "plugin:mru-switcher:ui";
+constexpr const char *KEY_BORDER_STYLE = "plugin:mru-switcher:border_style";
+constexpr const char *KEY_BORDER_COLOR = "plugin:mru-switcher:border_color";
+constexpr const char *KEY_BORDER_SIZE = "plugin:mru-switcher:border_size";
 constexpr const char *KEY_LOCK_HISTORY_ON_SESSION = "plugin:mru-switcher:lock_history_on_session";
 constexpr const char *KEY_RESTORE_FOCUS_ON_CANCEL = "plugin:mru-switcher:restore_focus_on_cancel";
 constexpr const char *KEY_EXTERNAL_SOCKET = "plugin:mru-switcher:external_socket";
@@ -48,6 +51,23 @@ bool register_all(HANDLE handle, Values &out) {
     if (!HyprlandAPI::addConfigValueV2(handle, out.ui))
         return false;
 
+    out.border_style = Config::Values::makeConfigValue<Config::Values::String>(
+        KEY_BORDER_STYLE, "Border highlight style: solid (pulse/dim reserved, treated as solid) (REQ-UI-007)", "solid");
+    if (!HyprlandAPI::addConfigValueV2(handle, out.border_style))
+        return false;
+
+    // Verbatim pass-through to `setprop <color>`: a String keeps accepted formats
+    // (hex 0xAARRGGBB / rgb() / rgba()) intact; Color would normalize them away.
+    out.border_color = Config::Values::makeConfigValue<Config::Values::String>(
+        KEY_BORDER_COLOR, "Border highlight colour (hex 0xAARRGGBB or rgb()/rgba()) (REQ-UI-008)", "0xffffd9a0");
+    if (!HyprlandAPI::addConfigValueV2(handle, out.border_color))
+        return false;
+
+    out.border_size = Config::Values::makeConfigValue<Config::Values::Int>(
+        KEY_BORDER_SIZE, "Border size override; -1 = do not change the window border size (REQ-UI-008)", -1);
+    if (!HyprlandAPI::addConfigValueV2(handle, out.border_size))
+        return false;
+
     out.lock_history_on_session = Config::Values::makeConfigValue<Config::Values::Bool>(
         KEY_LOCK_HISTORY_ON_SESSION, "Freeze MRU order while a session is active", true);
     if (!HyprlandAPI::addConfigValueV2(handle, out.lock_history_on_session))
@@ -59,7 +79,7 @@ bool register_all(HANDLE handle, Values &out) {
         return false;
 
     // ADR-016 __5__: reserved for the M5 external UI protocol; registered so the
-    // documented 8-key surface (SPEC §4) is complete, but read_config() ignores it.
+    // documented 11-key surface (SPEC §4) is complete, but read_config() ignores it.
     out.external_socket = Config::Values::makeConfigValue<Config::Values::String>(
         KEY_EXTERNAL_SOCKET, "External UI protocol socket — reserved, no effect until M5 (ADR-016 __5__)", "");
     if (!HyprlandAPI::addConfigValueV2(handle, out.external_socket))
@@ -78,22 +98,27 @@ mru::plugin::PluginConfig read_config(const Values &values) {
     cfg.restore_focus_on_cancel = read(values.restore_focus_on_cancel);
 
     const ParsedUi ui = parse_ui_backend(read(values.ui));
-    cfg.ui_null =
-        ui.kind != ParsedUi::Kind::Border && ui.kind != ParsedUi::Kind::External; // M2 fallback (REQ-UI-002/003)
-    cfg.ui_border = ui.kind == ParsedUi::Kind::Border;
+    cfg.ui_null = ui.kind == ParsedUi::Kind::Null;
+    cfg.ui_border = ui.kind == ParsedUi::Kind::Border; // M4: BorderHighlightUI (REQ-UI-003)
     cfg.ui_external = ui.kind == ParsedUi::Kind::External;
     cfg.ui_matched = ui.matched;
-    // REQ-UI-002: border/external are parsed but not implemented yet; fall back
-    // to null and warn the user once (not on every reload).
-    if (cfg.ui_border || cfg.ui_external) {
+
+    // REQ-UI-007: `solid` is the only effective style in M4; reserved/unknown tokens
+    // are coerced to solid by parse_border_style() and surface one warning.
+    const ParsedBorderStyle border_style = parse_border_style(read(values.border_style));
+    cfg.border_style = border_style.style;
+    if (border_style.should_warn) {
         static bool warned = false;
         if (!warned) {
             warned = true;
-            HyprlandAPI::addNotification(
-                PHANDLE, "mru-switcher: ui=border/external not implemented in M2, falling back to ui=null",
-                CHyprColor{1, 0.7, 0, 1}, 5000);
+            HyprlandAPI::addNotification(PHANDLE, "mru-switcher: unknown border_style, using solid (REQ-UI-007)",
+                                         CHyprColor{1, 0.7, 0, 1}, 5000);
         }
     }
+
+    // border_color is forwarded verbatim to `setprop`; border_size -1 = untouched.
+    cfg.border_color = read(values.border_color);
+    cfg.border_size = static_cast<int>(read(values.border_size));
     return cfg;
 }
 

@@ -5,6 +5,7 @@
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/plugins/PluginSystem.hpp>
 
+#include "border_highlight_ui.hpp"
 #include "config_v2.hpp"
 #include "mru/domain/scope.hpp"
 #include "mru_version.hpp"
@@ -213,7 +214,33 @@ static void build_state() {
         static_cast<std::uint32_t>(st.config.debounce_ms));
     st.source = std::make_unique<HyprlandWindowSource>(*st.registry, *st.tracker);
     st.fg = std::make_unique<HyprlandFocusGateway>(*st.registry);
-    st.ui = std::make_unique<NullUI>();
+
+    // Backend factory (ADR-004 / ADR-017, ARCHITECTURE §11). `border` attaches the
+    // M4 highlight UI; `external` is still unimplemented and falls back to NullUI
+    // with one warning (REQ-UI-002); `null`/unknown use the no-op backend.
+    if (effective_ui_backend(st.config) == UiBackend::Border) {
+        st.border_io = std::make_unique<HyprctlBorderPropIo>();
+        st.ui = std::make_unique<BorderHighlightUI>(
+            *st.border_io,
+            [&st](const mru::domain::WindowRef &ref) { return static_cast<bool>(st.registry->resolve(ref)); },
+            st.config.border_style, st.config.border_color, st.config.border_size,
+            [](std::string_view reason) {
+                HyprlandAPI::addNotification(PHANDLE, std::string("mru-switcher: ") + std::string(reason),
+                                             CHyprColor{1, 0.7, 0, 1}, 5000);
+            });
+    } else {
+        if (st.config.ui_external) {
+            static bool warned = false;
+            if (!warned) {
+                warned = true;
+                HyprlandAPI::addNotification(PHANDLE,
+                                             "mru-switcher: ui=external reserved until M5, falling back to ui=null",
+                                             CHyprColor{1, 0.7, 0, 1}, 5000);
+            }
+        }
+        st.ui = std::make_unique<NullUI>();
+    }
+
     st.controller = std::make_unique<mru::domain::SessionController>(*st.source, *st.fg, *st.ui, *st.tracker,
                                                                      policy_from_config(st.config));
 
@@ -235,6 +262,7 @@ static void teardown_state() {
                                           // state reset) while controller/ui/tracker are alive
     st.controller.reset();
     st.ui.reset();
+    st.border_io.reset();
     st.fg.reset();
     st.source.reset();
     st.tracker.reset(); // cancel_pending() still sees a live scheduler
