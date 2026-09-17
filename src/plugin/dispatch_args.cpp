@@ -44,8 +44,10 @@ CycleArgs parse_cycle_args(std::string_view args) {
             out.scope = *scope;
             ++i;
         } else {
+            // T-SC-05: a scope-position token that is neither a direction nor a
+            // valid scope token is distinct from a grammar error (REQ-SC-003).
             out.ok = false;
-            out.error = "unknown argument: " + toks[i];
+            out.error = "unknown scope token: " + toks[i];
             return out;
         }
     }

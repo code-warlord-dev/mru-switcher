@@ -15,7 +15,7 @@
 | Plugin version | Hyprland commit | Hyprland tag | CI/nest tested | Notes |
 |----------------|-----------------|--------------|----------------|-------|
 | 0.0.0 (docs) | — | — | n/a | M0 docs only |
-| 0.2.0 | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | **nest tested 2026-09-15** | First `.so`; headers at `/usr/include/hyprland` (distro `hyprland` pkg) |
+| 0.2.0 | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | **nest tested 2026-09-15, re-verified 2026-09-17** | First `.so`; headers at `/usr/include/hyprland` (distro `hyprland` pkg). Nest deps: **aquamarine `0.15.0`** (`libaquamarine.so.14`), Wayland backend. Live re-verify: `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md` |
 
 ## Internal API expectations (adapter)
 
@@ -44,7 +44,54 @@ bind = ALT, Escape, mru:cancel
 # Windows: footA, footB, footC opened before plugin load
 ```
 
+### Nest recipe (verified 2026-09-17, Hyprland v0.56.2 / aquamarine 0.15.0)
+
+```bash
+mkdir -p /tmp/mru-nest-diag/cache
+env -u HYPRLAND_INSTANCE_SIGNATURE -u HYPRLAND_CONFIG \
+  XDG_CACHE_HOME=/tmp/mru-nest-diag/cache \
+  Hyprland -c /path/to/hypr-nest.conf > nest.log 2>&1 &
+hyprctl instances -j          # read the nest SIG + wl_socket (usually wayland-2) from here
+hyprctl -i "$SIG" plugin load /abs/path/to/mru-switcher.so
+```
+
+- **Isolation:** unset `HYPRLAND_INSTANCE_SIGNATURE` / `HYPRLAND_CONFIG` so the nest cannot inherit the
+  host config; pass `-c` explicitly. `XDG_CACHE_HOME` isolates the cache but **not** the instance dir —
+  logs land in `/run/user/<uid>/hypr/<SIG>/hyprland.log`.
+- **Discover the nest by `hyprctl instances -j`**, *not* `ls -t /run/user/<uid>/hypr`. The latter is
+  unreliable: stale instance dirs from earlier runs tie on mtime and you can pick the wrong SIG
+  (`/tmp/mru-nest-diag/env` uses `ls -t`, which is why the recipe here supersedes it).
+- **DRM/seat note:** the nest's aquamarine tries DRM first and always fails (`seatd.sock` missing;
+  logind `Device or resource busy` because the host owns the seat), then **falls back to the Wayland
+  backend**. `DRM Backend failed` in a nest log is expected and benign — not a nest blocker.
+- `--socket NAME` alone is rejected (needs `--wayland-fd`); there is no `--headless` CLI flag on this
+  pin — headless only via `AQ_HEADLESS=1`.
+- Expected startup noise: `Invalid dispatcher: mru:*` at parse time (plugin not yet loaded),
+  `wayland-1.lock` probe warning, xkbcomp warnings, Xwayland `could not connect to wayland server`.
+- Never point `plugin load` at the host session; keep `WAYLAND_DISPLAY`/`SIG` scoped to the nest.
+
+### Live re-verify 2026-09-17
+
+Re-ran the matrix + invariants below against the same pin (`0.2.0` / `efb5099` / `v0.56.2`), aquamarine
+`0.15.0`, Wayland backend: **all rows PASS**, invariants PASS, B2 adjudicated live (applied window
+becomes MRU head → Alt+Tab-like). Evidence: `/tmp/mru-nest-diag/report/04-*`; artifact:
+`docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md`. **Not covered by this run:**
+M3-S3 §7 scope adapter (not implemented), multi-monitor, `ui=border`/`external`.
+
 ### Dispatcher Matrix
+
+> **IPC note (0.56.2, verified 2026-09-17) — `mru:status` payload is not observable via `hyprctl`.**
+> `hyprctl dispatch mru:status` prints bare `ok`. The status string is carried in the *success*
+> result's `error` field, and Hyprland 0.56.2's IPC surfaces that field only on **failure** (raw
+> socket `.socket.sock` behaves identically). Therefore the `Actual` payloads recorded for
+> `mru:status` below are **not reproducible as written via `hyprctl`** on this pin — they were captured
+> some other way (notification/log/patched client) or recorded aspirationally. The rows are **kept**,
+> not deleted; treat them as "capture mechanism unspecified". The plugin itself computes the string
+> (failure-path strings do surface), so this is a **documentation/reproducibility defect, not a plugin
+> defect**; SPEC §3.4 makes the format informative and non-parsable until 1.0, so this is not a SPEC
+> violation and needs no ADR. Details + verdict table:
+> `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md` (§SPEC verdict).
+> For smoke runs, assert status state indirectly via `hyprctl activewindow -j` / `focusHistoryID`.
 
 | Command | Expected | Actual |
 |---------|----------|--------|
@@ -68,7 +115,7 @@ bind = ALT, Escape, mru:cancel
 - [x] Close selected window mid-session -> `mru:apply` -> prune/clamp or `no windows` (T-F-03/T-F-04)
 - [x] Repeated `mru:cycle next`: no focus flicker, MRU order stable (T-H-01)
 - [x] `plugin unload` -> no crash, no pending timer (REQ-H-008)
-- [x] `mru:status` returns correct payload at all states (D7)
+- [x] `mru:status` returns correct payload at all states (D7) — ⚠ payload **not observable via `hyprctl` on 0.56.2** (see IPC note above); state verified indirectly 2026-09-17
 - [x] Scope token without direction accepted (REQ-DISP-003, D6)
 - [x] Pre-load windows visible from first cycle (D4 regression fix)
 
@@ -91,6 +138,10 @@ bind = ALT, Escape, mru:cancel
 - [x] Debounce does not crash on unload
 - [x] Apply-after-invalidation (close selected, then apply)
 - [x] Fallback path exercised if History API unavailable (register-on-sight)
+
+Re-verified live **2026-09-17**: full dispatcher matrix + invariants re-run on this pin; B2 (applied
+window becomes MRU head) confirmed via `focusHistoryID`. Evidence: `/tmp/mru-nest-diag/report/04-*`.
+See `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md`.
 
 ## Risk note
 

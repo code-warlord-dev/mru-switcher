@@ -23,6 +23,9 @@ struct Values {
     SP<Config::Values::Bool> wrap;
     SP<Config::Values::Bool> lock_history_on_session;
     SP<Config::Values::Bool> restore_focus_on_cancel;
+    // Registered but not yet consumed: reserved for the M5 external UI protocol
+    // (ADR-016 __5__). read_config() deliberately ignores it (no PluginConfig member).
+    SP<Config::Values::String> external_socket;
 };
 
 // Compile-time type table: the slot member type is the single source of truth
@@ -56,7 +59,7 @@ auto read(const SP<V> &value) {
     return value->value();
 }
 
-// Registers the 7 documented keys; fail closed on the first registration error
+// Registers the 8 documented keys; fail closed on the first registration error
 // (short-circuit): PLUGIN_INIT aborts with a notification instead of half-registering.
 bool register_all(HANDLE handle, Values &out);
 

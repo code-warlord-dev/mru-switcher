@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-15 (v0.2.0 tagged — M2 complete + audit closeout, LOW triage done; next ADR-016)
+Updated: 2026-09-17 (live nest restored — M2 matrix + invariants re-verified 2026-09-17; M3-S3 in progress)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -55,6 +55,7 @@ Updated: 2026-09-15 (v0.2.0 tagged — M2 complete + audit closeout, LOW triage 
 - [x] SESSION.md updated
 - [x] M2 audit report: docs/agent-state/reports/2026-09-15-m2-audit.md
 - [x] Nested smoke on Hyprland v0.56.2 (efb5099) — all dispatchers + invariants verified
+- [x] Live nest restored + re-verified 2026-09-17 (same pin; aquamarine 0.15.0, Wayland backend; B2 confirmed live) — research/2026-09-17-nest-aquamarine-diagnosis.md
 - [x] M2 audit: BLOCKERs/HIGH/MEDIUM fixed (#5-#7)
 - [x] M2 audit closeout: CI plugin-build (.so vs pinned headers, arch container) + sanitize (ASan/UBSan) + gcc jobs (#8)
 - [x] L-12 guard regex (hyprutils + quoted), L-13 single-source version, L-15 mise pin (#8)
@@ -65,7 +66,7 @@ Updated: 2026-09-15 (v0.2.0 tagged — M2 complete + audit closeout, LOW triage 
 - [ ] All scopes (monitor, workspace, visible, app)
 - [x] M3-S1: hyprlang V2 config API migration (issue #16)
 - [x] M3-S2: pure domain scope predicate (issue #18) — WindowMeta, FocusContext, scope_matches, uniform special-ws rule, T-SC-01..04
-- [ ] M3-S3: scope adapter (WindowMeta mapping, remaining keys, debug_scope) — REQ-SC-003/T-SC-05 parse
+- [ ] M3-S3: scope adapter (WindowMeta mapping, remaining keys, T-SC-05 parse) — REQ-SC-003/T-SC-05 parse (live nest §7 now runnable as of 2026-09-17)
 - [ ] Full plugin:mru-switcher config surface
 - [ ] Config reload behavior documented + tested
 
