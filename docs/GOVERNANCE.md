@@ -28,6 +28,9 @@
 | 012 | SchedulerPort | Accepted |
 | 013 | WindowRef generation | Accepted |
 | 014 | Apply-after-invalidation clamp | Accepted |
+| 015 | Plugin-owned MRU order + register-on-sight | Accepted |
+| 016 | M3 design gate: weak-lock identity, scope model, config v2 | Accepted |
+| 017 | Border UI (M4) + style interface | Accepted |
 
 ## Definition of Done by milestone
 

@@ -27,6 +27,9 @@ For each mode: **trigger → session state → dispatcher result → UI → hist
 | FM-18 | restore_focus_on_cancel, origin dead | Idle | success | Cancelled | no focus | T-S-06 |
 | FM-19 | wrap=false at edge | Active | success | selection unchanged at edge | none | T-SEL-03 |
 | FM-20 | Single candidate, start_offset second | Active | success | index 0 | min(1,len-1)=0 | unit |
+| FM-21 | Border/highlight API failure (`setprop`/`getprop` error) | Active, continues without highlight | cycle/apply still success | fallback null semantics + warn-once (REQ-UI-001/002) | no abort; no stuck border | T-UI-03, nest |
+| FM-22 | Abrupt plugin kill/eject while Active | process-dependent | n/a | border overrides may persist until Hyprland restart | restore-by-value mitigates graceful unload only — documented gap (R0 F10/F12, COMPAT) | manual / nest |
+| FM-23 | Graceful unload mid-highlight | destroyed | n/a | `on_session_end`(Cancelled) + teardown restore before UI destroy | full clear of overrides; no UAF | nest, REQ-UI-005 |
 
 ## Invariants under failure
 
@@ -35,3 +38,4 @@ For each mode: **trigger → session state → dispatcher result → UI → hist
 3. No focus from cycle (REQ-F-003).  
 4. No timer callbacks after unload (REQ-H-008).  
 5. UI failures never abort apply/cancel (REQ-UI-001).  
+6. No plugin-owned stuck borders after any end path (REQ-UI-005).  

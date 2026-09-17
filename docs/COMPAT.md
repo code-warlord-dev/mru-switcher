@@ -26,6 +26,7 @@
 | Timers | `CEventLoopTimer` via `g_pEventLoopManager` | Document in adapter notes; must satisfy SchedulerPort |
 | Config reload signal | `Event::bus()->m_events.config.reloaded` | Re-read config values only at next session if signal absent |
 | Window id | Stable address used by hyprctl + generation in plugin registry | Generation always plugin-local |
+| Border highlight (M4, `ui=border`) | Per-window `setprop address:0x<ptr> active_border_color <color>` / `inactive_border_color <color>` via `HyprlandAPI::invokeHyprctlCommand` (public; in-process hyprctl router, `PRIORITY_SET_PROP`; no focus side effect) | Unavailable/failed → `NullUI` + warn-once (REQ-UI-002); `IHyprWindowDecoration` documented fallback only
 
 ## M2 Nest Smoke Results (2026-09-15)
 
@@ -130,6 +131,26 @@ M3-S3 §7 scope adapter (not implemented), multi-monitor, `ui=border`/`external`
   plugin loads before the config is parsed. No code change in M2 — documented here.
 - First `dispatch` right after `plugin load` may report `Invalid dispatcher` until the post-load config reload finishes; second attempt is fine. No code change in M2 — documented here.
 - Registry `by_address_` grows monotonically (closed entries not cleaned). Acceptable for M2; GC candidate for post-M3.
+
+## M4 Border UI — mechanism (R0, pin `efb5099`, v0.56.2)
+
+**Source of truth:** `docs/agent-state/research/2026-09-17-m4-border-api.md` (R0 memo). Every mechanism claim cites the pin `efb50993780079460b0cbed1363e2166a2de1d9f` (= v0.56.2), not `main`.
+
+- **Primary mechanism (public props first, ADR-017 / REQ-UI-011):** per-window `setprop address:0x<ptr> active_border_color <color>` / `inactive_border_color <color>` via `HyprlandAPI::invokeHyprctlCommand(...)` — the same synchronous in-process hyprctl router the IPC socket uses (`g_pHyprCtl->makeDynamicCall`), on the calling (main) thread, `PRIORITY_SET_PROP`. Wins above window rules/groups; **no focus side effect** (REQ-F-003, REQ-UI-006). Window selector `address:0x<ptr>` (lowercase hex) matches the plugin's `WindowRef.address`.
+- **Restore (no public `unset`):** there is no public reset for border props at this pin; `-1` yields an empty gradient = **invisible border**, not the user's colour. Therefore restore is **by value**: capture the effective colour via `getprop` before overriding, write it back through the same `setprop` path on selection change / session end / unload. `teardown_state()` runs the restore before the UI backend is destroyed.
+- **Fallback:** decoration path (`IHyprWindowDecoration`, borders-plus-plus pattern) is a **documented fallback only**, not the M4 implementation. If the primary path fails at runtime → behave as `null` + warn-once (REQ-UI-002).
+
+### M4 nest smoke row (planned — `ui=border`)
+
+Full 9-step recipe in the R0 memo (“Open questions / proposed live nest experiment”); headline checks:
+
+| Check | Expected |
+|-------|----------|
+| `ui=border`, `border_color` default, cycle ×3 | only the selection window's border highlighted; `hyprctl activewindow -j` unchanged (REQ-F-003) |
+| Restore probe (getprop before/after; `-1` vs user colour) | decides restore-by-value vs `-1` reset (R0 open question F10) |
+| Apply / cancel / Escape | exactly one focus; all borders restored (no stuck) — M4 exit |
+| `plugin unload` mid-session | no crash; borders restored (REQ-UI-005) |
+| Bogus prop name in a test build | warn-once + null behaviour; apply/cancel unaffected (REQ-UI-001/002) |
 
 ## Verification checklist (per release)
 
