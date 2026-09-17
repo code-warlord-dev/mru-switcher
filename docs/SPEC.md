@@ -130,6 +130,8 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 | `visible` | Valid AND on a currently visible workspace (member of the visible workspace set) |
 | `app` | Valid AND same **`class`** (not `initialClass`) as the focused window at snapshot time; if no focused window, behave as `global` |
 
+With **no focused window at snapshot time**, `monitor` and `workspace` SHALL behave as `global` (there is no reference window to anchor them to). (ADR-016, M3-S2)
+
 **REQ-SC-002a** Special workspaces (scratchpad): a window on a special workspace is a candidate in **any** scope **only while** that special workspace is currently shown on a monitor (i.e. it is a member of the visible workspace set at snapshot time). A hidden special workspace excludes its windows from `global`, `monitor`, `workspace`, and `visible` alike. "You see it — it is in the ring; you don't — it is not." (ADR-016 __3__)
 
 **REQ-SC-002b** `app` class comparison is **byte-exact and case-sensitive** (`candidate.m_class == focus.m_class`); it SHALL NOT be made case-insensitive later without a new ADR + SPEC change. A focus with an empty class degrades to `global`; a candidate with an empty class never matches. The focused window is itself a candidate (intentional: with `start_offset=second` it yields the in-app toggle). (ADR-016 __4__)
@@ -416,6 +418,7 @@ When `restore_focus_on_cancel = true`:
 | T-SC-02 | app scope matches class only |
 | T-SC-03 | special workspace window is candidate only while its workspace is shown (ADR-016 __3__) |
 | T-SC-04 | app class compare is byte-exact and case-sensitive; empty focus class degrades to global (ADR-016 __4__) |
+| T-SC-05 | unknown scope token fails `mru:cycle` with a clear error string (REQ-SC-003; parse/dispatch layer, M3-S3) |
 | T-ID-02 | ref validity is decided by weak-ref lock(), not the closed flag (REQ-ID-006, ADR-016 __1__) |
 
 ---

@@ -63,7 +63,7 @@
 | REQ-SC-002 app | T-SC-02 | **class** only | M3 |
 | REQ-SC-002a | T-SC-03 | special ws only while shown (ADR-016) | M3 |
 | REQ-SC-002b | T-SC-04 | byte-exact class compare (ADR-016) | M3 |
-| REQ-SC-003 | T-SC-03 | unknown scope fail | M3 |
+| REQ-SC-003 | T-SC-05 (M3-S3) | unknown scope fail | M3 |
 | REQ-DISP-001 | T-DISP-01, nest | omitted direction = next | M2 |
 | REQ-DISP-002 | T-F-04 | empty apply -> no windows | M2 |
 | REQ-DISP-003 | T-DISP-03, nest | scope without direction | M2 |
