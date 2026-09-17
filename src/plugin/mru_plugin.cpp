@@ -27,8 +27,8 @@ static bool hash_ok() {
     const char *c = __hyprland_api_get_client_hash();
     if (h && c && std::string_view(h) == std::string_view(c))
         return true;
-    HyprlandAPI::addNotification(PHANDLE, "mru-switcher: header hash mismatch, refusing to load",
-                                 CHyprColor{1, 0, 0, 1}, 5000);
+    // no notification here: the caller (PLUGIN_INIT) throws and the single catch
+    // below is the fail-closed path that also surfaces the message
     return false;
 }
 
@@ -256,13 +256,15 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     try {
         if (!mru::plugin::hash_ok())
-            return {}; // empty description aborts init (fail closed)
+            throw std::runtime_error("mru-switcher: header hash mismatch, refusing to load");
 
         if (!mru::plugin::config::register_all(PHANDLE, mru::plugin::state().config_v2)) {
-            // fail closed: an empty PLUGIN_DESCRIPTION_INFO does not unload the plugin
-            // on this pin (loadPluginInternal lacks an empty-check), so throw — the
-            // compositor unwinds PLUGIN_INIT and unloads us; the catch below runs
-            // teardown_state() and shows the notification.
+            // fail closed: an empty PLUGIN_DESCRIPTION_INFO does NOT unload the plugin
+            // on pin 0.56.2 (loadPluginInternal has no empty-description check). The
+            // only reliable fail-closed channel is an exception: loadPluginInternal
+            // wraps initFunc in try/catch + setjmp and on std::exception runs
+            // unloadPlugin(PLUGIN, true) and rejects the load. So PLUGIN_INIT lets a
+            // std::exception propagate; the compositor's own catch is that barrier.
             throw std::runtime_error("mru-switcher: failed to register config values");
         }
         mru::plugin::build_state();          // constructs all members, seeds MRU (HIGH-5)
@@ -272,11 +274,18 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         mru::plugin::teardown_state();
         HyprlandAPI::addNotification(PHANDLE, std::string("mru-switcher: init failed: ") + e.what(),
                                      CHyprColor{1, 0, 0, 1}, 5000);
-        return {}; // fail closed (HIGH-4)
+        // HIGH-4: at PLUGIN_INIT the fail-closed barrier is deliberately the
+        // *compositor's* catch in loadPluginInternal (pin efb5099): it unloads the
+        // plugin and rejects the load. Rethrow instead of returning {} — the latter
+        // is treated as a successful load with empty metadata. Dispatchers/listeners
+        // still use guarded()/guarded_listener() and never propagate (HIGH-4).
+        throw; // NOLINT: intentional C-ABI escape, caught by the compositor (verified)
     } catch (...) {
         mru::plugin::teardown_state();
         HyprlandAPI::addNotification(PHANDLE, "mru-switcher: init failed (internal error)", CHyprColor{1, 0, 0, 1},
                                      5000);
+        // non-std exception: the compositor's catch only handles std::exception, so
+        // devolve to the empty return (cannot reliably fail closed; do not crash).
         return {};
     }
 
