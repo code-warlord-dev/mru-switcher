@@ -64,6 +64,8 @@ Updated: 2026-09-15 (v0.2.0 tagged — M2 complete + audit closeout, LOW triage 
 ## M3 Scopes + config
 - [ ] All scopes (monitor, workspace, visible, app)
 - [x] M3-S1: hyprlang V2 config API migration (issue #16)
+- [x] M3-S2: pure domain scope predicate (issue #18) — WindowMeta, FocusContext, scope_matches, uniform special-ws rule, T-SC-01..04
+- [ ] M3-S3: scope adapter (WindowMeta mapping, remaining keys, debug_scope) — REQ-SC-003/T-SC-05 parse
 - [ ] Full plugin:mru-switcher config surface
 - [ ] Config reload behavior documented + tested
 
