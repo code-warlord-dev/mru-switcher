@@ -6,6 +6,10 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+<!-- placeholder for post-v0.3.0 changes -->
+
+## [0.3.0] - 2026-09-17
+
 ### Changed
 
 - Config layer migrated from the legacy V1 config API to hyprlang V2 (`addConfigValueV2`, M3-S1): every `plugin:mru-switcher:` key is registered once in `PLUGIN_INIT` as a typed `Config::Values::*` value whose `SP` lives in `PluginState`; reads go through `mru::plugin::config::read()` (typed `value_traits` + `underlying()` contract) instead of `getConfigValue`/`dataPtr()` casts (RP-1, RP-3). Behavior is unchanged: `debounce_ms` clamp `[0,5000]`, enum fallback + once-warn, reload-next-session-only
@@ -18,7 +22,9 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 - M3-S3 adapter wiring (issue #20): `HyprlandWindowSource` now translates pinned-0.56.2 `PHLWINDOW` → `WindowMeta` (`monitor_id`, `workspace_id`, `mapped`, `app_class = m_class`) and filters both candidate paths through `scope_matches()` (REQ-SC-002/002a/002b). `FocusContext` is built once per snapshot in `current_focus()`; the visible-workspace set comes from a single `State::monitorState()->monitors()` enumeration (active + active-special) and is the same vector `hidden` is derived from, so adapter/domain drift is impossible by construction. `global` remains M2-identical (drop-in)
 - M3-S3 (S3-4) config surface complete: `plugin:mru-switcher:external_socket` registered (default `""`, reserved for M5, no effect until then), completing the documented 8-key SPEC §4 surface (ADR-016 __5__)
 
-<!-- placeholder for post-v0.2.0 changes -->
+### Documentation
+
+- USER.md validated against live behavior; config reload documented (`hyprctl reload` → next session only, active session untouched — REQ-CFG-002/003, REQ-S-009); `mru:status` IPC caveat on 0.56.x; scratchpad FAQ corrected (a hidden scratchpad is excluded from every scope)
 
 ## [0.2.0] - 2026-09-15
 
