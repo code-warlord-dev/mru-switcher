@@ -72,8 +72,11 @@ Updated: 2026-09-17 (M3 complete — S1/S2/S3 merged, closeout docs+reload verif
 - [x] USER.md validated against real behavior (ROADMAP M3 deliverable) — `reports/2026-09-17-m3-closeout.md`
 
 ## M4 Border UI
-- [ ] BorderHighlightUI
-- [ ] Clear on apply/cancel
+- [ ] M4-R0 research border API on pin 0.56.2 (memo) — in progress
+- [ ] M4-D1 design gate (ADR-017 if mechanism/restore/default commits)
+- [ ] BorderHighlightUI + backend selection by config
+- [ ] Clear/restore on apply/cancel/unload (no stuck borders)
+- [ ] M4-S3 live nest smoke + docs closeout
 - [ ] restore_focus_on_cancel optional path
 
 ## M5 External overlay
