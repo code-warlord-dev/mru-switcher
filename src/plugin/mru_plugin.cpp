@@ -2,11 +2,10 @@
 
 #include <string_view>
 
-#include <hyprlang.hpp>
-
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/plugins/PluginSystem.hpp>
 
+#include "config_v2.hpp"
 #include "mru/domain/scope.hpp"
 #include "mru_version.hpp"
 #include "status_format.hpp"
@@ -33,67 +32,6 @@ static bool hash_ok() {
     return false;
 }
 
-// The pinned Hyprland v0.56.2 marks getConfigValue/addConfigValue deprecated in
-// favor of the V2 config API; M2 intentionally uses the documented legacy path
-// (plan Task 6 Step 3) and migrates in M3. These are the only deprecated-API
-// call sites, so the ignore is scoped push/pop — not the whole TU (L-9).
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-static std::int64_t cfg_int(const char *key, std::int64_t fallback) {
-    const auto *v = HyprlandAPI::getConfigValue(PHANDLE, key);
-    if (!v || !v->dataPtr())
-        return fallback;
-    return *static_cast<Hyprlang::INT *>(v->dataPtr());
-}
-
-static std::string cfg_str(const char *key, std::string_view fallback) {
-    const auto *v = HyprlandAPI::getConfigValue(PHANDLE, key);
-    if (!v)
-        return std::string{fallback};
-    // Hyprlang 0.6.x: dataPtr() on STRING values throws std::bad_any_cast.
-    // Per hyprlang public.hpp, use getDataStaticPtr(): *retval is const char*.
-    void *const *p = v->getDataStaticPtr();
-    if (!p || !*p)
-        return std::string{fallback};
-    return std::string{static_cast<const char *>(*p)};
-}
-
-#pragma GCC diagnostic pop
-
-static PluginConfig read_config() {
-    PluginConfig cfg;
-    cfg.debounce_ms = clamp_debounce_ms(cfg_int("plugin:mru-switcher:debounce_ms", 400));
-    cfg.default_scope = parse_scope(cfg_str("plugin:mru-switcher:default_scope", "global"));
-    // MEDIUM-7: only global is implemented until M3. A documented-but-unimplemented
-    // scope must not silently produce "no windows" on every Alt+Tab — fall back to
-    // global and warn once (mirror of the ui=border/external handling below).
-    if (cfg.default_scope != mru::domain::Scope::Global) {
-        static bool warned = false;
-        if (!warned) {
-            warned = true;
-            HyprlandAPI::addNotification(PHANDLE,
-                                         std::string("mru-switcher: scope '") +
-                                             std::string(scope_name(cfg.default_scope)) +
-                                             "' not implemented until M3, falling back to 'global'",
-                                         CHyprColor{1, 0.7, 0, 1}, 5000);
-        }
-        cfg.default_scope = mru::domain::Scope::Global;
-    }
-    cfg.start_offset = parse_start_offset(cfg_str("plugin:mru-switcher:start_offset", "second"));
-    cfg.wrap = cfg_int("plugin:mru-switcher:wrap", 1) != 0;
-    cfg.lock_history_on_session = cfg_int("plugin:mru-switcher:lock_history_on_session", 1) != 0;
-    cfg.restore_focus_on_cancel = cfg_int("plugin:mru-switcher:restore_focus_on_cancel", 0) != 0;
-
-    const ParsedUi ui = parse_ui_backend(cfg_str("plugin:mru-switcher:ui", "null"));
-    cfg.ui_null =
-        ui.kind != ParsedUi::Kind::Border && ui.kind != ParsedUi::Kind::External; // M2 fallback (REQ-UI-002/003)
-    cfg.ui_border = ui.kind == ParsedUi::Kind::Border;
-    cfg.ui_external = ui.kind == ParsedUi::Kind::External;
-    cfg.ui_matched = ui.matched;
-    return cfg;
-}
-
 static mru::domain::SessionPolicy policy_from_config(const PluginConfig &cfg) {
     mru::domain::SessionPolicy policy;
     policy.default_scope = cfg.default_scope;
@@ -103,29 +41,6 @@ static mru::domain::SessionPolicy policy_from_config(const PluginConfig &cfg) {
     policy.restore_focus_on_cancel = cfg.restore_focus_on_cancel;
     return policy;
 }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-static void register_config_keys() {
-    // REQ-CFG-002: defaults under plugin:mru-switcher:, registered only in PLUGIN_INIT.
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:debounce_ms",
-                                Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(400)});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:default_scope",
-                                Hyprlang::CConfigValue{static_cast<Hyprlang::STRING>("global")});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:start_offset",
-                                Hyprlang::CConfigValue{static_cast<Hyprlang::STRING>("second")});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:wrap",
-                                Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(1)});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:ui",
-                                Hyprlang::CConfigValue{static_cast<Hyprlang::STRING>("null")});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:lock_history_on_session",
-                                Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(1)});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:mru-switcher:restore_focus_on_cancel",
-                                Hyprlang::CConfigValue{static_cast<Hyprlang::INT>(0)});
-}
-
-#pragma GCC diagnostic pop
 
 // --- dispatchers (REQ-DISP-001/002) --------------------------------------------
 
@@ -277,7 +192,7 @@ static void subscribe_events() {
             // REQ-CFG-002: refresh cached values. The active session is untouched
             // (REQ-S-009); new values apply to the next session and to later debounce windows.
             auto &st = state();
-            st.config = read_config();
+            st.config = mru::plugin::config::read_config(st.config_v2);
             st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
             st.controller->set_policy(policy_from_config(st.config));
         });
@@ -288,19 +203,7 @@ static void subscribe_events() {
 
 static void build_state() {
     auto &st = state();
-    st.config = read_config();
-
-    // REQ-UI-002: border/external are parsed but not implemented in M2; fall
-    // back to null and warn the user once (not on every reload).
-    if (st.config.ui_border || st.config.ui_external) {
-        static bool warned = false;
-        if (!warned) {
-            warned = true;
-            HyprlandAPI::addNotification(
-                PHANDLE, "mru-switcher: ui=border/external not implemented in M2, falling back to ui=null",
-                CHyprColor{1, 0.7, 0, 1}, 5000);
-        }
-    }
+    st.config = mru::plugin::config::read_config(st.config_v2);
 
     st.registry = std::make_unique<WindowIdentityRegistry>();
     st.scheduler = std::make_unique<HyprlandSchedulerPort>();
@@ -338,6 +241,7 @@ static void teardown_state() {
     st.registry.reset();
     st.scheduler.reset(); // destroyed last
     st.config = PluginConfig{};
+    st.config_v2 = mru::plugin::config::Values{};
 }
 
 } // namespace
@@ -354,7 +258,13 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         if (!mru::plugin::hash_ok())
             return {}; // empty description aborts init (fail closed)
 
-        mru::plugin::register_config_keys(); // must precede build_state (reads config)
+        if (!mru::plugin::config::register_all(PHANDLE, mru::plugin::state().config_v2)) {
+            // fail closed: an empty PLUGIN_DESCRIPTION_INFO does not unload the plugin
+            // on this pin (loadPluginInternal lacks an empty-check), so throw — the
+            // compositor unwinds PLUGIN_INIT and unloads us; the catch below runs
+            // teardown_state() and shows the notification.
+            throw std::runtime_error("mru-switcher: failed to register config values");
+        }
         mru::plugin::build_state();          // constructs all members, seeds MRU (HIGH-5)
         mru::plugin::subscribe_events();     // HIGH-5: listeners after state exists
         mru::plugin::register_dispatchers(); // HIGH-5: dispatchers after state exists

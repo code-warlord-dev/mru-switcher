@@ -4,6 +4,7 @@
 #include <optional>
 #include <vector>
 
+#include "config_v2.hpp"
 #include "config_value.hpp"
 #include "dispatch_args.hpp"
 #include "hypr/hypr_focus_gateway.hpp"
@@ -19,7 +20,7 @@ namespace mru::plugin {
 // All plugin-owned state. Function-local static in mru_plugin.cpp; explicitly
 // torn down in PLUGIN_EXIT. Contract: teardown runs in *reverse* declaration
 // order — listeners -> controller -> ui -> fg -> source -> tracker -> registry
-// -> scheduler, then config — because implicit destruction (move-assignment)
+// -> scheduler, then config/config_v2 — because implicit destruction (move-assignment)
 // would run in declaration order and free the scheduler before the tracker's
 // cancel_pending() dereferences it (REQ-H-008). Invariants: the tracker holds a
 // Validator closing over the registry and a SchedulerPort&, so it must be
@@ -41,6 +42,7 @@ struct PluginState {
     std::unique_ptr<NullUI> ui;
     std::unique_ptr<mru::domain::SessionController> controller;
     PluginConfig config;
+    mru::plugin::config::Values config_v2;                         // typed V2 config slots (register_all)
     std::vector<Hyprutils::Signal::CHyprSignalListener> listeners; // torn down first
 };
 

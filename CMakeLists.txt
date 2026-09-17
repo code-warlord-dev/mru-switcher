@@ -116,7 +116,8 @@ if(MRU_BUILD_PLUGIN)
   target_link_libraries(mru_plugin_hypr PUBLIC mru_plugin_core)
   # Facade: final shared library (hyprpm output build/mru-switcher.so)
   add_library(mru-switcher SHARED
-    src/plugin/mru_plugin.cpp)
+    src/plugin/mru_plugin.cpp
+    src/plugin/config_v2.cpp)
   target_include_directories(mru-switcher PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
