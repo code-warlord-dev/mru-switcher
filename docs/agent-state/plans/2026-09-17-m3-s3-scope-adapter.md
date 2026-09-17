@@ -3,6 +3,13 @@
 Date: 2026-09-17 · Branch: `feat/m3-scope-adapter` · Issue: #20 (controlling spec: S3-1..S3-6)
 Source: planner subagent artifact; feeds the implementer brief only — **no implementation code here**.
 
+**Precondition — nest is WORKING** (Hyprland v0.56.2 / aquamarine 0.15.0, Omarchy; Wayland nested backend): a
+nested session starts, is interactive, loads the plugin. Recipe: `docs/COMPAT.md` §“Nest recipe”; evidence:
+`docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md` (STATUS=working). §7 below is therefore
+**executable live**; no “verify by pinned source” workaround is needed. DRM `seatd.sock`/logind failure in nest
+logs is expected and benign (auto-fallback to Wayland). B2 (reentrant `window.active` inside `focus()`) is
+**verified live, not an assumption** — applying registers the window as MRU head (research artifact above).
+
 ## 1. Purpose + issue #20 linkage
 
 Wire the M3-S2 pure predicate into the adapter layer (ADR-016 __6__ step 2): make `HyprlandWindowSource`
@@ -148,9 +155,11 @@ documented key:
   compositor; tagged in REQ-TRACE as `T-SC-05 parse = unit, T-SC-05 behavior = nested checklist` (item 8 below).
   Do NOT claim automatic coverage of the dispatcher path.
 
-## 7. Step 6 — Nested-smoke checklist (written now; run when the nest recovers)
+## 7. Step 6 — Nested-smoke checklist (runnable live)
 
-Nest is broken on aquamarine 0.56.2 (fail-closed verified by pinned source, not a live nest). Each step:
+**Run in a live nested session** — nest verified working 2026-09-17 (Hyprland v0.56.2 / aquamarine 0.15.0);
+start it with `docs/COMPAT.md` §“Nest recipe” (`hyprctl instances -j` for SIG → `plugin load` into the nest).
+Every step below is executable as written; no “pinned source” substitute is needed. Each step:
 
 1. **Load + config surface.** `hyprctl plugin load` OK (hash check), then `hyprctl getoption plugin:mru-switcher:*`
    lists all 8 keys including `external_socket`. **Expected:** 8 options present, defaults match SPEC §4.
@@ -193,14 +202,38 @@ REQ-TRACE updates (same PR): REQ-SC-002 rows (M3 + nest), REQ-SC-002a (T-SC-03 +
 
 **Order** (each step independently reviewable; TDD where the seam allows):
 
-1. `dispatch_args.cpp` message change (dispatch_args.cpp:47-48) + T-SC-05 parse tests in
-   `tests/plugin/test_dispatch_args.cpp` → domain+core build & ctest green.
+0. **ALREADY DONE (uncommitted), run + commit — do not redo.** Step 1 below is partly applied in the working
+   tree: `src/plugin/dispatch_args.cpp` (error message → `"unknown scope token: "`) and
+   `tests/plugin/test_dispatch_args.cpp` (`TEST(disp_05_unknown_scope_token)`: `bogus` / `next bogus` match
+   `unknown scope token`, `next workspace extra` yields the distinct `too many arguments`). Confirm the diff
+   matches §6, run the core matrix, then commit before any new work:
+   ```bash
+   git diff -- src/plugin/dispatch_args.cpp tests/plugin/test_dispatch_args.cpp   # expect exactly the §6 change
+   cmake -S . -B build -DMRU_BUILD_TESTS=ON -DMRU_BUILD_PLUGIN=OFF -DMRU_WARNINGS_AS_ERRORS=ON \
+     && cmake --build build -j && ctest --test-dir build --output-on-failure   # disp_05 must pass
+   git add src/plugin/dispatch_args.cpp tests/plugin/test_dispatch_args.cpp
+   git commit -m "fix(dispatch): distinguish unknown scope token from grammar errors (T-SC-05 parse)"
+   ```
+1. (rest of Step 1 = commit above is done) — keep §6 wording as the review reference for that commit.
 2. `config_v2.hpp` (Values +external_socket) + `config_v2.cpp` (register key; delete MEDIUM-7 block) → plugin build.
 3. `hypr_window_source.hpp` (helper decls if members) + `hypr_window_source.cpp` (current_focus, derive_meta,
    candidates rewiring) → plugin build.
 4. Docs same PR: `docs/REQ-TRACE.md` (rows above), `CHANGELOG.md` Unreleased bullet, `PROGRESS.md` M3-S3
    checkbox (on merge), `SESSION.md`.
 5. Full local matrix, self-review (plugin-spec-compliance + code-review), push, PR vs main, squash-merge.
+
+**Acceptance gates for S3 (all must hold before push; restates the §1 DoD as a checklist):**
+
+- [ ] **Step 0** committed (dispatch_args message + `disp_05_unknown_scope_token`).
+- [ ] `unit` matrix green (MRU_BUILD_PLUGIN=OFF build + `ctest --test-dir build --output-on-failure`).
+- [ ] `plugin-build` matrix green (MRU_BUILD_PLUGIN=ON; pkg-config hyprland = 0.56.2) + same `ctest`.
+- [ ] `domain-deps` guard: `rg '#include[ <"]*hypr(land|utils)' src/domain include/mru/domain` → no matches.
+- [ ] `plugin-guards`: `addConfigValueV2` only in config_v2/mru_plugin; keys only `plugin:mru-switcher:`; no V1 API.
+- [ ] `clang-format-22 --dry-run -Werror` clean on every touched `.cpp/.hpp`.
+- [ ] `sanitize` (ASan+UBSan, clang++-22, PLUGIN=OFF) green.
+- [ ] **§7 live in the nest** (COMPAT.md recipe): steps 1-8 PASS, incl. 8-key `getoption` surface and the M2 drop-in regression.
+- [ ] `docs/REQ-TRACE.md` rows updated (T-SC-05 parse=unit / behavior=nest split noted).
+- [ ] `CHANGELOG.md` Unreleased bullet + `PROGRESS.md` M3-S3 checkbox (on merge) + `SESSION.md` refreshed.
 
 **Per-file edit list:**
 - Modify: `src/plugin/dispatch_args.cpp:47-48`, `tests/plugin/test_dispatch_args.cpp` (add T-SC-05 tests),
