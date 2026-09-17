@@ -43,6 +43,28 @@ const auto ms = debounce_ms_v->value();
 
 Confirmed by hyprland-virtual-desktops#124 (`SConfig` container + `config.*->value()`) and borders-plus-plus.
 
+## RASSERT attribution — is SIGABRT triggered by user config or our bug? (STOP-POINT answer)
+
+Authored after reading pinned sources: `legacy/ConfigManager.cpp` @efb5099 (2184 lines) + `ConfigValue.cpp` @efb5099 + installed headers (`ConfigValue.hpp`, `IntValue.cpp`).
+
+**Verdict: on pin v0.56.2 legacy-hyprlang backend, a user's wrong-typed config line CANNOT reach `RASSERT → SIGABRT`. The `RASSERT` in the V2 type-mismatch path is reachable only from a plugin programming error — never from config content.**
+
+Chain of proof:
+
+1. **`registerPluginValue` maps V2 typed values to hyprlang slots by RTTI, not by user input.** Legacy `ConfigManager.cpp:2153-2184`: `CIntValue→Hyprlang::INT`, `CFloatValue→FLOAT`, `CBoolValue→INT(0/1)`, `CStringValue→STRING`, plus VEC2/custom for the rest; anything unknown returns `std::unexpected("unknown value type")` — **no RASSERT**. So the stored hyprlang type is fixed at *registration*, from our `IValue` class.
+2. **The user's token does not change the slot type.** `plugin { … }` lines parse into the already-registered typed slot; hyprlang with `SConfigOptions{.throwAllErrors = true}` (line 486) turns a wrong-typed token into a *parse error*, keeping the registered default. It never stores a value of a different type under that key.
+3. **`getConfigValue` returns only registered slots.** Legacy `ConfigManager.cpp:1169-1184`: for `plugin:` values it reads `m_config->getSpecialConfigValuePtr("plugin", …)`; if unregistered → `return {}` (null `dataptr`). The type reported is `VAL->getValue().type()` — the **registered** type, always one of the `Hyprlang::*` we chose at registration.
+4. **`m_typeIndex` therefore always equals our registered type.** `local__configValuePopulate` (`ConfigValue.cpp` @efb5099) sets `m_typeIndex = std::type_index(*BIGP.type)` from `Config::mgr()->getConfigValue(val)`. Since `Hyprlang::INT` = `int64_t` = `Config::INTEGER` (hyprlang.hpp:30, Types.hpp:16), the typed accessor `CConfigValue<Config::INTEGER>::operator*` matches (`ConfigValue.hpp:81-89`) *when the plugin reads the same type it registered*.
+5. **The only `RASSERT` in the legacy config manager is constructor-internal** (line 513, over compositor's own static `CONFIG_VALUES`) — an internal invariant, not user-config-reachable, and not in the plugin registration path.
+6. **`RASSERT` fires only when plugin code mismatches its own accessor** — e.g. registering `String` but reading via `CConfigValue<Config::INTEGER>`, or calling `CConfigValue<std::string>::ptr()`. Those are *our* bugs, guardable by the type-contract layer (issue #14 req. 2), not by anything a user can type.
+
+**Residual footguns to keep out of the migration contract (all programmer-side):**
+- `CConfigValue<std::string>::ptr()` unconditionally RASSERTs (`ConfigValue.hpp:63-67`) — never take a string pointer. Read via `value()`/`operator*` (handles `const char*` → `std::string`).
+- Reading a **non-registered** key through any `CConfigValue<T>`: `BIGP.dataptr` is null → `local__configValuePopulate` RASSERT. Mitigation: only read via the exact `SP<IValue>` that `addConfigValueV2` returned `true` for; never re-derive key names at read time.
+- This analysis is for the **legacy-hyprlang** backend (default for hyprpm/`.conf`). The Lua backend funnels through a different implementation; M3 is legacy-only per user decision (see Open items #4). If Lua support is ever added, re-run attribution with the Lua config-manager source before relying on the same contract.
+
+**Migration-conclusion:** the HIGH-4 barrier stays (`guarded()` / `guarded_listener()` / PLUGIN_INIT try-catch abort), but the *reason* becomes belt-and-suspenders, not the last line of defense: the primary safety is the **type-contract** (register and read the same `Config::*` type, always through the stored SP). No user-typed config value can SIGABRT the compositor on this pin.
+
 ## Open items for the migration plan
 
 1. Keep `clamp_debounce_ms` manual, or fold into `.min/.max` options (min/max clamp or reject?). REQ-CFG-004 says clamp; decide whether `SIntValueOptions.min/max` rejects or clamps, then match SPEC.
