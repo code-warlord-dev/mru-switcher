@@ -45,7 +45,7 @@ Dispatch surface (implemented in M2, SPEC §3.3): `mru:cycle`, `mru:apply`, `mru
 
 ## Project status
 
-M0 (design gate), **M1** (pure domain core + tests) and **M2** (loadable `.so`, Null UI, four dispatchers) are **done on `main`**. Next: **M3** (scopes + full config surface). The loadable plugin is pinned to Hyprland **v0.56.2** ([docs/COMPAT.md](docs/COMPAT.md)); CI builds the `.so` and runs the domain + plugin-core tests. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md) and [docs/VERSION-MAP.md](docs/VERSION-MAP.md).
+M0 (design gate), **M1** (pure domain core + tests), **M2** (loadable `.so`, Null UI, four dispatchers) and **M3** (all five scopes + full 8-key config surface, verified live in a nested session) are **done on `main`**. Next: **M4** (border UI). The loadable plugin is pinned to Hyprland **v0.56.2** ([docs/COMPAT.md](docs/COMPAT.md)); CI builds the `.so` and runs the domain + plugin-core tests. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md) and [docs/VERSION-MAP.md](docs/VERSION-MAP.md).
 
 | If you are… | Start here |
 |-------------|------------|
@@ -165,8 +165,9 @@ Example binds: see [docs/USER.md](docs/USER.md).
 | M0 | Docs, skills, AGENTS, consistency | ✅ done |
 | M1 | Domain + unit tests | ✅ done |
 | M2 | Loadable plugin (Null UI), COMPAT pin | ✅ done |
-| M3 | Scopes + full config surface | **next** |
-| M4–M6 | Border UI, overlay, v1.0 | planned |
+| M3 | Scopes + full config surface | ✅ done |
+| M4 | Border UI | **next** |
+| M5–M6 | Overlay, v1.0 | planned |
 
 Details: [docs/ROADMAP.md](docs/ROADMAP.md), progress: [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md).
 

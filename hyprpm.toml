@@ -1,18 +1,20 @@
 # Pin: Hyprland v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f); plugin commit filled at tag time.
 [repository]
 name = "mru-switcher"
-authors = ["mru-switcher contributors"]
+authors = ["code-warlord-dev"]
+# commit_pins is intentionally unset for 0.3.0: a plugin release is built from its
+# own tag, so the plugin-side hash is the tag itself. The Hyprland side is pinned
+# in docs/COMPAT.md (v0.56.2 / efb50993780079460b0cbed1363e2166a2de1d9f). Populate
+# commit_pins when hyprpm distribution starts (M6).
 # commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = <plugin_commit_at_tag>"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
-# Release checklist (AGENTS.md §16.2, ROADMAP M6): authors is a hyprpm publish
-# blocker (audit L-14) — replace "TBD" with real maintainer handles before any
-# tag/publish; commit_pins below is filled at tag time from the COMPAT.md pin.
-authors = ["TBD"]
+# Authors filled for v0.3.0 (audit L-14 hyprpm publish blocker); commit_pins still
+# deferred as noted above.
+authors = ["code-warlord-dev"]
 output = "build/mru-switcher.so"
 build = [
   "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON",
   "cmake --build build -j"
 ]
-# Fill commit_pins at tag time from docs/COMPAT.md (0.2.0 / v0.56.2).
