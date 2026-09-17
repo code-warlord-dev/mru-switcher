@@ -6,6 +6,10 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+### Changed
+
+- Config layer migrated from the legacy V1 config API to hyprlang V2 (`addConfigValueV2`, M3-S1): every `plugin:mru-switcher:` key is registered once in `PLUGIN_INIT` as a typed `Config::Values::*` value whose `SP` lives in `PluginState`; reads go through `mru::plugin::config::read()` (typed `value_traits` + `underlying()` contract) instead of `getConfigValue`/`dataPtr()` casts (RP-1, RP-3). Behavior is unchanged: `debounce_ms` clamp `[0,5000]`, enum fallback + once-warn, reload-next-session-only
+
 <!-- placeholder for post-v0.2.0 changes -->
 
 ## [0.2.0] - 2026-09-15

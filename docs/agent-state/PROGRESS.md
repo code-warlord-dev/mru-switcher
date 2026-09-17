@@ -63,9 +63,9 @@ Updated: 2026-09-15 (v0.2.0 tagged — M2 complete + audit closeout, LOW triage 
 
 ## M3 Scopes + config
 - [ ] All scopes (monitor, workspace, visible, app)
+- [x] M3-S1: hyprlang V2 config API migration (issue #16)
 - [ ] Full plugin:mru-switcher config surface
 - [ ] Config reload behavior documented + tested
-- [ ] hyprlang V2 config API migration
 
 ## M4 Border UI
 - [ ] BorderHighlightUI

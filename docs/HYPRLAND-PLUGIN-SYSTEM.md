@@ -126,8 +126,8 @@ Used for bookkeeping and cleanup, not as a public “plugin SDK object” for th
 
 | API | Notes |
 |-----|--------|
-| `addConfigValue` / V2 variants | **Only in `PLUGIN_INIT`** |
-| `getConfigValue` | Pointer stable after init → safe to cache `static` |
+| `addConfigValueV2` | **Only in `PLUGIN_INIT`**; takes `SP<Config::Values::IValue>` (typed: `Int`/`String`/`Bool`/…). Keep the SP and read through `->value()` |
+| `getConfigValue` / `addConfigValue` | **V1 (deprecated; legacy backend only) — not used by mru-switcher (M3-S1)** |
 | Namespace | Must be under `plugin:…` |
 
 Invalid: registering config later at runtime; keys outside `plugin:`.

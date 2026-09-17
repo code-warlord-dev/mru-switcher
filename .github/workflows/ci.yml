@@ -153,19 +153,32 @@ jobs:
           echo "target present"
       - name: Config keys are namespaced and registered in one place (ADR-008)
         run: |
-          if grep -Rn "addConfigValue" src include | grep -v "^src/plugin/mru_plugin.cpp:"; then
-            echo "addConfigValue must only appear in src/plugin/mru_plugin.cpp"; exit 1
+          # V2 registration lives only in the config layer and the facade.
+          if grep -Rn "addConfigValueV2" src include \
+              | grep -vE '^src/plugin/(config_v2\.cpp|config_v2\.hpp|mru_plugin\.cpp):'; then
+            echo "addConfigValueV2 must only appear in src/plugin/config_v2.{cpp,hpp} or src/plugin/mru_plugin.cpp"; exit 1
           fi
-          bad=$(grep -o 'addConfigValue(PHANDLE, "[^"]*"' src/plugin/mru_plugin.cpp | grep -v 'plugin:mru-switcher:' || true)
+          bad=$(grep -ohE 'plugin:[^" ]*"' src/plugin/config_v2.cpp src/plugin/config_v2.hpp src/plugin/mru_plugin.cpp \
+              | grep -v '^plugin:mru-switcher:' || true)
           if [ -n "$bad" ]; then echo "keys outside plugin:mru-switcher: -> $bad"; exit 1; fi
           echo OK
       - name: Plugin core stays Hyprland-free (ADR-007)
         run: |
           # The plugin core library (config_value, dispatch_args, status_format,
-          # mru_merge) must stay Hyprland-free; only the facade (mru_plugin.cpp
-          # and its header mru_plugin.hpp) may pull hyprland/hyprutils types.
+          # mru_merge) must stay Hyprland-free; only the .so facade (mru_plugin.cpp/hpp)
+          # and the V2 config layer (config_v2.cpp/hpp, which reads Hyprland config
+          # values) may pull hyprland/hyprutils types.
           if grep -nE '#include[ <"](hyprland|hyprutils)' src/plugin/*.cpp src/plugin/*.hpp \
-              | grep -vE '^src/plugin/(mru_plugin\.cpp|mru_plugin\.hpp):' ; then
-            echo "plugin core must stay Hyprland-free (only facade mru_plugin.{cpp,hpp} may include hyprland/hyprutils)"; exit 1
+              | grep -vE '^src/plugin/(mru_plugin\.cpp|mru_plugin\.hpp|config_v2\.cpp|config_v2\.hpp):' ; then
+            echo "plugin core must stay Hyprland-free (only facade mru_plugin.{cpp,hpp} and config layer config_v2.{cpp,hpp} may include hyprland/hyprutils)"; exit 1
+          fi
+          echo OK
+      - name: Forbid V1 config reads and raw ptr() casts (RP-1, RP-3)
+        run: |
+          # V2 is the only config backend: the V1 API (getConfigValue / dataPtr)
+          # and CConfigValue::ptr() (a hard RASSERT on std::string) must not
+          # reappear under src/.
+          if grep -RnE 'getConfigValue|\.dataPtr\(|->ptr\(' src; then
+            echo "V1 config API (getConfigValue/dataPtr) and ->ptr() config access are forbidden"; exit 1
           fi
           echo OK
