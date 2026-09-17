@@ -2,7 +2,7 @@
 
 **Product:** Niri-style MRU Alt+Tab for Hyprland  
 **Document status:** Living  
-**Last updated:** 2026-09-13
+**Last updated:** 2026-09-17
 
 ---
 
@@ -119,19 +119,22 @@ Deliverables:
 
 ### M4 — Border UI + polish
 
-**Goal:** Usable visual feedback without external processes.
+**Goal:** Usable visual feedback without external processes. M4 scope = **solid** border highlight end-to-end + style-interface foundation; `pulse` / `dim` are reserved, **not** required for exit. Default `ui` stays `null` in M4 (ADR-011 / ADR-017).
 
 Deliverables:
 
-- `BorderHighlightUI` (border colour / opacity via public mechanisms)
-- Selection highlight updates on cycle
-- Clear highlight on apply/cancel
-- UI polish only for cancel path (restore-on-cancel behavior already in M1/M2)
+- `BorderHighlightUI` end-to-end — highlight refresh on cycle via **public** mechanisms ("public props first, fail-soft", ADR-017 / R0 memo, pin 0.56.2 `efb5099`; concrete symbols adapter-private, recorded in COMPAT — REQ-UI-011)
+- Style interface (foundation): internal/config `BorderStyle` enum with `solid` implemented as the M4 style (strategy inside the border backend, never branching in `SessionController`; `pulse` / `dim` reserved, REQ-UI-007)
+- Selection highlight updates on every cycle; previous-window highlight cleared (REQ-UI-004)
+- Clear/restore on apply/cancel and plugin unload/teardown — no stuck borders (REQ-UI-005)
+- Config keys `border_style` / `border_color` / `border_size` registered in M4 (REQ-UI-008)
+- Traceability: SPEC §5 REQ-UI-001..011; tests T-UI-03..07; COMPAT mechanism row
 
 **Exit criteria:**
 
 - Daily-driver usable with `ui = border`
 - No focus flicker or stuck borders after cancel
+- `solid` implemented; `pulse` / `dim` styles are **explicitly OUT** of the M4 exit (foundation only). `border_size` is optional (default `-1` = untouched) and not required for exit.
 
 **Depends on:** M3
 

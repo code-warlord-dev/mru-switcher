@@ -25,6 +25,10 @@ Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates
 | **Window identity** | Value `WindowRef` — see §2.7; not a raw pointer alone |
 | **WindowRef** | `{ address: uint64, generation: uint64 }` as observed by the adapter at capture time |
 | **SchedulerPort** | Abstraction for debounce timers; real impl uses compositor event loop; tests use FakeClock |
+| **UI backend** | Concrete `UIPort` implementation selected by config `ui` |
+| **Border highlight** | Temporary visual override of window border attributes for the current selection while a session is Active |
+| **Border style** | Named behaviour of `BorderHighlightUI` (`solid`, reserved `pulse` / `dim`, …) |
+| **UIEndReason** | Coarse end signal to UI: `Applied` \| `Cancelled` (see REQ-F-009 mapping) |
 
 ---
 
@@ -310,6 +314,9 @@ Registered only in `PLUGIN_INIT`. Types follow Hyprland config value types used 
 | `start_offset` | string | `second` | `first` \| `second` |
 | `wrap` | bool/int | `true` | Wrap selection at ends |
 | `ui` | string | `null` | `null` \| `border` \| `external` — see REQ-UI-002 |
+| `border_style` | string/enum | `solid` | Border highlight style; M4: only `solid` has effect; unknown/reserved (`pulse`, `dim`, …) → `solid` + warn-once (REQ-UI-007) |
+| `border_color` | color/string | `0xffffd9a0` | Border highlight colour — documented implementation default (hex `0xAARRGGBB`); format as accepted by the pinned Hyprland; documented in USER/API (REQ-UI-008) |
+| `border_size` | int | `-1` | Border highlight size; `-1` = do not touch window border size (colour only) (REQ-UI-008) |
 | `lock_history_on_session` | bool/int | `true` | Enable lock-in while Active |
 | `restore_focus_on_cancel` | bool/int | `false` | On cancel, focus `session_origin` if still valid |
 | `external_socket` | string | (empty) | Path for External UI protocol — **reserved, no effect until M5** (registered so `hyprctl getoption` shows the documented surface; ADR-016 __5__) |
@@ -342,11 +349,41 @@ on_session_end(reason: Applied | Cancelled)  # UI; internal SessionEndReason is 
 | `border` | Visible highlight of selected window; cleared on session end; MUST NOT leave permanent rule damage |
 | `external` | Best-effort notify via socket; session logic MUST work if peer absent |
 
-**REQ-UI-001** UI failures MUST NOT abort apply/cancel or corrupt session state.
+UI provisioning follows ADR-004 / ADR-017; the config default stays `null` in M4 (ADR-011) and concrete border symbols are adapter-private, recorded in `docs/COMPAT.md` (REQ-UI-011).
 
-**REQ-UI-002** If configured `ui` backend is not implemented in this build (e.g. `border` before M4, `external` before M5), the plugin SHALL fall back to `null` and MAY notify once. Session logic MUST remain fully functional.
+**REQ-UI-001** Failures inside any `UIPort` implementation SHALL NOT abort `mru:cycle`, `mru:apply`, or `mru:cancel`, and SHALL NOT leave the session state machine in an undefined state. Session transitions remain driven by the controller and FocusGateway.
 
-**REQ-UI-003** M2 ships `null` only. Default config value is `null` until M4, when default MAY switch to `border` in a minor release with CHANGELOG note.
+**REQ-UI-002** If the configured `ui` backend is not implemented or cannot be constructed, the plugin SHALL use `NullUI` and MAY emit at most one warning for that condition per plugin lifetime (or per config change that re-selects the backend). (`border` before M4 and `external` before M5 are instances of this rule.)
+
+**REQ-UI-003** When effective policy `ui = border`, the plugin SHALL attach `BorderHighlightUI` as the session UIPort implementation for that session.
+
+**REQ-UI-004** `BorderHighlightUI` SHALL, on `on_session_start` and on each `on_selection_changed`, ensure that only the window corresponding to the current selection index carries the plugin’s selection highlight (previous highlighted window cleared first).
+
+**REQ-UI-005** On `on_session_end` (any `UIEndReason`) and on plugin unload/teardown while highlights may exist, the plugin SHALL remove all border overrides it applied. After a successful clear path there SHALL be no stuck borders attributable to the plugin.
+
+**REQ-UI-006** Highlight updates MUST NOT apply real compositor focus. Focus changes remain solely via FocusGateway on apply (and restore-on-cancel policy paths). Consistent with REQ-F-003.
+
+**REQ-UI-007** Config `border_style`:
+
+- `solid` — required implementation in M4.
+- Reserved tokens `pulse`, `dim` (and any later documented tokens not yet implemented) SHALL behave as `solid` until a SPEC/ADR revision implements them; implementations MAY warn once.
+- Unknown tokens SHALL behave as `solid` and SHOULD warn once.
+
+**REQ-UI-008** The following config keys SHALL be registered under `plugin:mru-switcher:` in M4 (in addition to existing keys):
+
+| Key | Semantics |
+|-----|-----------|
+| `border_style` | Style token; default `solid` |
+| `border_color` | Colour used for the selection highlight; default is implementation-defined but MUST be documented in USER.md / API.md. The project’s documented implementation default is `0xffffd9a0` (hex `0xAARRGGBB`). |
+| `border_size` | Integer border size override; default `-1` means **do not** change the window’s border size |
+
+**REQ-UI-009** Changes to `ui`, `border_style`, `border_color`, and `border_size` via config reload SHALL apply only to sessions started **after** the reload (snapshot in SessionPolicy / equivalent). An Active session keeps the UI behaviour chosen at its start.
+
+**REQ-UI-010** `BorderHighlightUI` SHALL resolve `WindowRef` through the same validity rules as focus (address + generation / weak-lock, ADR-013 / ADR-016). If the target is invalid, highlight for that index is skipped; the session continues.
+
+**REQ-UI-011** Prefer public compositor/plugin APIs for border mutation on the pinned Hyprland revision. Exact symbols are adapter-private and recorded in `docs/COMPAT.md`. Function hooks are not required for M4 compliance.
+
+M4 UI out of scope: live window previews inside the plugin; full behaviour of `pulse` / `dim` (reserved only); the M5 external overlay protocol; changing the default `ui` from `null` to `border` (optional product decision + CHANGELOG, not required by REQ-UI-*).
 
 ---
 
@@ -411,6 +448,12 @@ When `restore_focus_on_cancel = true`:
 | T-S-05 | restore_focus_on_cancel focuses session_origin when valid |
 | T-S-06 | restore_focus_on_cancel no-ops when origin invalid |
 | T-UI-01 | unknown/unavailable ui backend falls back to null |
+| T-UI-02 | UI exception is isolated and never aborts apply/cancel |
+| T-UI-03 | `ui=null` -> no border side effects (domain/controller mock UI) |
+| T-UI-04 | selection change -> previous cleared, new highlighted (adapter mock or nest) |
+| T-UI-05 | apply/cancel/unload -> no stuck highlight |
+| T-UI-06 | invalid WindowRef on highlight path -> no crash, session continues |
+| T-UI-07 | unknown `border_style` -> solid + no abort |
 | T-DISP-01 | omitted cycle direction equals next |
 | T-F-05 | FocusResult InvalidTarget and Failed paths |
 | T-S-07 | Active cycle ignores different scope token |
@@ -420,6 +463,8 @@ When `restore_focus_on_cancel = true`:
 | T-SC-04 | app class compare is byte-exact and case-sensitive; empty focus class degrades to global (ADR-016 __4__) |
 | T-SC-05 | unknown scope token fails `mru:cycle` with a clear error string (REQ-SC-003; parse/dispatch layer, M3-S3) |
 | T-ID-02 | ref validity is decided by weak-ref lock(), not the closed flag (REQ-ID-006, ADR-016 __1__) |
+
+T-UI-03..07 continue the T-UI series begun in M2 (T-UI-01/02).
 
 ---
 
@@ -474,7 +519,7 @@ Normative freeze deferred to M5; plugin MUST ignore unknown types.
 |-----------|------------|
 | Snapshot / selection | ADR-001, ADR-002, ADR-010 |
 | History lock-in / debounce | ADR-003 |
-| UI port | ADR-004 |
+| UI port | ADR-004, ADR-017 |
 | Event::bus / hooks | ADR-005 |
 | FocusGateway | ADR-006 |
 | Domain purity | ADR-007 |

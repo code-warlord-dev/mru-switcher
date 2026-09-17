@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-17 (M3 complete — S1/S2/S3 merged, closeout docs+reload verified; release v0.3.0 pending human gate)
+Updated: 2026-09-17 (M3 complete and released as v0.3.0; M4 border UI in progress — R0 done, D1 ADR-017 + SPEC REQ-UI-001..011 integrated as Accepted; next M4-S1 implementer)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -72,11 +72,13 @@ Updated: 2026-09-17 (M3 complete — S1/S2/S3 merged, closeout docs+reload verif
 - [x] USER.md validated against real behavior (ROADMAP M3 deliverable) — `reports/2026-09-17-m3-closeout.md`
 
 ## M4 Border UI
-- [ ] M4-R0 research border API on pin 0.56.2 (memo) — in progress
-- [ ] M4-D1 design gate (ADR-017 if mechanism/restore/default commits)
-- [ ] BorderHighlightUI + backend selection by config
-- [ ] Clear/restore on apply/cancel/unload (no stuck borders)
-- [ ] M4-S3 live nest smoke + docs closeout
+- [x] M4-R0 research border API on pin 0.56.2 (memo, pin efb5099) — DONE
+- [ ] M4-D1 design gate — ADR-017 (Accepted) + SPEC §5 REQ-UI-001..011 + config keys border_style/border_color/border_size — IN REVIEW (branch adr/017-border-highlight-ui; human gate §6.4, not yet merged)
+- [ ] M4-S1: BorderHighlightUI + backend selection by config (`ui=border`)
+- [ ] Style interface: `BorderStyle` enum, `solid` implemented (strategy inside the border backend; `pulse`/`dim` reserved)
+- [ ] Clear paths: apply/cancel/unload -> full restore, no stuck borders (REQ-UI-005, teardown restore)
+- [ ] Config keys border_style/border_color/border_size registered (REQ-UI-008)
+- [ ] M4-S3 live nest smoke + docs closeout (REQ-TRACE final, COMPAT row, CHANGELOG, USER checklist)
 - [ ] restore_focus_on_cancel optional path
 
 ## M5 External overlay

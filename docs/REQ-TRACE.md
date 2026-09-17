@@ -71,9 +71,17 @@
 | REQ-CFG-002 | T-CFG-02 | reload next session only | M2 |
 | REQ-CFG-003 | T-CFG-02 | ui next session | M3 |
 | REQ-CFG-004 | T-CFG-03 | debounce_ms clamp to [0,5000] | M2 |
-| REQ-UI-001 | T-UI-02 | UI isolation | M4 |
-| REQ-UI-002 | T-UI-01 | backend -> null | M2 |
-| REQ-UI-003 | T-UI-01 | M2 null default | M2 |
+| REQ-UI-001 | T-UI-02, T-UI-06 | UI isolation (fail-soft) | M4 |
+| REQ-UI-002 | T-UI-01 | backend -> null fallback + warn-once (ADR-011) | M2 |
+| REQ-UI-003 | T-UI-03, T-UI-04 | BorderHighlightUI via `ui=border` (ADR-017) | M4 |
+| REQ-UI-004 | T-UI-04 | highlight follows selection; previous cleared | M4 |
+| REQ-UI-005 | T-UI-05 | full clear on session end / unload (no stuck borders) | M4 |
+| REQ-UI-006 | T-F-01, nest | cycle never changes real focus; highlight is the only visual side effect | M4 |
+| REQ-UI-007 | T-UI-07 | border_style: `solid` mandatory; unknown/reserved -> `solid` + warn-once | M4 |
+| REQ-UI-008 | T-UI-03, T-CFG-04, CI key-registration guard | border_style/border_color/border_size register in M4; size `-1` = untouched | M4 |
+| REQ-UI-009 | T-CFG-02, nest | ui / border-* reload -> next session only | M4 |
+| REQ-UI-010 | T-UI-06, T-ID-01 | resolve via registry weak-lock validity (ADR-013/016); invalid -> skip highlight, session continues | M4 |
+| REQ-UI-011 | COMPAT matrix + review | public props first; concrete symbols adapter-private, recorded in COMPAT (R0 memo); hooks not required | M4 |
 | REQ-R-001 | T-S-05 | restore on cancel | M2 |
 | REQ-R-002 | T-S-06 | origin invalid | M2 |
 | REQ-HL-001 | nest, CI guards | hash check | M2 |
@@ -136,6 +144,11 @@
 | T-CFG-06 | config defaults | M2 |
 | T-UI-01 | backend fallback | M2 |
 | T-UI-02 | UI throw isolated | M4 |
+| T-UI-03 | ui=null -> no border side effects (domain/controller mock UI) | M4 |
+| T-UI-04 | selection change -> previous cleared, new highlighted (adapter mock or nest) | M4 |
+| T-UI-05 | apply/cancel/unload -> no stuck highlight | M4 |
+| T-UI-06 | invalid WindowRef on highlight path -> no crash, session continues | M4 |
+| T-UI-07 | unknown border_style -> solid + no abort | M4 |
 | T-ERR-01 | exception mapping | M2 |
 | T-RE-01 | apply + synthetic active does not reopen | M2 |
 | T-merge-01 | primary first, fallback appended | M2 |

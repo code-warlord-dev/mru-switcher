@@ -45,7 +45,7 @@ Dispatch surface (implemented in M2, SPEC §3.3): `mru:cycle`, `mru:apply`, `mru
 
 ## Project status
 
-M0 (design gate), **M1** (pure domain core + tests), **M2** (loadable `.so`, Null UI, four dispatchers) and **M3** (all five scopes + full 8-key config surface, verified live in a nested session) are **done on `main`**. Next: **M4** (border UI). The loadable plugin is pinned to Hyprland **v0.56.2** ([docs/COMPAT.md](docs/COMPAT.md)); CI builds the `.so` and runs the domain + plugin-core tests. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md) and [docs/VERSION-MAP.md](docs/VERSION-MAP.md).
+M0 (design gate), **M1** (pure domain core + tests), **M2** (loadable `.so`, Null UI, four dispatchers) and **M3** (all five scopes + full 8-key config surface, verified live in a nested session) are **done on `main`**. **M4** (border UI) is **in progress**: the design gate (ADR-017, **Accepted**, [docs/DECISIONS.md](docs/DECISIONS.md)) defines `BorderHighlightUI` as a solid border-colour highlight via public window props on the pinned Hyprland (mechanism pinned in [docs/COMPAT.md](docs/COMPAT.md), restore-by-value) with a `border_style` / `border_color` / `border_size` config surface and a guaranteed clear on session end/unload — the default `ui` stays `null` (SPEC §5, REQ-UI-001..011). The loadable plugin is pinned to Hyprland **v0.56.2** ([docs/COMPAT.md](docs/COMPAT.md)); CI builds the `.so` and runs the domain + plugin-core tests. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md) and [docs/VERSION-MAP.md](docs/VERSION-MAP.md).
 
 | If you are… | Start here |
 |-------------|------------|
@@ -127,7 +127,7 @@ Skills live under [`.agents/skills/`](.agents/skills/). Project + ecosystem skil
 - **Apply-on-release** — focus only on `mru:apply` / modifier release.
 - **History lock-in + debounce** — via SchedulerPort; no MRU updates during Active session.
 - **Scopes:** global, monitor, workspace, visible, app (`class` only).
-- **UI:** default **`null`** until M4; `border` / `external` fall back to null if unavailable.
+- **UI:** default **`null`** in M4; `border` → `BorderHighlightUI` (public window-prop mechanism, restore-by-value, `solid` style first — ADR-017; pinned symbols in `docs/COMPAT.md`); `external` falls back to null until M5.
 - **Identity:** `WindowRef { address, generation }`.
 - **Language:** native plugin **C++ only**; overlay may be any language.
 
@@ -166,7 +166,7 @@ Example binds: see [docs/USER.md](docs/USER.md).
 | M1 | Domain + unit tests | ✅ done |
 | M2 | Loadable plugin (Null UI), COMPAT pin | ✅ done |
 | M3 | Scopes + full config surface | ✅ done |
-| M4 | Border UI | **next** |
+| M4 | Border UI + style interface | **in progress** |
 | M5–M6 | Overlay, v1.0 | planned |
 
 Details: [docs/ROADMAP.md](docs/ROADMAP.md), progress: [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md).

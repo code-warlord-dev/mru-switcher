@@ -179,7 +179,7 @@ Familiar desktop behaviour out of the box; still tunable.
 M2 delivers Null UI only, but earlier drafts defaulted `ui = border`, contradicting ROADMAP.
 
 **Decision:**  
-Config default is `null`. Requesting `border` or `external` before that backend exists falls back to `null` (REQ-UI-002). M4 may change the default to `border` with a CHANGELOG entry.
+Config default is `null`. Requesting `border` or `external` before that backend exists falls back to `null` (REQ-UI-002). M4 may change the default to `border` with a CHANGELOG entry. ADR-017 extends this: the default stays `null` in M4, and flipping it is a separate decision + CHANGELOG note, not an M4 exit criterion.
 
 **Consequences:**  
 No contradiction between M2 and SPEC; users can set binds early without requiring border code.
@@ -277,3 +277,148 @@ The M2 audit (Q1–Q5 design gate, auditor-01 §14; auditor-02 "Ответы н�
 - Scope behavior is unit-testable without the compositor; only the `PHLWINDOW → WindowMeta` mapping needs nested smoke (explicitly accepted risk, tracked in issue #12-style follow-ups).
 - Scratchpad/`app` semantics become deterministic and pinned in SPEC, closing the Q2/Q3 holes before user reports.
 - M3 work is sequenced into three small branches (config-v2 → scope-predicate → scope-adapter), each independently reviewable/mergeable.
+
+---
+
+## ADR-017: Border UI (M4) and border style interface
+
+**Status:** Accepted (design gate for M4)
+
+**Related:** ADR-004 (UI as Strategy), ADR-011 (default null + fallback), ROADMAP M4, SPEC §5
+
+**Context:**  
+M4 requires usable visual feedback without an external process:
+
+- Highlight the virtually selected window while Alt is held.
+- Update highlight on every `mru:cycle`.
+- Clear highlight on apply, cancel, and plugin unload.
+- No focus flicker and no stuck borders after cancel (ROADMAP M4 exit criteria).
+
+ADR-004 already defines `UIPort` with Null / Border / External strategies. M2–M3 ship only `NullUI`; `ui = border | external` falls back to null (ADR-011, REQ-UI-002).
+
+We also want optional style evolution (`pulse`, `dim`, …) without blocking M4 exit or breaking the config contract. Scope for M4 is therefore:
+
+- **A (must):** solid border highlight end-to-end.
+- **B (foundation only):** style interface + config tokens; only `solid` has effect in M4. Other styles are follow-up PRs.
+
+Constraints:
+
+- Prefer **public** Hyprland mechanisms on the pinned revision (COMPAT: v0.56.2 / `efb5099…`).
+- Domain stays free of Hyprland types (ADR-007).
+- UI failures must not abort session commands (REQ-UI-001).
+- No live window previews inside the plugin (ROADMAP non-goal).
+
+**Decision:**
+
+1. **Backend selection**
+
+   | Config `ui` | Behaviour in M4 |
+   |-------------|-----------------|
+   | `null` | `NullUI` (no visual side effects) |
+   | `border` | `BorderHighlightUI` |
+   | `external` | Fallback to `null` + warn-once until M5 (REQ-UI-002) |
+
+   - Default remains **`null`** for the M4 release line unless a separate CHANGELOG decision flips it to `border` (ADR-011 process).
+   - Backend is chosen when building plugin state / at session policy snapshot time; reload applies to the **next** session only (REQ-S-009, REQ-CFG-002).
+
+2. **Highlight mechanism (pinned Hyprland)**
+
+   - Primary path: public dynamic window properties equivalent to user-facing `setprop` / window-rule dynamic effects for border colour (and optionally border size) on the resolved window identity.
+   - Non-goals for primary path: function hooks; mandatory `IHyprWindowDecoration` implementation.
+   - Fallback: if the primary path is unavailable or fails at runtime → behave as null for that session (or that highlight attempt), log, warn-once where appropriate. Document the exact symbols and any decoration fallback in `docs/COMPAT.md` (see R0 memo `docs/agent-state/research/2026-09-17-m4-border-api.md`).
+   - Highlight **must not** change real compositor focus (REQ-F-003, REQ-UI-006).
+
+   Concrete API binding is adapter-private and version-gated in COMPAT; this ADR only requires "public props first, fail-soft".
+
+3. **Style interface (foundation for B)**
+
+   - Introduce config key `border_style` with normative tokens:
+     - **`solid`** — implemented in M4 (required).
+     - **`pulse`**, **`dim`** — reserved names; until implemented, treat as **`solid`** (optional warn-once).
+     - Any other token → **`solid`** + warn-once (REQ-UI-007).
+   - Style behaviour is implemented **inside** the border UI adapter (strategy or equivalent), not in `SessionController`.
+   - Adding a new implemented style later is an additive change: implement the strategy, document in SPEC/USER/CHANGELOG; no dispatcher renames.
+
+4. **Lifecycle and restore**
+
+   `BorderHighlightUI` implements `UIPort`:
+
+   | Call | Required behaviour |
+   |------|-------------------|
+   | `on_session_start(snapshot, index)` | Resolve `snapshot[index]`; apply highlight; remember prior border state for restore |
+   | `on_selection_changed(index)` | Clear previous highlight (restore that window); apply to new index |
+   | `on_session_end(reason)` | Clear **all** plugin-owned overrides for the session |
+   | Plugin teardown / `PLUGIN_EXIT` | Same full clear; no use-after-free of window refs |
+
+   Rules:
+
+   - Resolve identities via the existing registry / FocusGateway validity rules (address + generation, weak-lock). Invalid target → skip highlight, do not crash (REQ-UI-004 path + T-UI-06).
+   - Store enough prior state to restore colour (and size if modified). If restore is impossible, best-effort clear + error log; **do not** fail apply/cancel.
+   - At most one window carries the plugin's "selected" highlight at a time during Active.
+
+5. **Configuration surface (M4)**
+
+   Registered only in `PLUGIN_INIT` under `plugin:mru-switcher:` (ADR-008, hyprlang V2):
+
+   | Key | Meaning | Default | M4 notes |
+   |-----|---------|---------|----------|
+   | `ui` | Backend | `null` | existing |
+   | `border_style` | Style token | `solid` | only `solid` has distinct effect |
+   | `border_color` | Highlight colour | documented implementation default; project default `0xffffd9a0` (hex `0xAARRGGBB`, high-visibility accent) | format accepted by pin; document in USER/API |
+   | `border_size` | Optional size override | `-1` | `-1` = do not change window border size |
+
+   Reload semantics: non-debounce keys apply to the **next** session only (REQ-UI-009).
+
+6. **Failure policy**
+
+   - Highlight/API/restore failure → log; continue session logic; user still gets correct focus on apply when focus path succeeds.
+   - Never leave a session stuck Active because UI failed.
+   - Unload mid-session: end session as today (`PluginShutdown`) **and** clear highlights.
+
+**Consequences:**
+
+### Positive
+
+- M4 exit criteria achievable with a single solid style.
+- Style tokens and UIPort boundary allow pulse/dim without redesign.
+- Fail-soft UI matches existing null fallback culture (ADR-011).
+- Domain and focus path remain testable without border code.
+
+### Negative / risks
+
+- Pin-specific prop API may be incomplete; R0 must record COMPAT truth.
+- Incorrect restore → stuck borders (mitigated by explicit end/unload clear + nest checklist).
+- Colour format / gradient support varies by Hyprland version — keep M4 defaults simple (solid colour).
+
+### Follow-ups (not M4 exit)
+
+- Implement `pulse` / `dim` as separate PRs + SPEC amendments.
+- Optional default `ui = border` after field validation.
+- M5 `ExternalOverlayUI` remains independent.
+
+---
+
+**Compliance mapping:**
+
+| Topic | REQ / ADR |
+|-------|-----------|
+| UIPort strategy | ADR-004 |
+| Default null + unavailable backend | ADR-011, REQ-UI-002 |
+| No abort on UI failure | REQ-UI-001 |
+| Border backend | REQ-UI-003 |
+| Update on cycle / clear on end | REQ-UI-004, REQ-UI-005 |
+| No focus on cycle | REQ-F-003, REQ-UI-006 |
+| Style tokens | REQ-UI-007 |
+| Config keys | REQ-UI-008 |
+| Reload next-session | REQ-S-009, REQ-CFG-002, REQ-UI-009 |
+| Identity validity / weak-lock | REQ-UI-010, ADR-013/016 |
+| Public props first, COMPAT-pinned | REQ-UI-011, COMPAT |
+
+**References:**
+
+- `docs/SPEC.md` §5 — UI requirements (REQ-UI-001..011)
+- `docs/ARCHITECTURE.md` §8 — UIPort
+- `docs/COMPAT.md` — pin + border mechanism row (0.56.2 / `efb5099…`)
+- `docs/agent-state/research/2026-09-17-m4-border-api.md` — R0 memo (concrete pin symbols)
+- `docs/ROADMAP.md` — M4 Border UI + polish
+- `include/mru/domain/ui_port.hpp` — UIPort header

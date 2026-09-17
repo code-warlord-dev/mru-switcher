@@ -48,7 +48,10 @@ plugin {
         default_scope           = global   # global | monitor | workspace | visible | app
         start_offset            = second   # first | second
         wrap                    = true
-        ui                      = null     # null | border | external (border from M4; earlier falls back to null)
+        ui                      = null     # null | border | external (border from M4; unavailable backends fall back to null)
+        border_style            = solid    # border highlight style (M4: solid only; pulse/dim reserved -> solid + warn-once)
+        border_color            = 0xffffd9a0  # border highlight colour (bright accent)
+        border_size             = -1       # -1 = leave border size unchanged (colour only)
         lock_history_on_session = true
         restore_focus_on_cancel = false
     }
@@ -70,8 +73,8 @@ and the plugin re-reads its settings (via the `config.reloaded` event):
 
 - `debounce_ms` — applies to the MRU updates that happen **after** the reload.
 - Everything else (`default_scope`, `start_offset`, `wrap`,
-  `lock_history_on_session`, `restore_focus_on_cancel`, `ui`) — applies to the
-  **next** session you start.
+  `lock_history_on_session`, `restore_focus_on_cancel`, `ui`, and the
+  border-* keys) — applies to the **next** session you start.
 
 A session that is already running is never changed mid-flight: its frozen
 window list and selection policy stay exactly as they were when it started.
@@ -150,9 +153,49 @@ hyprctl activewindow -j
 
 | Value | Behaviour |
 |-------|-----------|
-| `null` | No visual feedback (logic only; useful for tests) |
-| `border` | Temporarily highlight the selected window (from **M4**; before M4 falls back to null) |
-| `external` | Drive an external overlay process via socket (**M5**; before M5 falls back to null) |
+| `null` | No visual feedback (logic only; useful for tests and minimal setups) |
+| `border` | Temporarily highlight the **selected** window's border while you hold Alt and cycle (**M4+**) |
+| `external` | Drive an external overlay via socket (**M5**; until then falls back to `null` with a one-time warning) |
+
+Default is `null`. To enable border highlight:
+
+```conf
+plugin {
+    mru-switcher {
+        ui           = border
+        border_style = solid          # only solid is active in M4; pulse/dim reserved
+        border_color = rgba(33ccffee) # example — see below and API.md for accepted formats
+        border_size  = -1             # -1 = do not change border width
+    }
+}
+```
+
+If you omit the border keys, the documented defaults are: `border_style = solid`, `border_color = 0xffffd9a0` (hex `0xAARRGGBB`), `border_size = -1` (= do not change border width). Accepted colour formats are those supported by the pinned Hyprland: `rgb(...)`, `rgba(rrggbbaa)`, or hex `0xAARRGGBB` as in the default. Full key reference: `docs/API.md`; availability on your Hyprland build: `docs/COMPAT.md`.
+
+### Border behaviour (what you should see)
+
+1. First `Alt+Tab` — the selected window (usually the previous one) gets the highlight colour.
+2. Further `Tab` / `Shift+Tab` — highlight **moves** with the virtual selection; real focus stays put until release (REQ-UI-006).
+3. Release Alt (`mru:apply`) or Escape (`mru:cancel`) — highlight is **removed**.
+4. Plugin unload / Hyprland exit mid-session — highlight is cleared as part of teardown (REQ-UI-005).
+
+If the border APIs are unavailable on your Hyprland build, the plugin keeps switching correctly and falls back to no highlight (same as `null`, one-time warning).
+
+### UI settings reload
+
+`ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel (REQ-UI-009, REQ-CFG-002).
+
+### Border manual test checklist
+
+- [ ] With `ui = border`, first cycle shows highlight on the selected window
+- [ ] Repeated Tab moves highlight without moving real focus
+- [ ] Apply (Alt release) focuses selection and removes highlight
+- [ ] Cancel (Escape) removes highlight and does not leave a stuck border
+- [ ] Rapid Tab does not leave multiple windows highlighted
+- [ ] `len == 1` (only the focused window in scope): the active-border slot also highlights
+- [ ] Unload the plugin mid-session: borders are restored
+- [ ] `ui = null` restores the previous non-visual behaviour
+- [ ] Invalid / closed window mid-session does not crash; highlight skips or session ends cleanly
 
 ---
 

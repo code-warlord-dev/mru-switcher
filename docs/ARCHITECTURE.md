@@ -208,7 +208,63 @@ Invalid / closed windows are filtered at snapshot time and on prune.
 - `on_selection_changed(selection)`
 - `on_session_end(reason: Applied | Cancelled)`
 
-Implementations: `NullUI`, `BorderHighlightUI`, `ExternalOverlayUI`.
+Implementations (selected by config `ui`, ADR-004 / ADR-017):
+
+```text
+SessionController
+       │
+       ▼
+   UIPort  ──►  NullUI
+           ──►  BorderHighlightUI  (M4)
+           ──►  ExternalOverlayUI  (M5)
+```
+
+- `NullUI` — no compositor side effects; always available (default `ui = null` in M4, ADR-011).
+- `BorderHighlightUI` — M4. Solid border highlight of the selected window via public window-prop mechanisms ("public props first, fail-soft", ADR-017). Concrete pin symbols (Hyprland 0.56.2 / `efb5099…`) are **adapter-private**, recorded in `docs/COMPAT.md`; see the R0 memo `docs/agent-state/research/2026-09-17-m4-border-api.md` and the `UIPort` header `include/mru/domain/ui_port.hpp`.
+- `ExternalOverlayUI` — M5 (best-effort socket protocol; external peer absent → `null` fallback, REQ-UI-002).
+
+### BorderHighlightUI (M4)
+
+Responsibilities:
+
+1. Map selection index → `WindowRef` from the active snapshot (controller still owns the snapshot).
+2. Resolve the live window via the identity registry (same validity rules as focus: address + generation / weak-lock, ADR-013 / ADR-016).
+3. Apply the style strategy (`SolidStyle` in M4) using adapter-private public APIs.
+4. Track "currently highlighted" ref + prior border state for restore.
+5. On selection change: restore previous, apply new.
+6. On session end / teardown: restore all and drop tracking (REQ-UI-005).
+
+Style strategy (foundation; `pulse` / `dim` reserved):
+
+```text
+BorderHighlightUI
+    └── BorderStyleStrategy
+            ├── SolidStyle      (M4 required)
+            ├── PulseStyle      (reserved / follow-up)
+            └── DimOthersStyle  (reserved / follow-up)
+```
+
+Unknown or not-yet-implemented style → `SolidStyle` (REQ-UI-007). Style behaviour is implemented inside the border UI adapter, never branching in `SessionController`.
+
+**FocusGateway collaboration:** the border UI makes **no** focus calls (REQ-UI-006). Optional read-only use of the registry to resolve identities; it must not duplicate the FocusGateway write path.
+
+Selection + border sequence:
+
+```text
+User Tab
+  → mru:cycle
+  → SessionController advances index
+  → UIPort.on_selection_changed(index)
+       → BorderHighlightUI restores prior window
+       → BorderHighlightUI applies highlight to snapshot[index]
+  → (no FocusGateway call)
+
+User Alt release
+  → mru:apply
+  → FocusGateway.focus(selected)
+  → UIPort.on_session_end(Applied)
+       → BorderHighlightUI full clear
+```
 
 ### FocusGateway
 
@@ -266,6 +322,9 @@ plugin {
         start_offset            = second   # first|second
         wrap                    = true
         ui                      = null     # null|border|external (border from M4)
+        border_style            = solid    # solid in M4; pulse/dim reserved -> solid + warn-once
+        border_color            = 0xffffd9a0   # highlight colour; format per pin (see USER/API)
+        border_size             = -1       # -1 = do not touch size (colour only)
         lock_history_on_session = true
         restore_focus_on_cancel = false
     }
@@ -273,6 +332,15 @@ plugin {
 ```
 
 All keys registered only in `PLUGIN_INIT`.
+
+Effective UI policy is decided at session start and frozen for the Active session: `ui`, `border_style`, `border_color`, and `border_size` are part of the session policy snapshot. A config reload updates only the values used for the **next** Idle → Active transition (REQ-UI-009, REQ-CFG-002). Backend factory (plugin state build / policy refresh):
+
+```text
+read config ui
+  null     → NullUI
+  border   → BorderHighlightUI(style, color, size)
+  external → NullUI + warn-once   (until M5)
+```
 
 ---
 
@@ -284,6 +352,8 @@ All keys registered only in `PLUGIN_INIT`.
 | Unit | HistoryTracker debounce + lock-in | Fake clock |
 | Integration | Dispatchers + snapshot + apply | Nested Hyprland |
 | Manual | bindrt, multi-monitor, special WS | Checklist in USER.md |
+
+The border layer uses the same split: the controller calling UIPort in the right order is covered by domain tests with a mock UIPort; restore/clear/invalid-ref behaviour by border-adapter tests + nest; config parse + fallback style by plugin config tests (REQ-UI-001..011).
 
 ---
 
@@ -301,6 +371,7 @@ All keys registered only in `PLUGIN_INIT`.
 - Replacing Hyprland’s built-in focus history.
 - Guaranteeing behaviour on non-x86_64 if hooks are enabled.
 - Custom window rules registration (Hyprland still limits this for plugins).
+- A UI thread separate from the compositor loop (UI stays main-thread / event-loop safe, same as SchedulerPort).
 
 ---
 

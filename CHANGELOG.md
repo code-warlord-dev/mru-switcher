@@ -6,6 +6,10 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+### Added
+
+- M4 border UI contract (docs/design gate, no runtime behavior yet): **ADR-017 (Accepted)** — `BorderHighlightUI` with solid border highlight via public window props ("public props first, fail-soft"; concrete symbols adapter-private, recorded in `docs/COMPAT.md`; R0 memo pinned to Hyprland 0.56.2 / `efb5099`), style interface (`border_style=solid`; `pulse`/`dim` reserved), and new keys `border_color` (default **`0xffffd9a0`**) / `border_size` (default **`-1`** = leave size untouched) / `border_style` (default **`solid`**) under `plugin:mru-switcher:`; default `ui` stays **`null`**. SPEC §5 gains **REQ-UI-001..011** with tests **T-UI-03..07** continuing the T-UI series.
+
 <!-- placeholder for post-v0.3.0 changes -->
 
 ## [0.3.0] - 2026-09-17
