@@ -57,6 +57,28 @@ plugin {
 
 ---
 
+## Config reload
+
+Settings are read once when the plugin loads. After editing the
+`plugin:mru-switcher` block in `hyprland.conf`, run:
+
+```bash
+hyprctl reload
+```
+
+and the plugin re-reads its settings (via the `config.reloaded` event):
+
+- `debounce_ms` — applies to the MRU updates that happen **after** the reload.
+- Everything else (`default_scope`, `start_offset`, `wrap`,
+  `lock_history_on_session`, `restore_focus_on_cancel`, `ui`) — applies to the
+  **next** session you start.
+
+A session that is already running is never changed mid-flight: its frozen
+window list and selection policy stay exactly as they were when it started.
+Finish or cancel it, then start a new session to use the updated settings.
+
+---
+
 ## Behaviour
 
 | Action | Result |
@@ -92,6 +114,8 @@ If omitted, `default_scope` from config is used.
 | `visible` | Windows on currently visible workspaces |
 | `app` | Windows with the same class as the active one |
 
+When no window is focused, `monitor`, `workspace`, and `app` fall back to `global` behavior; `visible` still shows only currently visible workspaces. A scope token that is not one of the five above is rejected with an `unknown scope token` error and no session starts.
+
 ---
 
 ## Dispatchers
@@ -101,14 +125,23 @@ If omitted, `default_scope` from config is used.
 | `mru:cycle` | `[next\|prev] [scope]` | Start or advance session |
 | `mru:apply` | — | Focus selection, end session |
 | `mru:cancel` | — | End session without applying |
-| `mru:status` | — | Print debug info (via hyprctl) |
+| `mru:status` | — | Report debug state (prints just `ok` via `hyprctl` on 0.56.x — see note below) |
 
 Example:
 
 ```bash
 hyprctl dispatch mru:cycle next
 hyprctl dispatch mru:apply
-hyprctl dispatch mru:status
+```
+
+On Hyprland 0.56.x, `hyprctl dispatch mru:status` prints only `ok`: the plugin
+carries the status payload in a field `hyprctl` surfaces only on failure, so it
+is not visible through IPC on this version. (Failure messages do surface, e.g.
+`mru-switcher: not initialized`.) External tools already assert session state
+indirectly:
+
+```bash
+hyprctl activewindow -j
 ```
 
 ---
@@ -132,7 +165,9 @@ By design (Niri / classic Alt+Tab). Focus is applied only on release so intermed
 Ensure `lock_history_on_session = true` and that you are not mixing other focus binds that bypass the plugin during the session.
 
 **Special workspaces / scratchpads.**  
-Included when they match the active scope. Use `workspace` or `visible` if you want to limit them.
+A scratchpad window is switchable only while it is **shown**; when hidden it is
+excluded from every scope (including `global`). Shown scratchpad windows behave
+like normal windows and follow the selected scope.
 
 **Multi-monitor.**  
 Use `scope = monitor` for per-monitor switching, or `global` for a single list across all outputs.
@@ -150,5 +185,6 @@ Recompile against the new headers. The plugin aborts on hash mismatch to avoid c
 - [ ] Escape cancels
 - [ ] FFM / mouse focus during session does not change list order
 - [ ] Closing the selected window prunes snapshot or ends session
-- [ ] `monitor` / `workspace` / `app` scopes filter correctly
-- [ ] Config reload picks up new `debounce_ms` / `default_scope`
+- [ ] Scratchpad shown → switchable; hidden → excluded from every scope ([live nest §2–3](agent-state/reports/2026-09-17-m3-s3-nest-smoke.md))
+- [ ] `monitor` / `workspace` / `visible` / `app` scopes filter correctly ([live nest §4–5](agent-state/reports/2026-09-17-m3-s3-nest-smoke.md))
+- [ ] Config reload: new `debounce_ms` / `default_scope` apply to the **next** session only; the active session keeps its frozen policy ([T-CFG-02](../tests/domain/test_session_controller.cpp))
