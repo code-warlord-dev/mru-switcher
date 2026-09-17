@@ -17,6 +17,7 @@ constexpr const char *KEY_WRAP = "plugin:mru-switcher:wrap";
 constexpr const char *KEY_UI = "plugin:mru-switcher:ui";
 constexpr const char *KEY_LOCK_HISTORY_ON_SESSION = "plugin:mru-switcher:lock_history_on_session";
 constexpr const char *KEY_RESTORE_FOCUS_ON_CANCEL = "plugin:mru-switcher:restore_focus_on_cancel";
+constexpr const char *KEY_EXTERNAL_SOCKET = "plugin:mru-switcher:external_socket";
 
 } // namespace
 
@@ -57,6 +58,13 @@ bool register_all(HANDLE handle, Values &out) {
     if (!HyprlandAPI::addConfigValueV2(handle, out.restore_focus_on_cancel))
         return false;
 
+    // ADR-016 __5__: reserved for the M5 external UI protocol; registered so the
+    // documented 8-key surface (SPEC §4) is complete, but read_config() ignores it.
+    out.external_socket = Config::Values::makeConfigValue<Config::Values::String>(
+        KEY_EXTERNAL_SOCKET, "External UI protocol socket — reserved, no effect until M5 (ADR-016 __5__)", "");
+    if (!HyprlandAPI::addConfigValueV2(handle, out.external_socket))
+        return false;
+
     return true;
 }
 
@@ -64,21 +72,6 @@ mru::plugin::PluginConfig read_config(const Values &values) {
     mru::plugin::PluginConfig cfg;
     cfg.debounce_ms = clamp_debounce_ms(read(values.debounce_ms));
     cfg.default_scope = parse_scope(read(values.default_scope));
-    // MEDIUM-7: only global is implemented until M3. A documented-but-unimplemented
-    // scope must not silently produce "no windows" on every Alt+Tab — fall back to
-    // global and warn once (mirror of the ui=border/external handling below).
-    if (cfg.default_scope != mru::domain::Scope::Global) {
-        static bool warned = false;
-        if (!warned) {
-            warned = true;
-            HyprlandAPI::addNotification(PHANDLE,
-                                         std::string("mru-switcher: scope '") +
-                                             std::string(scope_name(cfg.default_scope)) +
-                                             "' not implemented until M3, falling back to 'global'",
-                                         CHyprColor{1, 0.7, 0, 1}, 5000);
-        }
-        cfg.default_scope = mru::domain::Scope::Global;
-    }
     cfg.start_offset = parse_start_offset(read(values.start_offset));
     cfg.wrap = read(values.wrap);
     cfg.lock_history_on_session = read(values.lock_history_on_session);
