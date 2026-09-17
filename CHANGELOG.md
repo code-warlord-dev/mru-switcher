@@ -9,6 +9,11 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 ### Changed
 
 - Config layer migrated from the legacy V1 config API to hyprlang V2 (`addConfigValueV2`, M3-S1): every `plugin:mru-switcher:` key is registered once in `PLUGIN_INIT` as a typed `Config::Values::*` value whose `SP` lives in `PluginState`; reads go through `mru::plugin::config::read()` (typed `value_traits` + `underlying()` contract) instead of `getConfigValue`/`dataPtr()` casts (RP-1, RP-3). Behavior is unchanged: `debounce_ms` clamp `[0,5000]`, enum fallback + once-warn, reload-next-session-only
+- PLUGIN_INIT fail-closed: hash mismatch and config-registration failure now throw so the compositor's `loadPluginInternal` (pin 0.56.2) unwinds PLUGIN_INIT and unloads the plugin — an empty `PLUGIN_DESCRIPTION_INFO` alone does not unload on this pin (HIGH-4, issue #16)
+
+### Added
+
+- M3-S2 pure domain scope layer (issue #18): `WindowMeta` (opaque `monitor_id`/`workspace_id` `uint64`, `mapped`, `hidden`, `app_class`), snapshot-time `FocusContext` (passed by const ref, never recomputed), and stateless free function `scope_matches()` (REQ-SC-002/002a/002b, ADR-016). Uniform special-workspace rule covers all five scopes; `app` is byte-exact case-sensitive with empty-class folds (T-SC-01..04, domain tests)
 
 <!-- placeholder for post-v0.2.0 changes -->
 
