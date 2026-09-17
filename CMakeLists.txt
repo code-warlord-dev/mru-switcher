@@ -55,6 +55,11 @@ if(MRU_BUILD_TESTS)
   mru_warnings(domain_test_snapshot)
   add_test(NAME domain_snapshot COMMAND domain_test_snapshot)
 
+  add_executable(domain_test_scope_predicate tests/domain/test_scope_predicate.cpp)
+  target_link_libraries(domain_test_scope_predicate PRIVATE mru_domain)
+  mru_warnings(domain_test_scope_predicate)
+  add_test(NAME domain_scope_predicate COMMAND domain_test_scope_predicate)
+
   add_executable(domain_test_session_controller tests/domain/test_session_controller.cpp)
   target_link_libraries(domain_test_session_controller PRIVATE mru_domain)
   mru_warnings(domain_test_session_controller)
