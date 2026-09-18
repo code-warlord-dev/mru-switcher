@@ -230,6 +230,17 @@ static void build_state() {
                 [&st](const mru::domain::WindowRef &ref) { return static_cast<bool>(st.registry->resolve(ref)); },
                 st.config.border_style, st.config.border_color, st.config.border_size,
                 [](std::string_view reason) {
+                    // REQ-UI-002 warn-once at plugin-load scope: the proxy builds a
+                    // FRESH backend per session, so an instance-level latch alone
+                    // would reset every session and spam one notification per
+                    // Alt+Tab session while the border API is broken. This static
+                    // drops repeat warns BEFORE addNotification, mirroring the
+                    // ui=external pattern above; the backend's own `warned_`
+                    // instance latch only dedupes within one backend instance.
+                    static bool warned = false;
+                    if (warned)
+                        return;
+                    warned = true;
                     HyprlandAPI::addNotification(PHANDLE, std::string("mru-switcher: ") + std::string(reason),
                                                  CHyprColor{1, 0.7, 0, 1}, 5000);
                 });

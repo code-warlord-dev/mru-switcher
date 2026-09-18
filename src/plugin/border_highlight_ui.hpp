@@ -94,7 +94,9 @@ class BorderHighlightUI : public mru::domain::UIPort {
     std::string color_;
     int size_ = -1;
     Warn warn_;
-    bool warned_ = false;   // per lifetime: at most one runtime warning (REQ-UI-001)
+    bool warned_ = false;   // per backend INSTANCE: at most one runtime warning (REQ-UI-001);
+                            // production backends are per-session, cross-session dedupe lives
+                            // in the plugin's warn sink
     bool degraded_ = false; // per session: REQ-UI-002 runtime probe failure
 
     std::optional<mru::domain::Snapshot> snapshot_; // frozen session snapshot copy (ADR-017)

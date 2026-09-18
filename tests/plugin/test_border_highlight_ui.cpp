@@ -274,7 +274,9 @@ TEST(t_ui_002_runtime_probe_degrades_no_writes) {
     CHECK(!color_slot_write_is_bare_clear(io));
 }
 
-// REQ-UI-002: the degrade decision is per session; the warning stays per lifetime.
+// REQ-UI-002: the degrade decision is per session; the instance-level warn latch
+// keeps the warning count stable for one backend instance (cross-session dedupe
+// lives in the plugin's warn sink).
 TEST(t_ui_002_degrade_resets_next_session) {
     FakeBorderPropIo io;
     seed(io, A, "0xa1", "0xa2");
@@ -293,7 +295,7 @@ TEST(t_ui_002_degrade_resets_next_session) {
     CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == kHighlight);
     ui.on_session_end(UIEndReason::Applied);
     CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == "0xa1");
-    EQ(warnings, 1); // warn-once per lifetime, not per session
+    EQ(warnings, 1); // instance-latch: this instance already warned on the degraded session
 }
 
 // --- REQ-UI-005 / R0 F10: restore safety over a fake BorderPropIo --------------
