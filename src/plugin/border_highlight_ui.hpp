@@ -37,8 +37,12 @@ class BorderPropIo {
 };
 
 // M4 border highlight backend (ADR-017): solid colour on the virtually selected
-// window, restore-by-value since the pin has no public unset (docs/COMPAT.md).
-// Never calls focus (REQ-UI-006); never throws into the controller (REQ-UI-001).
+// window. Never calls focus (REQ-UI-006); never throws into the controller
+// (REQ-UI-001). Two safety rules from the R0 memo:
+//   * REQ-UI-002 runtime probe: if the border API is unavailable at session start
+//     the backend degrades to null for that session (no writes, one warning);
+//   * restore-by-value: a colour is overridden only after both prior values were
+//     read back, and restored from those captured values — never with a bare `-1`.
 class BorderHighlightUI : public mru::domain::UIPort {
   public:
     // Same identity rules as focus: address + generation / weak-lock (REQ-UI-010).
@@ -54,10 +58,9 @@ class BorderHighlightUI : public mru::domain::UIPort {
     void on_session_end(mru::domain::UIEndReason reason) override;
 
   private:
-    // Captured override state for one slot plus whether our value was applied.
+    // Captured prior value for one slot plus whether our override was applied.
     struct SlotCapture {
-        std::string value;
-        bool valid = false;   // prior effective value could be read back
+        std::string value;    // prior effective value, read back before overriding
         bool applied = false; // our override write succeeded
     };
     struct WindowCapture {
@@ -68,19 +71,21 @@ class BorderHighlightUI : public mru::domain::UIPort {
     };
 
     void highlight(std::size_t index);
-    WindowCapture capture(const mru::domain::WindowRef &ref);
     void restore_window(WindowCapture &cap);
     void restore_all();
     void warn_once(std::string_view reason);
+    // REQ-UI-002: probe the border API on the first valid target; false -> degrade.
+    bool probe_available();
 
     // Style strategy (ADR-017 §3): M4 implements SolidStyle only; reserved/unknown
     // tokens were coerced to Solid at config parse (REQ-UI-007). Future styles slot
     // in here without branching in SessionController.
     const std::string &style_color() const;
 
-    // Reads the prior effective value, then applies our override; both steps are
-    // fail-soft and independently tracked so restore can be best-effort.
-    SlotCapture capture_slot(std::uint64_t address, BorderSlot slot, const std::string &highlight);
+    // Reads a prior effective value into `out`; false = failed/empty (no override).
+    bool read_slot(std::uint64_t address, BorderSlot slot, SlotCapture &out);
+    // Applies an override, recording success in `applied`; fail-soft.
+    void apply_slot(std::uint64_t address, BorderSlot slot, const std::string &value, bool &applied);
     bool safe_set(std::uint64_t address, BorderSlot slot, const std::string &value);
 
     BorderPropIo &io_;
@@ -89,7 +94,8 @@ class BorderHighlightUI : public mru::domain::UIPort {
     std::string color_;
     int size_ = -1;
     Warn warn_;
-    bool warned_ = false;
+    bool warned_ = false;   // per lifetime: at most one runtime warning (REQ-UI-001)
+    bool degraded_ = false; // per session: REQ-UI-002 runtime probe failure
 
     std::optional<mru::domain::Snapshot> snapshot_; // frozen session snapshot copy (ADR-017)
     std::vector<WindowCapture> captures_;

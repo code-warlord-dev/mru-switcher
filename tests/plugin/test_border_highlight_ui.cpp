@@ -59,6 +59,7 @@ struct FakeBorderPropIo : BorderPropIo {
     std::vector<std::pair<std::uint64_t, BorderSlot>> reads;
     bool fail_sets = false;
     bool fail_gets = false;
+    bool fail_get_inactive = false; // probe (active) passes, inactive read fails
     bool throw_sets = false;
     bool throw_gets = false;
     int set_calls = 0;
@@ -70,6 +71,8 @@ struct FakeBorderPropIo : BorderPropIo {
         if (throw_gets)
             throw std::runtime_error("fake get");
         if (fail_gets)
+            return {};
+        if (fail_get_inactive && slot == BorderSlot::InactiveColor)
             return {};
         const auto it = values.find(address);
         if (it == values.end())
@@ -98,6 +101,18 @@ bool any_highlight_left(const FakeBorderPropIo &io) {
     for (const auto &[address, slots] : io.values) {
         (void)address;
         if (slots[idx(BorderSlot::ActiveColor)] == kHighlight || slots[idx(BorderSlot::InactiveColor)] == kHighlight)
+            return true;
+    }
+    return false;
+}
+
+// R0 F10: a colour slot must never be restored with a bare `-1`/`unset`.
+bool color_slot_write_is_bare_clear(const FakeBorderPropIo &io) {
+    for (const auto &[address, slot, value] : io.writes) {
+        (void)address;
+        if (slot != BorderSlot::ActiveColor && slot != BorderSlot::InactiveColor)
+            continue;
+        if (value == "-1" || value == "unset")
             return true;
     }
     return false;
@@ -241,37 +256,104 @@ TEST(t_ui_06_invalid_ref_skipped_session_continues) {
     CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == "0xa1");
 }
 
-// --- REQ-UI-001: io failures are isolated (swallowed), never thrown ------------
-TEST(t_ui_01_io_failure_is_swallowed) {
+// --- REQ-UI-002: runtime probe degrades to null for the session ---------------
+TEST(t_ui_002_runtime_probe_degrades_no_writes) {
     FakeBorderPropIo io;
-    io.fail_gets = true;
-    io.fail_sets = true;
+    io.fail_gets = true; // border API unavailable at session start
+    int warnings = 0;
     const auto valid = [](const WindowRef &) { return true; };
-    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1);
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; });
     const Snapshot snap({ref(A), ref(B)}, Scope::Global);
 
-    ui.on_session_start(snap, 0); // get/set failures must not propagate
+    ui.on_session_start(snap, 0);
     ui.on_selection_changed(1);
     ui.on_session_end(UIEndReason::Applied);
-    CHECK(io.set_calls > 0);
+
+    EQ(io.set_calls, 0); // degraded to null: no border writes at all
+    EQ(warnings, 1);     // exactly one warn-once
+    CHECK(!color_slot_write_is_bare_clear(io));
 }
 
+// REQ-UI-002: the degrade decision is per session; the warning stays per lifetime.
+TEST(t_ui_002_degrade_resets_next_session) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    io.fail_gets = true;
+    int warnings = 0;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; });
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0); // API down -> no writes
+    EQ(io.set_calls, 0);
+    ui.on_session_end(UIEndReason::Cancelled);
+
+    io.fail_gets = false;         // API available again
+    ui.on_session_start(snap, 0); // recovered for THIS session
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == kHighlight);
+    ui.on_session_end(UIEndReason::Applied);
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == "0xa1");
+    EQ(warnings, 1); // warn-once per lifetime, not per session
+}
+
+// --- REQ-UI-005 / R0 F10: restore safety over a fake BorderPropIo --------------
+// get-failure off the probe path: either colour capture fails -> skip, no override.
+TEST(t_ui_01_partial_capture_skips_window) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    io.fail_get_inactive = true; // probe (active) passes, inactive read fails
+    int warnings = 0;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; });
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    EQ(io.set_calls, 0); // no override without BOTH prior colour values
+    EQ(io.values[A][idx(BorderSlot::ActiveColor)], "0xa1");
+    EQ(io.values[A][idx(BorderSlot::InactiveColor)], "0xa2");
+    EQ(warnings, 1);
+    CHECK(!color_slot_write_is_bare_clear(io));
+}
+
+// set-failure: not "applied" -> restore is a no-op and no bare clear is written.
+TEST(t_ui_01_set_failure_not_applied_and_no_bare_clear) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    io.fail_sets = true;
+    int warnings = 0;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; });
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    ui.on_selection_changed(0);
+    ui.on_session_end(UIEndReason::Applied);
+
+    CHECK(io.set_calls > 0);                                // attempts happened
+    CHECK(!color_slot_write_is_bare_clear(io));             // but never -1/unset on a colour
+    EQ(io.values[A][idx(BorderSlot::ActiveColor)], "0xa1"); // untouched
+    EQ(warnings, 1);                                        // warn-once
+}
+
+// --- REQ-UI-001: io exceptions are isolated, never thrown ----------------------
 TEST(t_ui_01_io_exception_is_swallowed) {
     FakeBorderPropIo io;
     io.throw_gets = true;
     io.throw_sets = true;
+    int warnings = 0;
     const auto valid = [](const WindowRef &) { return true; };
-    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1);
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; });
     const Snapshot snap({ref(A)}, Scope::Global);
 
     ui.on_session_start(snap, 0); // throwing io must not abort the session
     ui.on_selection_changed(0);
     ui.on_session_end(UIEndReason::Cancelled);
-    CHECK(io.set_calls > 0);
+    CHECK(!color_slot_write_is_bare_clear(io));
 }
 
 TEST(t_ui_01_warn_sink_throw_is_swallowed) {
     FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
     io.fail_sets = true;
     const auto valid = [](const WindowRef &) { return true; };
     BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1,
@@ -280,6 +362,7 @@ TEST(t_ui_01_warn_sink_throw_is_swallowed) {
 
     ui.on_session_start(snap, 0); // a broken warn sink must not escape either
     CHECK(io.set_calls > 0);
+    CHECK(!color_slot_write_is_bare_clear(io));
 }
 
 } // namespace
