@@ -13,8 +13,6 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 <!-- placeholder for post-v0.3.0 changes -->
 
-<!-- placeholder for post-v0.3.0 changes -->
-
 ## [0.3.0] - 2026-09-17
 
 ### Changed
