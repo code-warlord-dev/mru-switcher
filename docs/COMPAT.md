@@ -152,6 +152,14 @@ Full 9-step recipe in the R0 memo (“Open questions / proposed live nest experi
 | `plugin unload` mid-session | no crash; borders restored (REQ-UI-005) |
 | Bogus prop name in a test build | warn-once + null behaviour; apply/cancel unaffected (REQ-UI-001/002) |
 
+### M4 nest smoke (2026-09-18) — recorded
+
+Full report: `docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md`; raw evidence `/tmp/mru-nest-m4/report/`. Two mechanism findings recorded against pin `efb5099` (= v0.56.2):
+
+1. **setprop/getprop grammar asymmetry (D2).** `getprop … active_border_color` returns unprefixed `<hex6> <N>deg` (e.g. `ff44cc88 0deg`), while `setprop` accepts ONLY `0x…`/`rgb()`/`rgba()` **without** the angle suffix; unprefixed/angle-suffixed values parse to an **empty gradient** (invisible border). Restoring the captured `getprop` output verbatim therefore corrupted borders (smoke step 4; F10's empty-gradient hazard confirmed live on the restore path). Fixed in `fix/m4-s3-border-restore-grammar` (commit `98c0dd5`): `normalize_capture` in `BorderHighlightUI` rewrites every captured reply into a setprop-safe form. Acceptance map: `/tmp/mru-nest-m4/report/02g-grammar-map.txt`.
+2. **`hyprctl keyword` channel limitation (D1 — COMPAT/USER).** `hyprctl keyword plugin:mru-switcher:<key> <value>` is accepted by hyprlang (getoption reflects it) but never reaches the plugin's cached config on this pin: `st.config` refreshes only on the `config.reloaded` event, which a config-file edit + full `hyprctl reload` fires and a keyword change does not (discriminators: `/tmp/mru-nest-m4/report/02e-configfile-reload.txt`, `02f-keyword-discriminator.txt`; plugin handle unchanged across reload — no restart involved). **Config file + `hyprctl reload` is the supported runtime channel.** This matches SPEC REQ-CFG-002/003 (refresh on `config.reloaded`) — no SPEC change; user-facing note in `docs/USER.md` "Config reload".
+3. **R0 memo correction (border_size).** `getprop … border_size` IS supported on this pin and returns the effective integer (probe: `/tmp/mru-nest-m4/report/09-border-size-probe.txt`); after a `setprop`-carried `unset` the effective size is unchanged, so size restore is by captured value with an `unset` fallback (`border_size = -1` default keeps the size untouched, REQ-UI-008).
+
 ## Verification checklist (per release)
 
 - [x] Hash check passes on load

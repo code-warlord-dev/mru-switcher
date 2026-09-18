@@ -41,8 +41,11 @@ class BorderPropIo {
 // (REQ-UI-001). Two safety rules from the R0 memo:
 //   * REQ-UI-002 runtime probe: if the border API is unavailable at session start
 //     the backend degrades to null for that session (no writes, one warning);
-//   * restore-by-value: a colour is overridden only after both prior values were
-//     read back, and restored from those captured values — never with a bare `-1`.
+//   * restore-by-value: colour AND size slots are restored from prior values read
+//     back through getprop and normalized to the setprop grammar (live pin
+//     evidence: docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md) — never
+//     with a bare `-1`; `unset` is only the size fallback when the prior read
+//     failed (R0 F3/F10).
 class BorderHighlightUI : public mru::domain::UIPort {
   public:
     // Same identity rules as focus: address + generation / weak-lock (REQ-UI-010).
@@ -61,13 +64,16 @@ class BorderHighlightUI : public mru::domain::UIPort {
     // Captured prior value for one slot plus whether our override was applied.
     struct SlotCapture {
         std::string value;    // prior effective value, read back before overriding
+                              // and normalized to the setprop grammar
         bool applied = false; // our override write succeeded
     };
     struct WindowCapture {
         mru::domain::WindowRef ref{};
         SlotCapture active;
         SlotCapture inactive;
-        bool size_applied = false;
+        bool size_applied = false;  // our size override write succeeded
+        bool size_captured = false; // prior size read back via border_size getprop
+        std::string size_value;     // prior effective size (pure integer) when captured
     };
 
     void highlight(std::size_t index);

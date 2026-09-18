@@ -97,6 +97,13 @@ void seed(FakeBorderPropIo &io, std::uint64_t address, std::string active, std::
     io.values[address][idx(BorderSlot::InactiveColor)] = std::move(inactive);
 }
 
+// Seeds a RAW live getprop-format value (e.g. "ff44cc88 0deg" for colours, "2" for
+// size) without normalization, mimicking what the pinned compositor actually
+// reports (M4-S3 nest smoke, evidence 09-border-size-probe.txt).
+void seed_raw(FakeBorderPropIo &io, std::uint64_t address, BorderSlot slot, std::string raw) {
+    io.values[address][idx(slot)] = std::move(raw);
+}
+
 bool any_highlight_left(const FakeBorderPropIo &io) {
     for (const auto &[address, slots] : io.values) {
         (void)address;
@@ -239,9 +246,11 @@ TEST(t_ui_05c_unload_restores_all_no_stuck) {
 }
 
 // REQ-UI-008 / R0 F3+F10: border_size >= 0 overrides the size for the highlighted
-// window; the pin exposes no border_size getprop, so restore drops the SET_PROP
-// override via `unset` while the colour slots are restored by captured value (never
-// `unset`/`-1` on a colour — the detector below only scans colour slots).
+// window; with no readable prior size (empty getprop) restore drops the SET_PROP
+// override via `unset`, while a readable prior size is restored by exact value
+// (see t_ui_010_size_restored_by_value_when_readable). Colours are always restored
+// by captured value (never `unset`/`-1` on a colour — the detector below only
+// scans colour slots).
 TEST(t_ui_05d_size_override_restored_via_unset) {
     FakeBorderPropIo io;
     seed(io, A, "0xa1", "0xa2");
@@ -395,6 +404,147 @@ TEST(t_ui_01_warn_sink_throw_is_swallowed) {
 
     ui.on_session_start(snap, 0); // a broken warn sink must not escape either
     CHECK(io.set_calls > 0);
+    CHECK(!color_slot_write_is_bare_clear(io));
+}
+
+// --- M4-S3 D2: captured values must be normalized to the setprop grammar -------
+// getprop answers "<hex> <N>deg" but setprop only accepts 0x.../rgb()/rgba()
+// WITHOUT the suffix; writing the raw echo back yields an empty gradient =
+// invisible border (REQ-UI-004 exact restore, REQ-UI-005 no stuck borders).
+TEST(t_ui_010_capture_normalized_to_setprop_grammar) {
+    FakeBorderPropIo io;
+    seed_raw(io, A, BorderSlot::ActiveColor, "ff44cc88 0deg");
+    seed_raw(io, A, BorderSlot::InactiveColor, "ff44ccff 10deg");
+    int warnings = 0;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; });
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == kHighlight);
+    EQ(warnings, 0); // live-format replies are restorable -> no skip warning
+
+    ui.on_session_end(UIEndReason::Cancelled);
+    bool restore_active = false, restore_inactive = false, bare_clear = false;
+    for (const auto &[address, slot, value] : io.writes) {
+        if (address != A)
+            continue;
+        if (slot == BorderSlot::ActiveColor && value == "0xff44cc88")
+            restore_active = true; // EXACTLY: suffix stripped, 0x prepended
+        if (slot == BorderSlot::InactiveColor && value == "0xff44ccff")
+            restore_inactive = true;
+        if ((slot == BorderSlot::ActiveColor || slot == BorderSlot::InactiveColor) &&
+            (value == "-1" || value == "unset"))
+            bare_clear = true;
+    }
+    CHECK(restore_active);
+    CHECK(restore_inactive);
+    CHECK(!bare_clear);
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == "0xff44cc88"); // applied by the fake
+    CHECK(io.values[A][idx(BorderSlot::InactiveColor)] == "0xff44ccff");
+}
+
+TEST(t_ui_010_rgb_capture_round_trips) {
+    FakeBorderPropIo io;
+    seed_raw(io, A, BorderSlot::ActiveColor, "rgb(44cc88)");
+    seed_raw(io, A, BorderSlot::InactiveColor, "rgba(44,cc,88,ff)");
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1);
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == kHighlight);
+
+    ui.on_session_end(UIEndReason::Applied);
+    bool restore_active = false, restore_inactive = false;
+    for (const auto &[address, slot, value] : io.writes) {
+        if (address != A)
+            continue;
+        if (slot == BorderSlot::ActiveColor && value == "rgb(44cc88)")
+            restore_active = true; // verbatim: rgb()/rgba() pass through, no 0x added
+        if (slot == BorderSlot::InactiveColor && value == "rgba(44,cc,88,ff)")
+            restore_inactive = true;
+    }
+    CHECK(restore_active);
+    CHECK(restore_inactive);
+    CHECK(!any_highlight_left(io));
+}
+
+TEST(t_ui_010_garbage_capture_skips_highlight) {
+    FakeBorderPropIo io;
+    seed_raw(io, A, BorderSlot::ActiveColor, "garbage");
+    seed_raw(io, A, BorderSlot::InactiveColor, "0xa2");
+    int warnings = 0;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; });
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0); // normalized capture empty -> fail-soft skip
+    EQ(io.set_calls, 0);
+    EQ(warnings, 1);
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == "garbage"); // live value untouched
+    CHECK(!color_slot_write_is_bare_clear(io));
+
+    ui.on_session_end(UIEndReason::Applied);
+    EQ(io.set_calls, 0); // nothing was applied -> nothing to restore, no bare clear
+}
+
+TEST(t_ui_010_size_restored_by_value_when_readable) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    seed_raw(io, A, BorderSlot::Size, "2"); // border_size getprop IS available
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, 4);
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    bool size_write_configured = false;
+    for (const auto &[address, slot, value] : io.writes)
+        if (slot == BorderSlot::Size && address == A && value == "4")
+            size_write_configured = true;
+    CHECK(size_write_configured);
+
+    ui.on_session_end(UIEndReason::Applied);
+    bool size_restore_by_value = false, size_unset = false;
+    for (const auto &[address, slot, value] : io.writes) {
+        if (slot != BorderSlot::Size || address != A)
+            continue;
+        if (value == "2")
+            size_restore_by_value = true; // exact prior integer, not "unset"
+        if (value == "unset")
+            size_unset = true;
+    }
+    CHECK(size_restore_by_value);
+    CHECK(!size_unset);
+    CHECK(io.values[A][idx(BorderSlot::Size)] == "2");
+}
+
+TEST(t_ui_010_size_falls_back_to_unset_when_read_fails) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2"); // no size seed: getprop empty/unavailable
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, 3);
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    bool size_write_configured = false;
+    for (const auto &[address, slot, value] : io.writes)
+        if (slot == BorderSlot::Size && address == A && value == "3")
+            size_write_configured = true;
+    CHECK(size_write_configured);
+
+    ui.on_session_end(UIEndReason::Applied);
+    bool size_unset = false, size_zero_restore = false;
+    for (const auto &[address, slot, value] : io.writes) {
+        if (slot != BorderSlot::Size || address != A)
+            continue;
+        if (value == "unset")
+            size_unset = true; // only remaining way to drop the override
+        if (value == "0")
+            size_zero_restore = true; // "0" would render a borderless window
+    }
+    CHECK(size_unset);
+    CHECK(!size_zero_restore);
     CHECK(!color_slot_write_is_bare_clear(io));
 }
 
