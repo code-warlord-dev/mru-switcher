@@ -71,7 +71,9 @@ add_library(mru_plugin_core STATIC
   src/plugin/config_value.cpp
   src/plugin/dispatch_args.cpp
   src/plugin/status_format.cpp
-  src/plugin/mru_merge.cpp)
+  src/plugin/mru_merge.cpp
+  src/plugin/border_highlight_ui.cpp
+  src/plugin/session_ui.cpp)
 target_include_directories(mru_plugin_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)
 target_link_libraries(mru_plugin_core PUBLIC mru_domain)
 mru_warnings(mru_plugin_core)
@@ -100,6 +102,20 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(plugin_mru_merge PRIVATE mru_plugin_core)
   mru_warnings(plugin_mru_merge)
   add_test(NAME plugin_mru_merge COMMAND plugin_mru_merge)
+
+  # T-UI-03..06: BorderHighlightUI lifecycle/restore over a fake BorderPropIo.
+  add_executable(plugin_border_highlight_ui tests/plugin/test_border_highlight_ui.cpp)
+  target_include_directories(plugin_border_highlight_ui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_border_highlight_ui PRIVATE mru_plugin_core mru_domain)
+  mru_warnings(plugin_border_highlight_ui)
+  add_test(NAME plugin_border_highlight_ui COMMAND plugin_border_highlight_ui)
+
+  # REQ-UI-009: backend swap takes effect on the next session, not mid-session.
+  add_executable(plugin_session_ui tests/plugin/test_session_ui.cpp)
+  target_include_directories(plugin_session_ui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_session_ui PRIVATE mru_plugin_core mru_domain)
+  mru_warnings(plugin_session_ui)
+  add_test(NAME plugin_session_ui COMMAND plugin_session_ui)
 endif()
 
 if(MRU_BUILD_PLUGIN)
@@ -110,7 +126,8 @@ if(MRU_BUILD_PLUGIN)
     src/plugin/hypr/identity_registry.cpp
     src/plugin/hypr/hypr_window_source.cpp
     src/plugin/hypr/hypr_focus_gateway.cpp
-    src/plugin/hypr/hypr_scheduler.cpp)
+    src/plugin/hypr/hypr_scheduler.cpp
+    src/plugin/hypr/hyprctl_border_prop_io.cpp)
   target_include_directories(mru_plugin_hypr PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin

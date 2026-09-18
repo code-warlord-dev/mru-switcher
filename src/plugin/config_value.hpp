@@ -2,11 +2,16 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "mru/domain/scope.hpp"
 
 namespace mru::plugin {
+
+// Border highlight style tokens (REQ-UI-007). M4 implements only `solid`; reserved
+// (`pulse`, `dim`) and unknown tokens are coerced to `solid` by parse_border_style().
+enum class BorderStyle { Solid };
 
 struct PluginConfig {
     int debounce_ms = 400; // clamp [0,5000] (REQ-CFG-004)
@@ -15,10 +20,13 @@ struct PluginConfig {
     bool wrap = true;
     bool lock_history_on_session = true;
     bool restore_focus_on_cancel = false;
-    bool ui_null = true;    // REQ-UI-003: solely null in M2
-    bool ui_border = false; // parsed, falls back to null (REQ-UI-002)
-    bool ui_external = false;
+    bool ui_null = true;      // explicit ui=null
+    bool ui_border = false;   // M4: ui=border -> BorderHighlightUI (REQ-UI-003)
+    bool ui_external = false; // M5: falls back to NullUI + warn-once until then (REQ-UI-002)
     bool ui_matched = true;
+    BorderStyle border_style = BorderStyle::Solid; // REQ-UI-007
+    std::string border_color = "0xffffd9a0";       // REQ-UI-008: verbatim setprop value
+    int border_size = -1;                          // REQ-UI-008: -1 = leave size untouched
 };
 
 PluginConfig default_plugin_config();
@@ -37,6 +45,20 @@ struct ParsedUi {
     bool matched = false;
 };
 ParsedUi parse_ui_backend(std::string_view s);
+
+// REQ-UI-007: `solid` has effect in M4; reserved (`pulse`, `dim`) and unknown
+// tokens behave as `solid`. The pure parser carries no side effects; `should_warn`
+// signals the caller to emit one warn-once notification for that condition.
+struct ParsedBorderStyle {
+    BorderStyle style = BorderStyle::Solid;
+    bool should_warn = false;
+};
+ParsedBorderStyle parse_border_style(std::string_view s);
+
+// Backend actually constructed for the session. `ui=external` is still
+// unimplemented and folds into Null (the caller emits the REQ-UI-002 warning).
+enum class UiBackend { Null, Border };
+UiBackend effective_ui_backend(const PluginConfig &cfg);
 
 // REQ-SEL-002/REQ-S-009: `first`|`second`; unknown falls back to `second`.
 mru::domain::StartOffset parse_start_offset(std::string_view s);

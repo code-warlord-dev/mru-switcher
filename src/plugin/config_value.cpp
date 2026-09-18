@@ -61,6 +61,18 @@ ParsedUi parse_ui_backend(std::string_view s) {
     return {ParsedUi::Kind::Null, false}; // REQ-CFG-001 fallback to default
 }
 
+ParsedBorderStyle parse_border_style(std::string_view s) {
+    if (s == "solid")
+        return {BorderStyle::Solid, false};
+    // REQ-UI-007: `pulse` / `dim` are reserved, any other token is unknown — both
+    // behave as `solid` and warrant a single warning.
+    return {BorderStyle::Solid, true};
+}
+
+UiBackend effective_ui_backend(const PluginConfig &cfg) {
+    return cfg.ui_border ? UiBackend::Border : UiBackend::Null; // external -> Null (REQ-UI-002)
+}
+
 mru::domain::StartOffset parse_start_offset(std::string_view s) {
     if (s == "first")
         return mru::domain::StartOffset::First;

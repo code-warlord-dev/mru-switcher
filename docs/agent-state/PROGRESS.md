@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-17 (M3 complete and released as v0.3.0; M4 border UI in progress — R0 done, D1 ADR-017 + SPEC REQ-UI-001..011 integrated as Accepted; next M4-S1 implementer)
+Updated: 2026-09-18 (M4-S1 implemented + reviewed READY on feat/m4-s1-border-highlight-ui — fixups 32e1435/a18056b/25eda05; PR open; checkboxes flip on merge)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
