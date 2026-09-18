@@ -6,6 +6,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-18
+
 ### Added
 
 - M4 border UI contract (docs/design gate, no runtime behavior yet): **ADR-017 (Accepted)** — `BorderHighlightUI` with solid border highlight via public window props ("public props first, fail-soft"; concrete symbols adapter-private, recorded in `docs/COMPAT.md`; R0 memo pinned to Hyprland 0.56.2 / `efb5099`), style interface (`border_style=solid`; `pulse`/`dim` reserved), and new keys `border_color` (default **`0xffffd9a0`**) / `border_size` (default **`-1`** = leave size untouched) / `border_style` (default **`solid`**) under `plugin:mru-switcher:`; default `ui` stays **`null`**. SPEC §5 gains **REQ-UI-001..011** with tests **T-UI-03..07** continuing the T-UI series.
@@ -18,7 +20,9 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 - Border restore values are normalized to the `setprop` grammar: `getprop` returns unprefixed `<hex6> <N>deg` while `setprop` accepts only `0x…`/`rgb()`/`rgba()` without suffix — restoring captured output verbatim produced empty-gradient (invisible) borders (D2, found in the M4-S3 nest smoke; fixed by `normalize_capture` in `98c0dd5`)
 - `border_size` is now restored by the captured value with an `unset` fallback (R0 correction: `getprop border_size` works on this pin, per COMPAT M4 nest smoke 2026-09-18)
 
-<!-- placeholder for post-v0.3.0 changes -->
+### Changed
+
+- Plugin version string now reports **0.4.0** via the CMake single source (`project(VERSION)`, audit L-13); previously the `.so` kept reporting the stale M2 string 0.2.0
 
 ## [0.3.0] - 2026-09-17
 
