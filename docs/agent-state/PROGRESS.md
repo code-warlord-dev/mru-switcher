@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-18 (M4-S1 implemented + reviewed READY on feat/m4-s1-border-highlight-ui — fixups 32e1435/a18056b/25eda05; PR open; checkboxes flip on merge)
+Updated: 2026-09-18 (M4-S3 closed: PR #30 merged dfff936 — D2 restore-grammar fix + D1 keyword-channel docs; M4 exit criteria met; optional restore_focus_on_cancel open; v0.4.0 tag pending human approval)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -78,8 +78,8 @@ Updated: 2026-09-18 (M4-S1 implemented + reviewed READY on feat/m4-s1-border-hig
 - [x] Style interface: `BorderStyle` enum, `solid` implemented (strategy inside the border backend; `pulse`/`dim` reserved)
 - [x] Clear paths: apply/cancel/unload -> full restore, no stuck borders (REQ-UI-005; unit t_ui_05*; unload-mid-session + abrupt-eject FM-22 -> M4-S3 nest)
 - [x] Config keys border_style/border_color/border_size registered (REQ-UI-008; CI key-namespace guard)
-- [ ] M4-S3 live nest smoke + docs closeout (REQ-TRACE final, COMPAT row, CHANGELOG, USER checklist; setprop spelling + probe classification R0-uncertain)
-- [ ] restore_focus_on_cancel optional path
+- [x] M4-S3 live nest smoke + docs closeout — PR #30 merged (dfff936): smoke report committed with inlined evidence (`reports/2026-09-18-m4-s3-nest-smoke.md`, pin 0.56.2/efb5099); D1 keyword-channel limitation documented (COMPAT/USER/REQ-TRACE); D2 restore-grammar S1 fixed (normalize_capture + border_size restore-by-value) and CONFIRMED live 5/5; COMPAT row REQ-UI-011 recorded; R0 uncertainties resolved (call-string OK; getprop border_size supported). Nest: selection follow, zero focus side effects, single-focus apply, REQ-UI-009 frozen backend, unload-mid-session teardown restore, M2 regression — all CONFIRMED
+- [ ] restore_focus_on_cancel optional path (post-M4 optional; not in ROADMAP M4 deliverables)
 
 ## M5 External overlay
 - [ ] Protocol draft frozen
