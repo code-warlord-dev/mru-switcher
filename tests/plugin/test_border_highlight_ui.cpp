@@ -238,6 +238,37 @@ TEST(t_ui_05c_unload_restores_all_no_stuck) {
     CHECK(!any_highlight_left(f.io));
 }
 
+// REQ-UI-008 / R0 F3+F10: border_size >= 0 overrides the size for the highlighted
+// window; the pin exposes no border_size getprop, so restore drops the SET_PROP
+// override via `unset` while the colour slots are restored by captured value (never
+// `unset`/`-1` on a colour — the detector below only scans colour slots).
+TEST(t_ui_05d_size_override_restored_via_unset) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, 2); // size >= 0
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    bool size_write_configured = false;
+    for (const auto &[address, slot, value] : io.writes)
+        if (slot == BorderSlot::Size && address == A && value == "2")
+            size_write_configured = true;
+    CHECK(size_write_configured); // (a) the configured size was written
+
+    ui.on_session_end(UIEndReason::Applied);
+    bool size_write_unset = false;
+    for (const auto &[address, slot, value] : io.writes)
+        if (slot == BorderSlot::Size && address == A && value == "unset")
+            size_write_unset = true;
+    CHECK(size_write_unset); // (b) restore drops the SET_PROP override via `unset`
+
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == "0xa1");   // (c) colours restored
+    CHECK(io.values[A][idx(BorderSlot::InactiveColor)] == "0xa2"); //     by captured value
+    CHECK(!color_slot_write_is_bare_clear(io));                    // (d) Size `unset` must not trip the colour detector
+    CHECK(!any_highlight_left(io));
+}
+
 // --- T-UI-06: invalid WindowRef skipped, session continues ----------------------
 TEST(t_ui_06_invalid_ref_skipped_session_continues) {
     FakeBorderPropIo io;
