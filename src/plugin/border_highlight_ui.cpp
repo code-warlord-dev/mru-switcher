@@ -5,9 +5,72 @@
 #include <utility>
 #include <vector>
 
-#include <utility>
-
 namespace mru::plugin {
+
+// Live pin 0.56.2 evidence (M4-S3 nest smoke, evidence 09-border-size-probe.txt in
+// docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md):
+//   * getprop answers "<hex> <N>deg" (e.g. "ff44cc88 0deg") for colour slots and a
+//     bare integer for border_size, while setprop accepts ONLY 0x…/rgb()/rgba()
+//     forms WITHOUT the angle suffix — a suffix-echoed value written back verbatim
+//     parses to an empty gradient, i.e. an invisible border;
+//   * border_size IS exposed through getprop (the earlier "no getprop for
+//     border_size" assumption in R0 F3 was wrong), so the prior size can be
+//     restored by value.
+// normalize_capture turns every BorderPropIo::get() reply into a value setprop
+// accepts (REQ-UI-004 exact restore, REQ-UI-005 no stuck/invisible borders):
+//   1. trimmed; empty stays empty (capture-failure path unchanged);
+//   2. a trailing whitespace-separated token ending in "deg" is dropped;
+//   3. colour values not already 0x-prefixed and not rgb(/rgba( form get "0x"
+//      prepended (6- and 8-hex-digit forms; already-0x values keep any nonzero
+//      hex-digit count, e.g. short seeded forms);
+//   4. Size slot: pure digit string, empty otherwise;
+//   5. anything still not matching a 0x-prefixed hex value / rgb(...) / rgba(...)
+//      returns empty -> existing read_slot/highlight fail-soft skip applies.
+std::string normalize_capture(std::string raw, BorderSlot slot) {
+    constexpr std::string_view kWhitespace = " \t\r\n";
+    const auto first = raw.find_first_not_of(kWhitespace);
+    if (first == std::string::npos)
+        return {};
+    const auto last = raw.find_last_not_of(kWhitespace);
+    raw = raw.substr(first, last - first + 1);
+
+    if (slot == BorderSlot::Size) {
+        if (raw.find_first_not_of("0123456789") != std::string::npos)
+            return {}; // not a pure integer -> treat as unreadable
+        return raw;
+    }
+
+    // Colour slot: drop a trailing whitespace-separated token ending in "deg"
+    // (getprop echoes the gradient angle; setprop must not receive it).
+    const std::size_t space = raw.find_last_of(kWhitespace);
+    if (space != std::string::npos) {
+        const std::string_view tail = std::string_view{raw}.substr(space + 1);
+        if (tail.size() >= 3 && tail.substr(tail.size() - 3) == "deg")
+            raw = std::string{raw.substr(0, space)};
+        else
+            return {}; // extra tokens other than the angle are not restorable
+    }
+
+    // setprop grammar: 0xRRGGBB | 0xAARRGGBB | rgb(...) | rgba(...), 0x REQUIRED.
+    const bool rgb_form = raw.starts_with("rgb(") || raw.starts_with("rgba(");
+    if (!raw.starts_with("0x") && !rgb_form) {
+        if (raw.size() != 6 && raw.size() != 8)
+            return {}; // not a recognised hex length
+        raw.insert(0, "0x");
+    }
+    if (rgb_form)
+        return raw;
+
+    // Already-0x-prefixed: accept any nonzero hex-digit count (existing seeded
+    // short forms like "0xa1" must round-trip unchanged; getprop echoes the
+    // configured width). A bare value must be 6 or 8 digits before prepending.
+    const std::string_view hex_digits = std::string_view{raw}.substr(2);
+    if (hex_digits.empty())
+        return {};
+    if (hex_digits.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
+        return {}; // non-hex digits are not restorable
+    return raw;
+}
 
 BorderHighlightUI::BorderHighlightUI(BorderPropIo &io, Validator is_valid, BorderStyle style, std::string color,
                                      int size, Warn warn)
@@ -81,16 +144,27 @@ void BorderHighlightUI::highlight(std::size_t index) {
     const std::string &highlight = style_color();
     apply_slot(ref.address, BorderSlot::ActiveColor, highlight, cap.active.applied);
     apply_slot(ref.address, BorderSlot::InactiveColor, highlight, cap.inactive.applied);
-    // border_size is best-effort int prop; -1 leaves it untouched. The pin does not
-    // expose border_size through getprop, so restore uses `unset` (R0 F3/F10).
-    if (size_ >= 0)
+    // border_size IS readable via getprop on the pin (live evidence: nest smoke,
+    // evidence 09-border-size-probe.txt in
+    // docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md — the earlier R0 F3
+    // claim that it was not exposed was wrong). Capture the prior integer BEFORE
+    // the override write (a post-write read would see our own value) and restore
+    // by value; `unset` is only the fallback when that read fails.
+    if (size_ >= 0) {
+        SlotCapture prior_size;
+        const bool size_read = read_slot(ref.address, BorderSlot::Size, prior_size);
         apply_slot(ref.address, BorderSlot::Size, std::to_string(size_), cap.size_applied);
+        if (cap.size_applied && size_read) {
+            cap.size_captured = true;
+            cap.size_value = prior_size.value;
+        }
+    }
     captures_.push_back(std::move(cap));
 }
 
 bool BorderHighlightUI::read_slot(std::uint64_t address, BorderSlot slot, SlotCapture &out) {
     try {
-        out.value = io_.get(address, slot);
+        out.value = normalize_capture(io_.get(address, slot), slot);
     } catch (...) {
         return false;
     }
@@ -102,13 +176,18 @@ void BorderHighlightUI::apply_slot(std::uint64_t address, BorderSlot slot, const
 }
 
 void BorderHighlightUI::restore_window(WindowCapture &cap) {
-    // REQ-UI-005: restore only the slots we actually overrode, from captured values.
+    // REQ-UI-005: restore only the slots we actually overrode, from captured values
+    // (already normalized to the setprop grammar at capture time).
     if (cap.active.applied)
         safe_set(cap.ref.address, BorderSlot::ActiveColor, cap.active.value);
     if (cap.inactive.applied)
         safe_set(cap.ref.address, BorderSlot::InactiveColor, cap.inactive.value);
-    if (cap.size_applied)
-        safe_set(cap.ref.address, BorderSlot::Size, "unset"); // drop the SET_PROP size override
+    if (!cap.size_applied)
+        return;
+    if (cap.size_captured)
+        safe_set(cap.ref.address, BorderSlot::Size, cap.size_value); // exact prior size
+    else
+        safe_set(cap.ref.address, BorderSlot::Size, "unset"); // read failed: drop the override
 }
 
 void BorderHighlightUI::restore_all() {
