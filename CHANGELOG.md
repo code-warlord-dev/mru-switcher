@@ -9,6 +9,9 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 ### Added
 
 - M4 border UI contract (docs/design gate, no runtime behavior yet): **ADR-017 (Accepted)** — `BorderHighlightUI` with solid border highlight via public window props ("public props first, fail-soft"; concrete symbols adapter-private, recorded in `docs/COMPAT.md`; R0 memo pinned to Hyprland 0.56.2 / `efb5099`), style interface (`border_style=solid`; `pulse`/`dim` reserved), and new keys `border_color` (default **`0xffffd9a0`**) / `border_size` (default **`-1`** = leave size untouched) / `border_style` (default **`solid`**) under `plugin:mru-switcher:`; default `ui` stays **`null`**. SPEC §5 gains **REQ-UI-001..011** with tests **T-UI-03..07** continuing the T-UI series.
+- M4-S1 runtime border backend (behavior; `ui = border` opt-in, default stays `null`): `BorderHighlightUI` implements `UIPort` on the R0 mechanism — per-window `setprop active/inactive_border_color` via `invokeHyprctlCommand` (public props first, ADR-017 / REQ-UI-011; concrete symbols adapter-private in `docs/COMPAT.md`). `SessionUIBackendProxy` rebuilds the backend from the **current** config at each session start and freezes it for that session, so a `hyprctl reload` changes only the next session (REQ-UI-009). A session-start runtime probe degrades the backend to null for that session with a single warn-once (REQ-UI-002); restore is **by value** — a colour is overridden only after both prior values were read back and is restored from the captured values, never a bare `-1`/`unset` on a colour slot (R0 F10, REQ-UI-005). Dispatcher grammar and `mru:status` unchanged; nest smoke (focus-follow, latency, restore probes) is M4-S3.
+
+<!-- placeholder for post-v0.3.0 changes -->
 
 <!-- placeholder for post-v0.3.0 changes -->
 
