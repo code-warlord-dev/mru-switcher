@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(mru-switcher VERSION 0.2.0 LANGUAGES CXX)
+project(mru-switcher VERSION 0.4.0 LANGUAGES CXX)
 
 # Single source of truth for the plugin version string (L-13): CMake's
 # PROJECT_VERSION is configured into a header consumed by PLUGIN_INIT.
