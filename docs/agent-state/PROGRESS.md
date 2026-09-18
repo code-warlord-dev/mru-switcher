@@ -73,12 +73,12 @@ Updated: 2026-09-18 (M4-S1 implemented + reviewed READY on feat/m4-s1-border-hig
 
 ## M4 Border UI
 - [x] M4-R0 research border API on pin 0.56.2 (memo, pin efb5099) — DONE
-- [ ] M4-D1 design gate — ADR-017 (Accepted) + SPEC §5 REQ-UI-001..011 + config keys border_style/border_color/border_size — IN REVIEW (branch adr/017-border-highlight-ui; human gate §6.4, not yet merged)
-- [ ] M4-S1: BorderHighlightUI + backend selection by config (`ui=border`)
-- [ ] Style interface: `BorderStyle` enum, `solid` implemented (strategy inside the border backend; `pulse`/`dim` reserved)
-- [ ] Clear paths: apply/cancel/unload -> full restore, no stuck borders (REQ-UI-005, teardown restore)
-- [ ] Config keys border_style/border_color/border_size registered (REQ-UI-008)
-- [ ] M4-S3 live nest smoke + docs closeout (REQ-TRACE final, COMPAT row, CHANGELOG, USER checklist)
+- [x] M4-D1 design gate — ADR-017 (Accepted) + SPEC §5 REQ-UI-001..011 + config keys border_style/border_color/border_size (PR #26 merged)
+- [x] M4-S1: BorderHighlightUI + backend selection by config (`ui=border`) — PR #27 merged (92d84a7); SessionUIBackendProxy REQ-UI-009, runtime probe REQ-UI-002, restore-by-value R0 F10; suites t_ui_002_*/t_ui_009_*/t_ui_05d; ctest 12/12 + CI 6/6
+- [x] Style interface: `BorderStyle` enum, `solid` implemented (strategy inside the border backend; `pulse`/`dim` reserved)
+- [x] Clear paths: apply/cancel/unload -> full restore, no stuck borders (REQ-UI-005; unit t_ui_05*; unload-mid-session + abrupt-eject FM-22 -> M4-S3 nest)
+- [x] Config keys border_style/border_color/border_size registered (REQ-UI-008; CI key-namespace guard)
+- [ ] M4-S3 live nest smoke + docs closeout (REQ-TRACE final, COMPAT row, CHANGELOG, USER checklist; setprop spelling + probe classification R0-uncertain)
 - [ ] restore_focus_on_cancel optional path
 
 ## M5 External overlay
