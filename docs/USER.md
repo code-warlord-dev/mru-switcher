@@ -80,6 +80,10 @@ A session that is already running is never changed mid-flight: its frozen
 window list and selection policy stay exactly as they were when it started.
 Finish or cancel it, then start a new session to use the updated settings.
 
+Runtime `hyprctl keyword` changes to `plugin:mru-switcher:*` keys are **not**
+observed by the plugin on Hyprland 0.56.2 — edit the config file and run
+`hyprctl reload` instead (see `docs/COMPAT.md`, M4 nest smoke 2026-09-18).
+
 ---
 
 ## Behaviour
