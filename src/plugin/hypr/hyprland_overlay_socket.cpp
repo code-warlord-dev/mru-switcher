@@ -1,8 +1,10 @@
 #include "hyprland_overlay_socket.hpp"
 
+#include <exception>
 #include <utility>
 
 #include <hyprland/src/Compositor.hpp>
+#include <hyprland/src/debug/log/Logger.hpp>
 #include <wayland-server.h>
 
 namespace mru::plugin {
@@ -21,10 +23,17 @@ bool HyprlandOverlaySocket::ensure_started(const std::string &path, CommandHandl
     }
 
     stop();
+    server_.set_log_sink([](std::string_view message) {
+        Log::logger->log(Log::DEBUG, message); // REQ-O-005: dropped peer input is logged at debug
+    });
     if (!server_.start(path, [this](std::string_view line) {
             const std::optional<overlay_protocol::Command> cmd = overlay_protocol::parse_command(line);
-            if (!cmd)
-                return; // REQ-O-005: unknown/malformed line ignored
+            if (!cmd) {
+                // REQ-O-005: unknown/malformed line ignored and logged at debug.
+                Log::logger->log(Log::DEBUG,
+                                 "mru-switcher: overlay peer line ignored (unknown/malformed, REQ-O-005): {}", line);
+                return;
+            }
             if (on_command_)
                 on_command_(*cmd);
         }))
@@ -95,23 +104,37 @@ void HyprlandOverlaySocket::on_client_readable() {
 
 int HyprlandOverlaySocket::listener_callback(int, std::uint32_t mask, void *data) {
     auto *self = static_cast<HyprlandOverlaySocket *>(data);
-    if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
-        self->unwatch_listener();
-        self->server_.stop();
-        return 0;
+    try {
+        if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
+            self->unwatch_listener();
+            self->server_.stop();
+            return 0;
+        }
+        self->on_listener_readable();
+    } catch (const std::exception &e) {
+        // ADR-019: callbacks must never throw into the compositor.
+        Log::logger->log(Log::ERR, "mru-switcher: overlay listener callback threw: {}", e.what());
+    } catch (...) {
+        Log::logger->log(Log::ERR, "mru-switcher: overlay listener callback threw (unknown)");
     }
-    self->on_listener_readable();
     return 0;
 }
 
 int HyprlandOverlaySocket::client_callback(int, std::uint32_t mask, void *data) {
     auto *self = static_cast<HyprlandOverlaySocket *>(data);
-    if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
-        self->unwatch_client();
-        self->server_.drop_client();
-        return 0;
+    try {
+        if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
+            self->unwatch_client();
+            self->server_.drop_client();
+            return 0;
+        }
+        self->on_client_readable();
+    } catch (const std::exception &e) {
+        // ADR-019: callbacks must never throw into the compositor.
+        Log::logger->log(Log::ERR, "mru-switcher: overlay client callback threw: {}", e.what());
+    } catch (...) {
+        Log::logger->log(Log::ERR, "mru-switcher: overlay client callback threw (unknown)");
     }
-    self->on_client_readable();
     return 0;
 }
 

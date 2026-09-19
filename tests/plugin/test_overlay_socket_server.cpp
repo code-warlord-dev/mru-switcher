@@ -155,10 +155,15 @@ TEST(t_o_07_oversized_drop_and_no_client_send) {
     CHECK(c1 >= 0);
     CHECK(h.server.poll_accept() >= 0);
 
+    // REQ-O-005: every oversized drop is reported through the (optional) log sink.
+    int log_calls = 0;
+    h.server.set_log_sink([&log_calls](std::string_view) { ++log_calls; });
+
     const std::string huge(mru::plugin::overlay_protocol::kMaxLineBytes + 16, 'x');
     pump_send(h.server, c1, huge); // never newline-terminated
     CHECK(h.lines.empty());
     CHECK(h.server.dropped_lines() >= 2);
+    CHECK(log_calls > 0);
 
     pump_send(h.server, c1, "{\"v\":1,\"type\":\"select\",\"index\":0}\n");
     CHECK(h.lines.size() == 1);

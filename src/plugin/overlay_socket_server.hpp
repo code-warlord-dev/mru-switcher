@@ -15,11 +15,17 @@ class OverlaySocketServer {
   public:
     // Called for each complete line (newline stripped), on the compositor thread.
     using LineHandler = std::function<void(std::string_view line)>;
+    // Optional diagnostics sink; invoked with a short human-readable message when
+    // peer input is dropped (REQ-O-005). Hyprland-free; the adapter wires it to Log.
+    using LogSink = std::function<void(std::string_view message)>;
 
     OverlaySocketServer() = default;
     ~OverlaySocketServer();
     OverlaySocketServer(const OverlaySocketServer &) = delete;
     OverlaySocketServer &operator=(const OverlaySocketServer &) = delete;
+
+    // Installs the diagnostic sink (REQ-O-005). Cleared by stop().
+    void set_log_sink(LogSink sink);
 
     // Bind + listen; false on empty/too-long path or any syscall failure
     // (REQ-O-001). Must be called again only after stop().
@@ -54,6 +60,7 @@ class OverlaySocketServer {
     int client_fd_ = -1;
     std::string path_;
     LineHandler on_line_;
+    LogSink log_sink_;
     std::string recv_buf_;
     std::size_t dropped_lines_ = 0;
 };

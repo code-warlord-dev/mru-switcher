@@ -1,11 +1,13 @@
 #include "overlay_socket_server.hpp"
 
 #include <cerrno>
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -19,6 +21,14 @@ void set_nonblocking(int fd) {
     const int flags = fcntl(fd, F_GETFL, 0);
     if (flags >= 0)
         (void)fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+// Remove a leftover socket file at `path`, but never a non-socket file: a
+// misconfigured path (e.g. pointing at a regular file) must not be destroyed.
+void unlink_stale_socket(const std::string &path) {
+    struct stat st{};
+    if (::lstat(path.c_str(), &st) == 0 && S_ISSOCK(st.st_mode))
+        ::unlink(path.c_str());
 }
 
 } // namespace
@@ -41,14 +51,15 @@ bool OverlaySocketServer::start(const std::string &path, LineHandler on_line) {
     if (fd < 0)
         return false;
 
-    ::unlink(path.c_str()); // stale socket from a previous run (best-effort)
+    unlink_stale_socket(path.c_str()); // stale socket from a previous run (best-effort)
 
     addr.sun_family = AF_UNIX;
     // memcpy-style copy: sun_path is a fixed char array; size was bounds-checked.
     for (std::size_t i = 0; i < path.size(); ++i)
         addr.sun_path[i] = path[i];
 
-    if (::bind(fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) != 0) {
+    const socklen_t addr_len = static_cast<socklen_t>(offsetof(sockaddr_un, sun_path) + path.size() + 1);
+    if (::bind(fd, reinterpret_cast<sockaddr *>(&addr), addr_len) != 0) {
         ::close(fd);
         return false;
     }
@@ -66,6 +77,10 @@ bool OverlaySocketServer::start(const std::string &path, LineHandler on_line) {
     return true;
 }
 
+void OverlaySocketServer::set_log_sink(LogSink sink) {
+    log_sink_ = std::move(sink);
+}
+
 void OverlaySocketServer::stop() {
     close_client();
     if (listen_fd_ >= 0) {
@@ -78,6 +93,7 @@ void OverlaySocketServer::stop() {
     }
     recv_buf_.clear();
     on_line_ = nullptr;
+    log_sink_ = nullptr;
 }
 
 void OverlaySocketServer::close_client() {
@@ -124,9 +140,11 @@ bool OverlaySocketServer::poll_client() {
         if (n > 0) {
             recv_buf_.append(buf, static_cast<std::size_t>(n));
             if (recv_buf_.size() > overlay_protocol::kMaxLineBytes) {
-                // REQ-O-005: oversized/incomplete line -> drop the buffer.
+                // REQ-O-005: oversized/incomplete line -> drop the buffer + log.
                 recv_buf_.clear();
                 ++dropped_lines_;
+                if (log_sink_)
+                    log_sink_("mru-switcher: overlay peer line dropped (oversized, REQ-O-005)");
             }
             continue;
         }
