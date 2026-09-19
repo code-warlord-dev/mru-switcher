@@ -118,6 +118,27 @@ You can browse the list without making Hyprland actually focus every intermediat
 
 MRU Switcher is a native Hyprland plugin and currently targets **Hyprland v0.56.2**.
 
+### hyprpm (plugin manager)
+
+The repository ships a `hyprpm.toml` manifest with `commit_pins` for the tested
+Hyprland revision (`v0.56.2` / `efb5099`), repository metadata and a build stanza
+that produces `build/mru-switcher.so`:
+
+```bash
+hyprpm add https://github.com/code-warlord-dev/mru-switcher.git
+hyprpm update
+hyprpm list        # verify the plugin is installed
+hyprpm reload      # load enabled plugins into the running compositor
+```
+
+Other available commands: `hyprpm enable|disable <name>`, `hyprpm remove <url|name|author/name>`,
+`hyprpm purge-cache`. Flags such as `--no-nix`, `--no-shallow` or `-f` (force) are documented in
+`hyprpm --help`. Because the manifest pins the Hyprland commit, hyprpm rebuilds the plugin against
+the matching headers; a Hyprland upgrade is a rebuild event, never a silent compatibility window
+(see the [compatibility matrix](docs/COMPAT.md)).
+
+> The `commit_pins` plugin-side hash is finalized at the `v1.0.0` release tag (M6-T9).
+
 ### Build from source
 
 Clone the repository:

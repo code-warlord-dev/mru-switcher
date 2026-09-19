@@ -306,7 +306,7 @@ Design rules for MRU (see ARCHITECTURE.md / DECISIONS.md):
 7. Treat internal headers as unstable; prefer documented API + bus.  
 8. Fail closed on version/hash mismatch.  
 9. Document rebuild requirement for each Hyprland upgrade.  
-10. For hyprpm: provide `hyprpm.toml` with build steps and optional commit pins.
+10. For hyprpm: provide `hyprpm.toml` with build steps and optional commit pins (populated in this repo since M6-T5 — see the repository `hyprpm.toml`; pinning is a release contract per `docs/COMPAT.md`, "Risk note"; the plugin-side hash is finalized at the release tag, M6-T9).
 
 ---
 
