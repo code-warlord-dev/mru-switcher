@@ -94,8 +94,11 @@ Updated: 2026-09-19 (v0.5.0 released — M5 external overlay: PR #40 squash f390
 
 ## M6 Hardening -> v1.0
 - [x] M6 plan written — `docs/agent-state/plans/2026-09-19-m6-hardening.md` (PR #44); 9 tickets M6-T1..T9 + backlog M6-B1
-- [ ] CI unit tests (M6-T3 guard + T6/T7/T8 stress ride the ctest matrix)
-- [ ] hyprpm manifest / pins (M6-T5, finalized at tag in M6-T9)
-- [ ] Stress cases (M6-T6 rapid Tab, M6-T7 close mid-session, M6-T8 monitor disconnect)
-- [ ] SECURITY pass (M6-T4); contract freeze (M6-T1) + docs==impl (M6-T2)
+- [x] M6-T1 contract freeze for 1.x — PR #56 (f6383da): SPEC §0 freeze statement, §3.4 normative payload, COMPAT/API/USER/VERSION-MAP/CHANGELOG aligned; compliance review APPROVE
+- [x] M6-T4 SECURITY release pass — PR #57 (79e20c7); compliance review APPROVE (follow-up #59: THREAT-MODEL controls gap)
+- [x] M6-T5 hyprpm manifest — PR #60 (1f8bdd6): commit_pins populated (provisional plugin hash), clean-checkout build verified; finalize hash at tag (M6-T9)
+- [x] M6-T7 window-close stress (domain) — PR #62 (8cecb60): `domain_stress_window_close` 16→17 tests, ctest + ASan green; nest close-storm pending
+- [x] M6-T8 focus-invalidation stress (domain) — PR #63 (56a0fcf): `domain_stress_focus_invalidation`, §2.8 bounds, 500-apply storm, 17/17 green
+- [x] M6-T6 rapid Tab (domain) — PR #61 (d7363c4): `t_h_08_*` 3 tests, review metadata resolved, 17/17 green; nest 200-cycle smoke pending (blocked on nest-env infra)
+- [ ] M6-T3 CI guard + M6-T2 docs==impl audit (partially covered by staged compliance reviews)
 - [ ] Tag v1.0.0 / contract freeze (M6-T9, human gate)
