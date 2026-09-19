@@ -45,7 +45,9 @@ using mru::test::MockFocusGateway;
 using mru::test::MockUIPort;
 using mru::test::MockWindowSource;
 
-WindowRef ref(std::uint64_t address, std::uint64_t generation = 1) { return WindowRef{address, generation}; }
+WindowRef ref(std::uint64_t address, std::uint64_t generation = 1) {
+    return WindowRef{address, generation};
+}
 
 // Domain test harness: FakeClock + mock ports + real HistoryTracker (same
 // shape as tests/domain/test_session_controller.cpp).
@@ -168,7 +170,7 @@ TEST(t_h_07_04_storm_invalid_then_applied_1000_calls) {
 
     CHECK(f.fg.focused.size() == 1000); // storm total: 500 × 2, never more
     CHECK(f.ui.ends.size() == 500);     // exactly one UI end per apply
-    CHECK(f.sc.session_id() == 500); // one new session per storm iteration
+    CHECK(f.sc.session_id() == 500);    // one new session per storm iteration
     CHECK(!f.sc.is_active());
 }
 
