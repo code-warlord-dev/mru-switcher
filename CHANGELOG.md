@@ -15,6 +15,7 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 - SPEC §3.4 `mru:status` payload is now **normative** (was "informative, do not parse until 1.0"): `active= index= size= scope= session= last_end=` frozen for 1.x; new keys may be appended without a breaking change; `last_end` carries the internal `SessionEndReason` (REQ-F-009). Documentation only — dispatcher behaviour unchanged
 - `docs/COMPAT.md`: the 0.56.2 IPC caveat documented as a host limitation in the matrix — `hyprctl dispatch` prints only `ok`, so the `mru:status` payload is observable via a libwayland dispatcher binding or the plugin log, not via `hyprctl` (host limitation, not a plugin defect)
 - `docs/API.md` / `docs/USER.md`: `mru:status` wording aligned with the frozen payload (no semantic change)
+- Security release pass (M6-T4, docs-only, no behavior change): `docs/SECURITY.md` rebuilt to release grade — 5-row attack-surface table (in-process `.so`, fail-closed hash check in `PLUGIN_INIT`, opt-in AF_UNIX overlay socket with peer-input validation/bounds and no shell-out, hyprlang config under `plugin:mru-switcher:`, Appendix B protocol framing) with threat vector + measure per row; explicit distribution-trust advisory (build from pinned source or checksum-verified artifacts; never load prebuilt `.so` from untrusted remotes); private security-reporting section; explicit non-goals (no sandboxing, no capability model); cross-links to `THREAT-MODEL.md` / `OBSERVABILITY.md` / `SUPPORT-AND-RELEASE.md` instead of duplication
 
 ### Fixed
 
