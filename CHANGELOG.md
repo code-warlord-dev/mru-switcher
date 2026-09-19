@@ -21,6 +21,12 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Fixed
 
+### Tests
+
+- **Stress coverage (M6-T6/T7/T8, issues #52/#53/#51):** domain binaries `t_h_08_*` (rapid Tab hammer: 1000-cycle wrap, interleave burst, wrap=false clamp), `T-H-06` (window-close stress: prune/clamp, NoWindows drain, dead origin, 300-step LCG), `T-H-07` (§2.8 bounds: InvalidTarget×2 → InvalidSelection, Failed-definitive, 500-apply storm, monitor drain) — ctest 17/17 + ASan/UBSan green; live nest smokes on pin v0.56.2 all pass (T-H-08: 200 cycles in 0.89s, exact-once-apply; T-H-06: close-storm matrix; T-H-07: 2-monitor disconnect; `docs/agent-state/reports/2026-09-19-m6-*.md`)
+
+### Fixed
+
 ## [0.5.0] - 2026-09-19
 
 ### Added
