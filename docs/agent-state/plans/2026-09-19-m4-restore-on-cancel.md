@@ -115,7 +115,6 @@ TEST(t_s_10_plugin_shutdown_never_restores):         // PluginShutdown
 Same principle for **T-S-09**: assert both `fg.focused` contents and `ui.ends` (`Cancelled`, `Cancelled`) so the frozen-flag leg cannot pass by accident.
 
 ## 5. DoD / merge gates (AGENTS.md §6.2) + PR shape + risks
-## 5. DoD / merge gates (AGENTS.md §6.2) + PR shape + risks
 
 - [ ] SPEC-compliant (SPEC §6 sentence + §9 IDs land in the same PR)
 - [ ] No focus from `mru:cycle` (N1 + T-F-01); domain free of Hyprland types; single FocusGateway
