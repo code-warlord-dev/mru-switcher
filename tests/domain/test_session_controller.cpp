@@ -618,6 +618,74 @@ TEST(t_cfg_02_reload_policy_applies_to_next_session_only) {
     EQ(f.sc.index(), 2u);
 }
 
+// --- T-S-09: a mid-session policy refresh does not change the frozen restore flag
+// (REQ-S-009 with REQ-R-001); the *next* session applies the new value.
+TEST(t_s_09_restore_flag_frozen_mid_session) {
+    SessionPolicy policy;
+    policy.restore_focus_on_cancel = true;
+    Fixture f(policy);
+    f.candidates({ref(10), ref(20)});
+    f.source.focused_result = {ref(10)}; // session_origin
+    CHECK(f.sc.cycle(Direction::Next).ok);
+
+    SessionPolicy reloaded; // restores turned off mid-session
+    reloaded.restore_focus_on_cancel = false;
+    f.sc.set_policy(reloaded);
+
+    CHECK(f.sc.cancel().ok);
+    CHECK(f.fg.focused == std::vector<WindowRef>{ref(10)}); // frozen true -> origin restored
+    CHECK(f.ui.ends.size() == 1);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+
+    // Next session starts with the reloaded policy: cancel must not move focus.
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    f.source.focused_result = {ref(10)};
+    CHECK(f.sc.cancel().ok);
+    EQ(f.fg.focused.size(), 1u); // no second focus
+    CHECK(f.ui.ends.size() == 2);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+    CHECK(f.ui.ends[1] == UIEndReason::Cancelled);
+}
+
+// --- T-S-10 (a): a session ending for a non-cancel reason never restores focus.
+// REQ-S-006 / NoWindows (FM-02). The origin stays *valid* but outside the snapshot,
+// so any focus on this path is observable (not masked by the validity guard).
+TEST(t_s_10_empty_snapshot_never_restores) {
+    SessionPolicy policy;
+    policy.restore_focus_on_cancel = true;
+    Fixture f(policy);
+    f.candidates({ref(10)});             // snapshot = [10]
+    f.set_valid(ref(99), true);          // origin is valid ...
+    f.source.focused_result = {ref(99)}; // ... but is not a candidate
+    CHECK(f.sc.cycle(Direction::Next).ok);
+
+    f.set_valid(ref(10), false);
+    f.sc.on_window_invalid(ref(10)); // snapshot empties -> end NoWindows
+
+    CHECK(f.fg.focused.empty()); // no restore on a non-cancel end
+    CHECK(f.sc.last_end_reason() == mru::domain::SessionEndReason::NoWindows);
+    CHECK(!f.sc.is_active());
+    CHECK(f.ui.ends.size() == 1);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+}
+
+// --- T-S-10 (b): same guarantee for the plugin shutdown path (L-11, REQ-S-005).
+TEST(t_s_10_plugin_shutdown_never_restores) {
+    SessionPolicy policy;
+    policy.restore_focus_on_cancel = true;
+    Fixture f(policy);
+    f.candidates({ref(10)});    // snapshot = [10]
+    f.set_valid(ref(99), true); // origin valid but out of the snapshot
+    f.source.focused_result = {ref(99)};
+    CHECK(f.sc.cycle(Direction::Next).ok);
+
+    f.sc.plugin_shutdown();
+
+    CHECK(f.fg.focused.empty());
+    CHECK(f.sc.last_end_reason() == mru::domain::SessionEndReason::PluginShutdown);
+    CHECK(!f.sc.is_active());
+}
+
 } // namespace
 
 int main() {

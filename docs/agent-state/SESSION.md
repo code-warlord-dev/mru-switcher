@@ -1,13 +1,13 @@
 # Session State
-Updated: 2026-09-18
-Human goal: M4 — Border UI + polish (released as v0.4.0)
-Active milestone: M4 CLOSED — v0.4.0 released
-Branch: main (f8d2eb2 = PR #32 squash; tag v0.4.0 on f8d2eb2)
-PR: #32 merged (release prep); #27/#29/#30/#31/#32 all merged
-Release: v0.4.0 — annotated tag + GitHub Release (notes = CHANGELOG [0.4.0] + milestone/pin line + D1/D2 highlights); hyprpm commit_pins deliberately post-M6
-Next action: idle — per human direction: light polish notes, optional restore_focus_on_cancel between 0.4 and M5, or M5 only if rich UI needed; FM-22/perf = backlog, not gate
+Updated: 2026-09-19
+Human goal: finish M4 — optional `restore_focus_on_cancel` path (last M4 item), then full M4 report
+Active milestone: M4 COMPLETE — last optional item closed (v0.4.0 already released; this work lands under [Unreleased])
+Branch: feat/m4-restore-on-cancel (8 commits) → pushed, PR open, CI pending
+PR: #35 (Fixes #34)
+Release: v0.4.0 already tagged; no new tag proposed for this (tests/docs only) — human gate (§16.2)
+Next action: CI green → self-review → squash-merge to main → verify main; M5 starts only after human approves the M4 report
 Blocked: none
-State: M4 complete — M4-R0 (#25), ADR-017 + SPEC REQ-UI-001..011 (#26), M4-S1 backend (#27), M4-S3 smoke + D2 restore-grammar fix CONFIRMED live 5/5 + D1 keyword-channel docs (#30). ctest 12/12; CI 6/6. Nest evidence committed with inlined annex.
-SPEC focus: REQ-UI-001..011 closed for M4; T-UI-01..07 (+ t_ui_010_*)
-Open: FM-22 abrupt-eject stuck borders (documented gap); perf loop / FFM highlight-follow untested (outside matrix); live degrade leg NOT-RUNNABLE (unit-covered); restore_focus_on_cancel optional path
-Last artifact: PR #30 (dfff936); PROGRESS M4 checkboxes flipped
+State: nest N1–N4 PASS live on pin 0.56.2/efb5099 (origin refocus, dead-origin no-op, REQ-S-009 freeze, byte-exact border restore); T-S-09/T-S-10 green and mutation-checked (scratch worktree: M1/M2/M3 correctly RED); SPEC §6 clarification numbered REQ-R-003; ctest 12/12; reviewer verdict APPROVE WITH NITS — all nits closed
+SPEC focus: REQ-R-001/002/003, REQ-S-005/006/007/009, REQ-F-003, REQ-H-001; T-S-05/06/09/10, T-CFG-02
+Open: FM-22 abrupt-eject stuck borders (documented gap); perf loop / FFM highlight-follow untested (outside M4); non-cancel-end boundary is unit-only (documented in COMPAT)
+Last artifact: PR #35 — review `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel-review.md` (964cf43)

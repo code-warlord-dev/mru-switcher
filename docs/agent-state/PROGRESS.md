@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-18 (M4-S3 closed: PR #30 merged dfff936 — D2 restore-grammar fix + D1 keyword-channel docs; M4 exit criteria met; optional restore_focus_on_cancel open; v0.4.0 tag pending human approval)
+Updated: 2026-09-19 (M4 fully closed: optional restore_focus_on_cancel path — live nest N1–N4 PASS, T-S-09/T-S-10 regression, REQ-R-003 clarification; PR #35 open, CI pending)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -79,7 +79,7 @@ Updated: 2026-09-18 (M4-S3 closed: PR #30 merged dfff936 — D2 restore-grammar 
 - [x] Clear paths: apply/cancel/unload -> full restore, no stuck borders (REQ-UI-005; unit t_ui_05*; unload-mid-session + abrupt-eject FM-22 -> M4-S3 nest)
 - [x] Config keys border_style/border_color/border_size registered (REQ-UI-008; CI key-namespace guard)
 - [x] M4-S3 live nest smoke + docs closeout — PR #30 merged (dfff936): smoke report committed with inlined evidence (`reports/2026-09-18-m4-s3-nest-smoke.md`, pin 0.56.2/efb5099); D1 keyword-channel limitation documented (COMPAT/USER/REQ-TRACE); D2 restore-grammar S1 fixed (normalize_capture + border_size restore-by-value) and CONFIRMED live 5/5; COMPAT row REQ-UI-011 recorded; R0 uncertainties resolved (call-string OK; getprop border_size supported). Nest: selection follow, zero focus side effects, single-focus apply, REQ-UI-009 frozen backend, unload-mid-session teardown restore, M2 regression — all CONFIRMED
-- [ ] restore_focus_on_cancel optional path (post-M4 optional; not in ROADMAP M4 deliverables)
+- [x] restore_focus_on_cancel optional path — live nest N1–N4 PASS (origin refocus, dead-origin no-op, REQ-S-009 freeze; pin 0.56.2/efb5099), regression T-S-09/T-S-10 (mutation-checked), SPEC §6 numbered as REQ-R-003; report `reports/2026-09-19-m4-restore-on-cancel.md`, review `reports/2026-09-19-m4-restore-on-cancel-review.md`
 
 ## M5 External overlay
 - [ ] Protocol draft frozen

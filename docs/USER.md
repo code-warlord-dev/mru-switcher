@@ -235,3 +235,4 @@ Recompile against the new headers. The plugin aborts on hash mismatch to avoid c
 - [ ] Scratchpad shown → switchable; hidden → excluded from every scope ([live nest §2–3](agent-state/reports/2026-09-17-m3-s3-nest-smoke.md))
 - [ ] `monitor` / `workspace` / `visible` / `app` scopes filter correctly ([live nest §4–5](agent-state/reports/2026-09-17-m3-s3-nest-smoke.md))
 - [ ] Config reload: new `debounce_ms` / `default_scope` apply to the **next** session only; the active session keeps its frozen policy ([T-CFG-02](../tests/domain/test_session_controller.cpp))
+- [ ] `restore_focus_on_cancel = 1` (config file + `hyprctl reload`): `mru:cancel` refocuses the window that was focused at session start; a dead origin is a no-op (no focus change, no crash) — [live nest confirmation](agent-state/reports/2026-09-19-m4-restore-on-cancel.md)
