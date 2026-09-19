@@ -1,17 +1,23 @@
-# Pin: Hyprland v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f); plugin commit filled at tag time.
+# Distribution manifest for hyprpm (M6-T5, issue #47).
+#
+# Hyprland pin: v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f) — the tested
+# revision per docs/COMPAT.md. Pinning is a **release contract** (COMPAT "Risk note").
+#
+# The plugin-side hash is PROVISIONAL (current origin/main, f6383da6) and is
+# finalized only at the v1.0.0 tag (M6-T9).
 [repository]
 name = "mru-switcher"
 authors = ["code-warlord-dev"]
-# commit_pins is intentionally unset through 0.5.0: a plugin release is built from its
-# own tag, so the plugin-side hash is the tag itself. The Hyprland side is pinned
-# in docs/COMPAT.md (v0.56.2 / efb50993780079460b0cbed1363e2166a2de1d9f). Populate
-# commit_pins when hyprpm distribution starts (M6).
-# commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = <plugin_commit_at_tag>"]
+# commit_pins: "<hyprland_sha> = <plugin_sha>" (hyprpm reads this array).
+# Plugin-side hash finalized at v1.0.0 tag (M6-T9) — provisional origin/main
+# value (f6383da6f223e8d74b30e886818ffb94f2c26f93) until then.
+commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = f6383da6f223e8d74b30e886818ffb94f2c26f93"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
-# Authors filled for v0.3.0 (audit L-14 hyprpm publish blocker); commit_pins still
-# deferred as noted above.
+# Authors filled for v0.3.0 (audit L-14 hyprpm publish blocker); commit_pins
+# populated for M6-T5 — see the header note: plugin-side hash provisional
+# until the v1.0.0 tag (M6-T9).
 authors = ["code-warlord-dev"]
 output = "build/mru-switcher.so"
 build = [
