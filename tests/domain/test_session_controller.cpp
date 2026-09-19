@@ -618,6 +618,35 @@ TEST(t_cfg_02_reload_policy_applies_to_next_session_only) {
     EQ(f.sc.index(), 2u);
 }
 
+// --- T-S-09: a mid-session policy refresh does not change the frozen restore flag
+// (REQ-S-009 with REQ-R-001); the *next* session applies the new value.
+TEST(t_s_09_restore_flag_frozen_mid_session) {
+    SessionPolicy policy;
+    policy.restore_focus_on_cancel = true;
+    Fixture f(policy);
+    f.candidates({ref(10), ref(20)});
+    f.source.focused_result = {ref(10)}; // session_origin
+    CHECK(f.sc.cycle(Direction::Next).ok);
+
+    SessionPolicy reloaded; // restores turned off mid-session
+    reloaded.restore_focus_on_cancel = false;
+    f.sc.set_policy(reloaded);
+
+    CHECK(f.sc.cancel().ok);
+    CHECK(f.fg.focused == std::vector<WindowRef>{ref(10)}); // frozen true -> origin restored
+    CHECK(f.ui.ends.size() == 1);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+
+    // Next session starts with the reloaded policy: cancel must not move focus.
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    f.source.focused_result = {ref(10)};
+    CHECK(f.sc.cancel().ok);
+    EQ(f.fg.focused.size(), 1u); // no second focus
+    CHECK(f.ui.ends.size() == 2);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+    CHECK(f.ui.ends[1] == UIEndReason::Cancelled);
+}
+
 } // namespace
 
 int main() {
