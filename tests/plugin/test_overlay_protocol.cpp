@@ -33,8 +33,7 @@ TEST(t_o_03_encode_session_start) {
 
 // --- T-O-03 (b): selection + session_end reason mapping (REQ-O-003, REQ-F-009).
 TEST(t_o_03_encode_selection_and_end) {
-    EQ(mru::plugin::overlay_protocol::encode_selection(2),
-       std::string("{\"v\":1,\"type\":\"selection\",\"index\":2}"));
+    EQ(mru::plugin::overlay_protocol::encode_selection(2), std::string("{\"v\":1,\"type\":\"selection\",\"index\":2}"));
     EQ(mru::plugin::overlay_protocol::encode_session_end(UIEndReason::Applied),
        std::string("{\"v\":1,\"type\":\"session_end\",\"reason\":\"applied\"}"));
     EQ(mru::plugin::overlay_protocol::encode_session_end(UIEndReason::Cancelled),
