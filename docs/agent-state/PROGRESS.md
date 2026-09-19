@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-19 (M4 fully closed: optional restore_focus_on_cancel path — live nest N1–N4 PASS, T-S-09/T-S-10 regression, REQ-R-003 clarification; PR #35 open, CI pending)
+Updated: 2026-09-19 (M4 fully closed: PR #35 merged 03c0ae4 — optional restore_focus_on_cancel: live nest N1–N4 PASS, T-S-09/T-S-10 regression, REQ-R-003 clarification; v0.4.0 released; awaiting human review → M5)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md

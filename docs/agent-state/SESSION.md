@@ -1,13 +1,13 @@
 # Session State
 Updated: 2026-09-19
-Human goal: finish M4 — optional `restore_focus_on_cancel` path (last M4 item), then full M4 report
-Active milestone: M4 COMPLETE — last optional item closed (v0.4.0 already released; this work lands under [Unreleased])
-Branch: feat/m4-restore-on-cancel (8 commits) → pushed, PR open, CI pending
-PR: #35 (Fixes #34)
-Release: v0.4.0 already tagged; no new tag proposed for this (tests/docs only) — human gate (§16.2)
-Next action: CI green → self-review → squash-merge to main → verify main; M5 starts only after human approves the M4 report
+Human goal: M4 closed — deliver the full M4 report (Russian) to the human; M5 starts only after human approval
+Active milestone: M4 COMPLETE (last optional item `restore_focus_on_cancel` closed in PR #35); v0.4.0 released
+Branch: main @ 03c0ae4 (PR #35 squash-merged; feat/m4-restore-on-cancel deleted)
+PR: #35 MERGED (CI 6/6 green, self-reviewed); issue #34 CLOSED
+Release: v0.4.0 tagged; restore work deliberately under [Unreleased] — no new tag proposed (tests/docs only; human gate §16.2)
+Next action: deliver full M4 report in Russian → await human review/approval → M5 only after that
 Blocked: none
-State: nest N1–N4 PASS live on pin 0.56.2/efb5099 (origin refocus, dead-origin no-op, REQ-S-009 freeze, byte-exact border restore); T-S-09/T-S-10 green and mutation-checked (scratch worktree: M1/M2/M3 correctly RED); SPEC §6 clarification numbered REQ-R-003; ctest 12/12; reviewer verdict APPROVE WITH NITS — all nits closed
+State: nest N1–N4 PASS live on pin 0.56.2/efb5099; T-S-09/T-S-10 green + mutation-checked (M1/M2/M3 correctly RED); SPEC §6 clarification = REQ-R-003; ctest 12/12 on merged main; reviewer APPROVE WITH NITS — all closed
 SPEC focus: REQ-R-001/002/003, REQ-S-005/006/007/009, REQ-F-003, REQ-H-001; T-S-05/06/09/10, T-CFG-02
-Open: FM-22 abrupt-eject stuck borders (documented gap); perf loop / FFM highlight-follow untested (outside M4); non-cancel-end boundary is unit-only (documented in COMPAT)
-Last artifact: PR #35 — review `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel-review.md` (964cf43)
+Open: FM-22 abrupt-eject stuck borders (documented gap); perf loop / FFM highlight-follow untested; T-S-10 boundary unit-only (documented)
+Last artifact: docs/agent-state/reports/2026-09-19-m4-restore-on-cancel-review.md
