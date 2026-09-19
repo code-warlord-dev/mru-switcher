@@ -10,8 +10,9 @@
 
 namespace mru::plugin {
 
-// Human-readable `mru:status` payload (SPEC §3.4). The format is informative for
-// v0.x and may gain fields; clients must not parse it strictly before 1.0.
+// Human-readable `mru:status` payload (SPEC §3.4). Frozen since the M6-T1
+// contract freeze (SPEC §0): `active= index= size= scope= session= last_end=`
+// in order; new keys may only be appended (additive, tolerate unknown).
 std::string format_status(bool active, std::size_t index, std::size_t size, std::string_view scope,
                           std::uint64_t session_id, std::optional<mru::domain::SessionEndReason> last_end_reason);
 

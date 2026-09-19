@@ -69,7 +69,7 @@ Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT` (ADR-00
 | Key | Type | Default | Notes |
 |-----|------|---------|-------|
 | `border_style` | string | `solid` | `solid` required; `pulse` / `dim` reserved → treated as `solid` until implemented; unknown → `solid` + one warning (REQ-UI-007) |
-| `border_color` | color/string | `0xffffd9a0` | Used when `ui = border`. Documented implementation default (hex `0xAARRGGBB`); accepts formats supported by the pinned Hyprland (`rgb(...)` / `rgba(rrggbbaa)` / hex) — REQ-UI-008 |
+| `border_color` | string | `0xffffd9a0` | Used when `ui = border`. Documented implementation default (verbatim `setprop` colour grammar: hex `0xAARRGGBB` / `rgb(...)` / `rgba(rrggbbbaa)`; intentionally registered as `String`, not `Color` — REQ-UI-008) |
 | `border_size` | int | `-1` | `-1` = do not modify window border size; `≥ 0` may set the size for the highlighted window for the duration of the highlight |
 
 ### Added in M5 — external overlay protocol

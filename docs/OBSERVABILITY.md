@@ -34,13 +34,16 @@ Prefer single-line key=value for nest log grepping. No PII beyond window class/t
 
 ## `mru:status`
 
-Frozen since the M6-T1 contract freeze (SPEC §0, §3.4). Verbose form (optional arg `verbose`):
+Payload format is **frozen since the M6-T1 contract freeze** (SPEC §0, §3.4):
 
 ```text
-active=true session_id=3 index=1 size=4 scope=global ui=null pending_debounce=false pruned_total=2
+active=true index=2 size=5 scope=global session=3 last_end=none
 ```
 
+Keys in fixed order: `active= index= size= scope= session= last_end=`
+(`last_end=` is `Applied|UserCancel|NoWindows|InvalidSelection|FocusFailed|PluginShutdown|none`).
 Additional keys may be appended in minor releases — tolerate unknown keys; the frozen set above is stable.
+There is no `verbose` argument (`mru:status` takes no args) and no `pending_debounce`/`pruned_total`/`session_id=` keys.
 
 ## Rate limiting
 
