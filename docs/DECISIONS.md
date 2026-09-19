@@ -422,3 +422,103 @@ Constraints:
 - `docs/agent-state/research/2026-09-17-m4-border-api.md` — R0 memo (concrete pin symbols)
 - `docs/ROADMAP.md` — M4 Border UI + polish
 - `include/mru/domain/ui_port.hpp` — UIPort header
+
+---
+
+## ADR-018: External overlay (M5) — AF_UNIX stream socket protocol
+
+**Status:** Accepted (design gate for M5)
+
+**Related:** ADR-004 (UI as Strategy), ADR-011 (default null + fallback), ADR-016 __5__ (`external_socket` registered/reserved), ROADMAP M5, SPEC §5 + §12 Appendix B
+
+**Context:**  
+M5 adds the optional `external` UI backend: a rich overlay (previews, search, click-to-select) that lives **outside** the compositor process. ROADMAP M5 exit criteria: protocol documented in SPEC appendix; plugin remains functional if the overlay is absent. Three constraints shape the decision:
+
+1. **REQ-PERF-001 / REQ-PERF-003** — no blocking I/O, no socket IPC on the `mru:*` dispatcher hot path; M5 socket I/O is best-effort, non-blocking / timed.
+2. **REQ-RE-001** — all controller mutations run on the compositor main thread.
+3. **CI `plugin-guards`** — non-facade `src/plugin/*` files must stay Hyprland-free (ADR-007), so the socket server must be POSIX-only with the event-loop wiring in the hypr adapter.
+
+The R0 memo (`docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md`) verified that the pinned Hyprland (v0.56.2 / `efb5099`) exposes `CEventLoopManager::doOnReadable(CFileDescriptor fd, fn)` — a Wayland event-loop fd watcher (POLLIN/READABLE) that runs on the main thread and takes ownership of the fd. No timer polling needed.
+
+**Decision:**
+
+1. **Transport: AF_UNIX SOCK_STREAM, single client.** The plugin binds the socket at `plugin:mru-switcher:external_socket` and listens. The **first** accepted client is the overlay; further clients are closed. All fds are `O_NONBLOCK`.
+
+   - Why stream, not datagram: natural connect/peer-lost detection, backpressure signalling for best-effort drops, and no need to track `sockaddr` per sender. One overlay peer is the intended product shape for M5.
+   - Empty `external_socket` or failed `bind`/`listen` ⇒ `ui=external` behaves as `null` + warn-once that session (REQ-UI-002; same fail-soft culture as ADR-011/017).
+
+2. **Reads are event-driven; writes are best-effort.**
+
+   - Listener fd and the accepted client fd are registered via `doOnReadable` (main thread, R0-F1). Accept and receive happen in those callbacks, non-blocking.
+   - Outgoing messages: `send()` on the `O_NONBLOCK` stream fd; on any backpressure/error (`EWOULDBLOCK`, `EAGAIN`, `EINTR`, `EPIPE`, …) the line is **dropped** and logged at debug (R0-F4). A slow, dead, or absent peer can never stall `mru:*`.
+   - Line framing: newline-delimited UTF-8, one JSON object per line (SPEC Appendix B, made normative).
+
+3. **Core/domain split (ADR-007).**
+
+   - `mru_plugin_core` owns: `OverlayProtocol` (pure JSON encode/decode), `ExternalOverlayUI` (UIPort implementation that turns lifecycle calls into protocol lines over an abstract `OverlayTransport`), and `OverlaySocketServer` (POSIX AF_UNIX server: `socket/bind/listen/accept/send/recv`, non-blocking, line framing). All three are Hyprland-free and unit-testable without the compositor; the socket server is tested over a real loopback socket in CI.
+   - `mru_plugin_hypr` owns `HyprlandOverlaySocket`: constructs the server and registers `doOnReadable` on the listener and client fds, wires a command sink to `SessionController`.
+   - `PluginState` gains an `overlay_socket` member that **outlives** per-session UI backends (the `SessionUIBackendProxy` factory builds a fresh `ExternalOverlayUI` per session, like `BorderHighlightUI`). Teardown order: `ui` → `overlay_socket` → … (socket after UI, so a live backend never dereferences a destroyed transport; listener fds are closed before `PLUGIN_EXIT` returns).
+
+4. **Peer commands are bounds-checked, never arbitrary.**
+
+   | Peer message | Controller action |
+   |--------------|-------------------|
+   | `select index` | `SessionController::select_index(i)` — new domain op; Active-only and `i < size`; **virtual selection only** (REQ-F-003), never focuses |
+   | `apply` | existing `SessionController::apply()` (idempotent on Idle) |
+   | `cancel` | existing `SessionController::cancel()` (idempotent on Idle) |
+
+   Unknown version/type, malformed JSON, or oversized lines are ignored and logged at debug; they must never affect session state (REQ-O-005). A hostile peer cannot focus an arbitrary window — only an in-snapshot index and apply/cancel of the current session (REQ-O-007; THREAT-MODEL gets a matching row).
+
+5. **Fallback semantics.**
+
+   - Backend construction fails (bind error, empty path, `ui=external` before M5 code) → `NullUI` + warn-once per plugin lifetime (REQ-UI-002).
+   - Overlay peer absent or dies mid-session → session logic unaffected; outgoing lines are dropped best-effort. The next session simply re-probes the socket. This satisfies "plugin remains functional if overlay is absent" (ROADMAP M5).
+
+6. **Config surface is unchanged.** `external_socket` was already registered (ADR-016 __5__); it now has effect. `ui` default stays **`null`** (ADR-011 process); `external` is opt-in. Reload semantics follow REQ-S-009/REQ-UI-009 (next session only).
+
+**Consequences:**
+
+### Positive
+
+- REQ-PERF-001/003 honoured: zero blocking I/O on the dispatcher path; event-driven reads.
+- The overlay is a real external process (any language) behind a versioned, documented protocol — previews/search stay out of the plugin (ROADMAP non-goal).
+- Fail-soft fits the existing null-fallback culture (ADR-011/017).
+- Domain/core stays Hyprland-free and unit-testable; the socket server gets a real loopback test in CI.
+- `select_index` is a small, safely-reusable domain capability (bounds-checked, never focuses).
+
+### Negative / risks
+
+- STREAM + single client: a second overlay simply does not attach (documented).
+- Best-effort sends can drop lines under backpressure (documented; overlay should not poll the peer path).
+- Peer command timing: commands are processed on the main thread when readable; no ordering guarantee against concurrent keybinds beyond the compositor's own serialization (same as dispatchers, REQ-RE-004).
+- POSIX syscalls must be guarded at the C-ABI boundary (HIGH-4 pattern) — a `send`/`recv` error must never throw into the compositor.
+
+### Follow-ups (not M5 exit)
+
+- Async/keyboard filtering from the overlay (search-as-you-type) — protocol extension, separate PR.
+- Multiple concurrent peers or broadcast UI.
+- Optional `v=2` fields (icons, monitor geometry) — additive.
+
+---
+
+**Compliance mapping:**
+
+| Topic | REQ / ADR |
+|-------|-----------|
+| UIPort strategy | ADR-004 |
+| Default null + unavailable backend fallback | ADR-011, REQ-UI-002 |
+| ExternalOverlayUI as backend | REQ-O-002, REQ-O-003 |
+| No abort on UI failure | REQ-UI-001 |
+| Non-blocking / main-thread I/O | REQ-PERF-001/003, REQ-RE-001, REQ-O-006 |
+| Peer input bounds-checked | REQ-O-004, REQ-O-007 |
+| Unknown/malformed peer data ignored | REQ-O-005 |
+| Teardown closes socket + listeners | REQ-O-008 |
+| Reload next-session only | REQ-S-009, REQ-CFG-002, REQ-UI-009 |
+
+**References:**
+
+- `docs/SPEC.md` §5.3 — REQ-O-001..008; §12 Appendix B — frozen protocol
+- `docs/ARCHITECTURE.md` §8 — UIPort; `include/mru/domain/ui_port.hpp`
+- `docs/COMPAT.md` — pin + external mechanism row (0.56.2 / `efb5099…`)
+- `docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md` — R0 memo
+- `docs/ROADMAP.md` — M5 External overlay
