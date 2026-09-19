@@ -6,6 +6,15 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+### Added
+
+- Domain regression coverage for the optional restore path: **T-S-09** (`t_s_09_restore_flag_frozen_mid_session`) — a `hyprctl reload` of `restore_focus_on_cancel` mid-session does not change the frozen flag; the next session applies the new value (REQ-S-009, REQ-R-001) — and **T-S-10** (`t_s_10_empty_snapshot_never_restores`, `t_s_10_plugin_shutdown_never_restores`) — a session ending for a non-cancel reason (empty snapshot / `NoWindows`, plugin shutdown) never moves focus, even when the session origin stays valid (REQ-R-002, REQ-S-005/006)
+- Restore-on-cancel leg confirmed live in a nested session (pin v0.56.2 / `efb5099`): `mru:cancel` refocuses the session origin and a dead origin is a no-op — live nest confirmation (see `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel.md`)
+
+### Changed
+
+- SPEC §6 clarification (documentation only, **no behaviour change**): restore applies to an explicit `mru:cancel` only — a session ended for any other reason (REQ-S-006 empty snapshot, plugin shutdown, apply) never moves focus
+
 ## [0.4.0] - 2026-09-18
 
 ### Added

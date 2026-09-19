@@ -11,11 +11,11 @@
 | REQ-S-002 | T-S-01, T-S-04 | SessionController | M1 |
 | REQ-S-003 | T-S-01 | SessionController | M1 |
 | REQ-S-004 | T-F-02, T-S-02 | SessionController + FocusGateway | M2 |
-| REQ-S-005 | T-S-03, T-S-05, T-S-06 | SessionController | M2 |
+| REQ-S-005 | T-S-03, T-S-05, T-S-06, T-S-10 | SessionController | M2 |
 | REQ-S-006 | T-F-04 | SessionController | M1 |
 | REQ-S-007 | T-S-05 | SessionController | M1 |
 | REQ-S-008 | T-S-01, observability | session_id monotonic | M2 |
-| REQ-S-009 | T-CFG-02 | immutable SessionPolicy | M2 |
+| REQ-S-009 | T-CFG-02, T-S-09 | immutable SessionPolicy | M2 |
 | REQ-S-010 | T-S-07 | ignore scope override when Active | M2 |
 | REQ-S-011 | — | no session timeout | M1 |
 | REQ-SNAP-001 | T-S-01 | Snapshot / History order | M1 |
@@ -82,8 +82,8 @@
 | REQ-UI-009 | T-CFG-02, `t_ui_009_backend_swap_next_session`, `t_ui_009_no_session_is_safe` | ui / border-* reload -> next session only (SessionUIBackendProxy) | M4 |
 | REQ-UI-010 | T-UI-06, T-ID-01, `t_ui_06_invalid_ref_skipped_session_continues` | resolve via registry weak-lock validity (ADR-013/016); invalid -> skip highlight, session continues | M4 |
 | REQ-UI-011 | COMPAT matrix + review | public props first; concrete symbols adapter-private, recorded in COMPAT (R0 memo); hooks not required; COMPAT mechanism row recorded 2026-09-18 (nest done) | M4 |
-| REQ-R-001 | T-S-05 | restore on cancel | M2 |
-| REQ-R-002 | T-S-06 | origin invalid | M2 |
+| REQ-R-001 | T-S-05, T-S-09, T-S-10 | restore on cancel (cancel-only; frozen policy) | M2 |
+| REQ-R-002 | T-S-06, T-S-10 | origin invalid; non-cancel end never restores (NoWindows / shutdown) | M2 |
 | REQ-HL-001 | nest, CI guards | hash check | M2 |
 | REQ-HL-002 | nest | addDispatcherV2 | M2 |
 | REQ-HL-003 | nest | Event::bus | M2 |
@@ -111,6 +111,8 @@
 | T-S-06 | restore origin invalid | M2 |
 | T-S-07 | Active cycle ignores new scope token | M2 |
 | T-S-08 | start_offset first selects slot 0 | M2 |
+| T-S-09 | restore flag frozen mid-session (policy refresh); next session uses new value | M2 |
+| T-S-10 | non-cancel session end (NoWindows / plugin shutdown) never restores focus | M2 |
 | T-SC-01 | five-scope membership (global/monitor/workspace/visible/app) | M3 |
 | T-SC-02 | app class compare + empty-class fold | M3 |
 | T-SC-03 | special workspace shown vs hidden (REQ-SC-002a) | M3 |
