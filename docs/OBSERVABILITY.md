@@ -34,13 +34,13 @@ Prefer single-line key=value for nest log grepping. No PII beyond window class/t
 
 ## `mru:status`
 
-Informative v0.x string. Verbose form (optional arg `verbose`):
+Frozen since the M6-T1 contract freeze (SPEC §0, §3.4). Verbose form (optional arg `verbose`):
 
 ```text
 active=true session_id=3 index=1 size=4 scope=global ui=null pending_debounce=false pruned_total=2
 ```
 
-Do not parse strictly until 1.0.
+Additional keys may be appended in minor releases — tolerate unknown keys; the frozen set above is stable.
 
 ## Rate limiting
 

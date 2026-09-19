@@ -8,7 +8,13 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Contract freeze for 1.x (M6-T1, issue #50):** SPEC §0 freezes the dispatcher names + grammar, all 11 registered config keys under `plugin:mru-switcher:` (names / types / defaults / reload semantics, incl. the ticket's 10: `ui`, `external_socket`, `start_offset`, `wrap`, `debounce_ms`, `default_scope`, `restore_focus_on_cancel`, `border_style`, `border_color`, `border_size`), and the snapshot / apply / restore semantics as **stable for 1.x**; breaking any of them requires a major bump (semver, AGENTS §15 / VERSION-MAP)
+
 ### Changed
+
+- SPEC §3.4 `mru:status` payload is now **normative** (was "informative, do not parse until 1.0"): `active= index= size= scope= session= last_end=` frozen for 1.x; new keys may be appended without a breaking change; `last_end` carries the internal `SessionEndReason` (REQ-F-009). Documentation only — dispatcher behaviour unchanged
+- `docs/COMPAT.md`: the 0.56.2 IPC caveat documented as a host limitation in the matrix — `hyprctl dispatch` prints only `ok`, so the `mru:status` payload is observable via a libwayland dispatcher binding or the plugin log, not via `hyprctl` (host limitation, not a plugin defect)
+- `docs/API.md` / `docs/USER.md`: `mru:status` wording aligned with the frozen payload (no semantic change)
 
 ### Fixed
 

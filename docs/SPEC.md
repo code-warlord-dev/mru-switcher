@@ -1,12 +1,43 @@
 # MRU Window Switcher — Technical Specification
 
-**Version:** 0.2 (pre-implementation, design gate closed)  
-**Status:** Normative for v0.x implementation
+**Version:** 0.3 (M6 contract audit)  
+**Status:** Normative; **contract freeze for 1.x declared in §0 (M6-T1)**
 **Document type:** Normative  
-**Related:** ARCHITECTURE.md, DECISIONS.md, USER.md, ROADMAP.md
+**Related:** ARCHITECTURE.md, DECISIONS.md, USER.md, ROADMAP.md, COMPAT.md
 
 This document is the detailed contract for behaviour, interfaces, configuration, and error handling.  
 Where this SPEC conflicts with informal docs, **SPEC wins** until an ADR updates it.
+
+---
+
+## 0. Contract freeze for 1.x (M6-T1)
+
+Declared in M6-T1 (issue #50) after a line-by-line audit of §2–§4 against `src/plugin/`, `src/domain/`, and
+`tests/`. No semantic gaps were found; this section changes no behaviour — it freezes what already ships.
+
+**Frozen for 1.x:**
+
+1. **Dispatcher names + grammar** (§3): `mru:cycle [next|prev] [global|monitor|workspace|visible|app]`,
+   `mru:apply`, `mru:cancel`, `mru:status` — registered via `addDispatcherV2`. Omitted direction = `next`
+   (REQ-DISP-001); a scope token without an explicit direction is accepted (REQ-DISP-003); unknown tokens fail
+   with a clear error string (REQ-SC-003).
+2. **`mru:status` payload** (§3.4): the `key=value` format there is **normative**; new keys may be appended
+   without a breaking change (additive).
+3. **Configuration keys** (§4): every registered key under `plugin:mru-switcher:` — 11 total:
+   `debounce_ms`, `default_scope`, `start_offset`, `wrap`, `ui`, `border_style`, `border_color`,
+   `border_size`, `lock_history_on_session`, `restore_focus_on_cancel`, `external_socket` — names, types,
+   defaults, and reload semantics (REQ-CFG-001..004, REQ-S-009, REQ-UI-009) are frozen.
+4. **Snapshot / apply / restore semantics** (§2): snapshot frozen at first cycle, prune only (REQ-SNAP-003/004);
+   virtual selection — `mru:cycle` never focuses (REQ-F-003); exactly one focus per `mru:apply` through
+   FocusGateway (REQ-F-006) with apply-after-invalidation per §2.8; lock-in + debounce (REQ-H-001..003,
+   ADR-001..003); restore on an explicit `mru:cancel` only (REQ-R-003).
+5. **External UI protocol** (§12 Appendix B, protocol version `v=1`): frozen as shipped in M5.
+
+**Versioning rule (semver):** in 1.x, breaking any frozen contract above — a dispatcher rename, a grammar
+restriction, a key rename/type/default change, or a semantics change — requires a **major** bump (2.0.0).
+Additive changes (a new optional dispatcher argument, an appended `mru:status` key, a new config key) are
+minor. See `docs/VERSION-MAP.md` and AGENTS.md §15. During the remainder of 0.x a frozen contract may still
+change only with a CHANGELOG entry, and every such change must be reconciled before `v1.0.0`.
 
 ---
 
@@ -196,7 +227,7 @@ Domain tests may use a mock FocusGateway that returns these values without Hyprl
 | `FocusFailed` | Cancelled | FocusResult `Failed` |
 | `PluginShutdown` | Cancelled | Unload / teardown while Active |
 
-`mru:status` and debug logs SHOULD expose the internal reason when verbose; the human-readable status string remains non-normative until 1.0.
+`mru:status` and debug logs SHOULD expose the internal reason when verbose; the human-readable status string is frozen in §3.4 (normative since the M6-T1 contract freeze, §0).
 
 ### 2.9 SchedulerPort (debounce)
 
@@ -292,13 +323,21 @@ mru:cycle [next|prev] [global|monitor|workspace|visible|app]
 
 **Grammar:** `mru:status`
 
-**Behaviour:** Return success; error field or notification MAY contain human-readable status:
+**Behaviour:** Return success; the error field of the successful result MAY carry the human-readable status:
 
 ```text
 active=true index=2 size=5 scope=global
 ```
 
-Exact format is informative for v0.x; clients must not parse strictly until 1.0 freezes it.
+**Frozen payload (1.x):** `active=`, `index=`, `size=`, `scope=` plus the additive `session=`
+(monotonic `session_id`, REQ-S-008) and `last_end=` (internal `SessionEndReason`, REQ-F-009 —
+`Applied | UserCancel | NoWindows | InvalidSelection | FocusFailed | PluginShutdown`, or `none`),
+in that order, as produced by the plugin on 0.56.2. **Normative since the M6-T1 contract freeze (§0):**
+tools may parse the `key=value` pairs strictly; unknown additional keys MAY appear in minor releases
+and MUST be tolerated. When no session is active: `active=false index=0 size=0`, and `scope` is the
+effective `default_scope`. Transport visibility is a host matter — on the pinned Hyprland 0.56.2
+`hyprctl dispatch` prints only `ok` and does not surface this payload (`docs/COMPAT.md` matrix row);
+a libwayland dispatcher binding or the plugin log shows it.
 
 ---
 
@@ -307,12 +346,15 @@ Exact format is informative for v0.x; clients must not parse strictly until 1.0 
 All keys under `plugin:mru-switcher:`.  
 Registered only in `PLUGIN_INIT`. Types follow Hyprland config value types used by the plugin API.
 
+**Frozen surface (1.x, §0):** names, types, defaults, and reload semantics of all keys below are stable
+in 1.x; a change to any of them requires a major version bump. Additive new keys are minor releases.
+
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `debounce_ms` | int | `400` | Debounce before MRU commit (ms); `0` = immediate; clamp to **[0, 5000]** (REQ-CFG-004) |
 | `default_scope` | string | `global` | One of: `global`, `monitor`, `workspace`, `visible`, `app` |
 | `start_offset` | string | `second` | `first` \| `second` |
-| `wrap` | bool/int | `true` | Wrap selection at ends |
+| `wrap` | bool | `true` | Wrap selection at ends |
 | `ui` | string | `null` | `null` \| `border` \| `external` — see REQ-UI-002 |
 | `border_style` | string/enum | `solid` | Border highlight style; M4: only `solid` has effect; unknown/reserved (`pulse`, `dim`, …) → `solid` + warn-once (REQ-UI-007) |
 | `border_color` | color/string | `0xffffd9a0` | Border highlight colour — documented implementation default (hex `0xAARRGGBB`); format as accepted by the pinned Hyprland; documented in USER/API (REQ-UI-008) |
