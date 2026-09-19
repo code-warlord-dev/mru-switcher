@@ -22,7 +22,7 @@
 | REQ-SNAP-001a | T-SNAP-01 (merge_mru_merge) | plugin-owned MRU first (ADR-015) | M2 |
 | REQ-SNAP-002 | T-SC-01, nest | Snapshot + validity filter | M2 (global) |
 | REQ-SNAP-003 | T-S-01 | Snapshot immutability | M1 |
-| REQ-SNAP-004 | T-F-03 | prune + clamp | M1 |
+| REQ-SNAP-004 | T-F-03, T-H-06 | prune + clamp | M1 |
 | REQ-SEL-001 | T-SEL-01, T-S-08 | start_offset second | M1 |
 | REQ-SEL-002 | T-S-08 | start_offset first | M2 |
 | REQ-SEL-003 | T-SEL-02 | next wrap | M1 |
@@ -136,6 +136,7 @@
 | T-H-03 | replace pending | M1 |
 | T-H-04 | cancel on destroy | M1 |
 | T-H-05 | invalid before fire | M1 |
+| T-H-06 | window-close stress under Active (prune/clamp, NoWindows drain, dead origin, 300-step LCG) | M6 |
 | T-H-seed | init seed from compositor or empty | M2 |
 | T-F-01 | cycle no FocusGateway | M1 |
 | T-F-02 | apply one focus | M1 |
