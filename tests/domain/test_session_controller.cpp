@@ -742,12 +742,12 @@ TEST(t_o_08_peer_select_then_apply_focuses_chosen) {
     CHECK(!f.sc.is_active());
 }
 
-// --- T-H-05 (M6-T6, issue #52): rapid Tab hammer — 1000 consecutive cycles on
+// --- T-H-08 (M6-T6, issue #52): rapid Tab hammer — 1000 consecutive cycles on
 // one active session. Static source, wrap=true, start_offset=Second. On every
 // step: session stays Active, snapshot identical (no rebuild), index follows
 // advance_index wrap policy, zero FocusGateway calls (REQ-F-003), zero UI end
 // events until the explicit apply (REQ-F-007), no exceptions.
-TEST(t_h_05_rapid_tab_hammer_1000_cycles_wrap) {
+TEST(t_h_08_rapid_tab_hammer_1000_cycles_wrap) {
     Fixture f; // defaults: start_offset = Second, wrap = true, lock-in on
     constexpr std::size_t kWindows = 5;
     constexpr int kCycles = 1000;
@@ -797,11 +797,11 @@ TEST(t_h_05_rapid_tab_hammer_1000_cycles_wrap) {
     CHECK(!f.sc.is_active());
 }
 
-// --- T-H-05 (M6-T6): interleave burst — cycle×N -> cancel -> cycle×N -> apply.
+// --- T-H-08 (M6-T6): interleave burst — cycle×N -> cancel -> cycle×N -> apply.
 // The apply at the end of the whole burst focuses EXACTLY once (REQ-F-006),
 // ends Applied, and the history commit after unlock promotes the applied window
 // to the MRU head (REQ-RE-003).
-TEST(t_h_05_interleave_burst_cancel_then_apply_focuses_once) {
+TEST(t_h_08_interleave_burst_cancel_then_apply_focuses_once) {
     Fixture f;
     f.candidates({ref(10), ref(20), ref(30), ref(40)});
     constexpr int kFirst = 500;
@@ -847,10 +847,10 @@ TEST(t_h_05_interleave_burst_cancel_then_apply_focuses_once) {
     CHECK(order.front() == selected);
 }
 
-// --- T-H-05 (M6-T6): wrap=false hammer clamps at both edges (REQ-SEL-005) —
+// --- T-H-08 (M6-T6): wrap=false hammer clamps at both edges (REQ-SEL-005) —
 // 200 Next cycles pin the index at the last slot, 200 Prev cycles pin it back
 // at the first slot; no focus, no end events, session stays Active.
-TEST(t_h_05_rapid_tab_hammer_wrap_false_clamps) {
+TEST(t_h_08_rapid_tab_hammer_wrap_false_clamps) {
     SessionPolicy p;
     p.wrap = false;
     p.start_offset = StartOffset::First;
