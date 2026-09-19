@@ -8,6 +8,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **CI release guard (M6-T3, issue #49):** new `release-guard` job (ubuntu-24.04, grep+python3 only, ~30s) asserting the ctest matrix still holds ≥17 binaries, REQ-TRACE covers T-H-06/07/08, `CHANGELOG [Unreleased]` is non-empty, and `hyprpm.toml commit_pins` parses non-empty; nested smoke stays a manual pre-tag gate (`docs/agent-state/reports/2026-09-19-m6-manual-nest-gate.md`)
+
 - **hyprpm distribution manifest (M6-T5, issue #47):** `hyprpm.toml` now carries `commit_pins` (`efb50993780079460b0cbed1363e2166a2de1d9f` = Hyprland v0.56.2 → plugin hash; the plugin-side value is provisional until the `v1.0.0` tag, M6-T9), repository metadata and a build stanza verified by a clean-checkout build producing `build/mru-switcher.so` (REQ-H-004); `docs/COMPAT.md` gains the v1.0.0 matrix row ("hyprpm install smoke pending release tag") and an explicit "pinning is a release contract" statement, `docs/VERSION-MAP.md` fills the 1.0.0 Hyprland pin, README install section gains hyprpm instructions, `docs/HYPRLAND-PLUGIN-SYSTEM.md` §10 references the populated pins
 
 - **Contract freeze for 1.x (M6-T1, issue #50):** SPEC §0 freezes the dispatcher names + grammar, all 11 registered config keys under `plugin:mru-switcher:` (names / types / defaults / reload semantics, incl. the ticket's 10: `ui`, `external_socket`, `start_offset`, `wrap`, `debounce_ms`, `default_scope`, `restore_focus_on_cancel`, `border_style`, `border_color`, `border_size`), and the snapshot / apply / restore semantics as **stable for 1.x**; breaking any of them requires a major bump (semver, AGENTS §15 / VERSION-MAP)
