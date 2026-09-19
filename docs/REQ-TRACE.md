@@ -137,6 +137,8 @@
 | T-H-04 | cancel on destroy | M1 |
 | T-H-05 | invalid before fire | M1 |
 | T-H-06 | window-close stress under Active (prune/clamp, NoWindows drain, dead origin, 300-step LCG) | M6 |
+| T-H-07 | focus-invalidation storm (§2.8 bounds, Failed-definitive, monitor drain, 500-apply storm) | M6 |
+| T-H-08 | rapid Tab hammer (1000-cycle wrap, interleave burst, wrap=false clamp; nest smoke) | M6 |
 | T-H-seed | init seed from compositor or empty | M2 |
 | T-F-01 | cycle no FocusGateway | M1 |
 | T-F-02 | apply one focus | M1 |
