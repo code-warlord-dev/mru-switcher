@@ -93,7 +93,9 @@ Updated: 2026-09-19 (v0.5.0 released — M5 external overlay: PR #40 squash f390
 - [x] M5-S6 PR + CI + merge to main — PR #40 squash-merged (f3906b6); review blockers fixed (REQ-O-005 debug log, no-throw callbacks); CI 6/6
 
 ## M6 Hardening -> v1.0
-- [ ] CI unit tests
-- [ ] hyprpm manifest / pins
-- [ ] Stress cases
-- [ ] Tag v1.0.0 / contract freeze
+- [x] M6 plan written — `docs/agent-state/plans/2026-09-19-m6-hardening.md` (PR #44); 9 tickets M6-T1..T9 + backlog M6-B1
+- [ ] CI unit tests (M6-T3 guard + T6/T7/T8 stress ride the ctest matrix)
+- [ ] hyprpm manifest / pins (M6-T5, finalized at tag in M6-T9)
+- [ ] Stress cases (M6-T6 rapid Tab, M6-T7 close mid-session, M6-T8 monitor disconnect)
+- [ ] SECURITY pass (M6-T4); contract freeze (M6-T1) + docs==impl (M6-T2)
+- [ ] Tag v1.0.0 / contract freeze (M6-T9, human gate)
