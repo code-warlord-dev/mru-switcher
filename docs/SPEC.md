@@ -395,7 +395,7 @@ When `restore_focus_on_cancel = true`:
 
 **REQ-R-002** If invalid, no focus change beyond ending the session.
 
-Restore applies to an explicit `mru:cancel` only; a session ended for any other reason (REQ-S-006 empty snapshot / `NoWindows`, plugin shutdown, apply) never moves focus.
+**REQ-R-003** Restore applies to an explicit `mru:cancel` only. A session ended for any other reason (REQ-S-006 empty snapshot / `NoWindows`, plugin shutdown, `apply`) SHALL NOT move focus to `session_origin`.
 
 ---
 
@@ -466,7 +466,7 @@ Restore applies to an explicit `mru:cancel` only; a session ended for any other 
 | T-SC-05 | unknown scope token fails `mru:cycle` with a clear error string (REQ-SC-003; parse/dispatch layer, M3-S3) |
 | T-ID-02 | ref validity is decided by weak-ref lock(), not the closed flag (REQ-ID-006, ADR-016 __1__) |
 | T-S-09 | policy refresh mid-session does not change the frozen restore flag (REQ-S-009) |
-| T-S-10 | non-cancel session end (NoWindows / plugin shutdown) never moves focus (REQ-S-006) |
+| T-S-10 | non-cancel session end (NoWindows / plugin shutdown) never moves focus (REQ-S-006, REQ-R-003) |
 
 T-UI-03..07 continue the T-UI series begun in M2 (T-UI-01/02).
 
