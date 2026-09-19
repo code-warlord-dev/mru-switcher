@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-19 (M5 code + docs complete on branch feat/m5-external-overlay: protocol frozen, ExternalOverlayUI + socket, live nest 13/13 PASS, ADR-019; PR pending — M5 checkbox closes on merge to main)
+Updated: 2026-09-19 (M5 fully closed: PR #40 squash-merged f3906b6 — external overlay socket, protocol, live nest 13/13, ADR-019, review blockers fixed; CI 6/6; v0.5.0 tag awaiting human gate)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -90,7 +90,7 @@ Updated: 2026-09-19 (M5 code + docs complete on branch feat/m5-external-overlay:
 - [x] M5-S3 `OverlaySocketServer` + `HyprlandOverlaySocket` + `ui=external` wiring + reference stub (REQ-O-001/004/006/007/008, T-O-07) — commits 7e3d77a..4deb303
 - [x] external_socket config key now has effect; empty/unbindable → null + warn-once (REQ-O-001)
 - [x] ExternalOverlayUI + fallback; ADR-019 removable fd watch; docs S5 (SPEC/ARCHITECTURE/COMPAT/API/USER/CHANGELOG/REQ-TRACE)
-- [ ] M5-S6 PR + CI + merge to main (then close M5 checkbox)
+- [x] M5-S6 PR + CI + merge to main — PR #40 squash-merged (f3906b6); review blockers fixed (REQ-O-005 debug log, no-throw callbacks); CI 6/6
 
 ## M6 Hardening -> v1.0
 - [ ] CI unit tests
