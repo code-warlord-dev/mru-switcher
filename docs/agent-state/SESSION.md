@@ -1,12 +1,12 @@
 # Session State
 Updated: 2026-09-19
 Human goal: prepare the repo for the first stable-facing release; M5 external overlay delivered
-Active milestone: M5 COMPLETE — v0.5.0 release PR (tag placed on the release merge commit)
-Branch: main (release PR for v0.5.0); tag v0.5.0 on the release merge commit
-PR: #40 M5 MERGED; #39 assets MERGED (e51f17f); #42 README MERGED (85a3a5f); release PR = this change
-Next action: M6 planning (writing-plans / to-tickets on hardening → v1.0)
-Blocked: none
-State: ctest 15/15 (clang debug + ASan/UBSan + gcc); nest smoke 13/13 PASS on pin 0.56.2/efb5099; CI 6/6 on every merge
-SPEC focus: M5 closed (REQ-O-001..008, ADR-018/019); M6 will target contract freeze, hyprpm pins, stress
-Open: known 0.5.0 limitations recorded in docs/COMPAT.md (same-path .so reload; non-cancel-end live test); M6 not started
-Last artifact: v0.5.0 release PR
+Active milestone: M6 HARDENING → v1.0 — plan merged (PR #44); issues not yet created
+Branch: main @ 0980cdb; no active feature branch
+PR: #40/#39/#42/#43 MERGED (v0.5.0 released, tag v0.5.0); #44 plan MERGED
+Next action: await human approval to create M6 milestone + issues T1..T9/B1, then start M6-T1 (contract-freeze audit)
+Blocked: M6 issue creation awaiting human approval (plan §6)
+State: v0.5.0 released; ctest 15/15 (clang debug + ASan/UBSan + gcc); nest 13/13 on pin 0.56.2/efb5099; CI 6/6
+SPEC focus: M5 closed; M6 = contract freeze (T1), docs==impl (T2), CI gate (T3), security (T4), hyprpm pins (T5), stress T6/T7/T8, release T9
+Open: known 0.5.0 limitations in docs/COMPAT.md; M6-B1 same-path .so reload (confirm→fix-or-document)
+Last artifact: docs/agent-state/plans/2026-09-19-m6-hardening.md (PR #44)
