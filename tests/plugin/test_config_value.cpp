@@ -60,8 +60,8 @@ TEST(t_ui_03_effective_backend_selection) {
     EQ(effective_ui_backend(cfg), UiBackend::Border);
 
     cfg.ui_border = false;
-    cfg.ui_external = true; // unimplemented until M5 -> null fallback
-    EQ(effective_ui_backend(cfg), UiBackend::Null);
+    cfg.ui_external = true; // M5: external overlay backend (ADR-018)
+    EQ(effective_ui_backend(cfg), UiBackend::External);
 }
 
 // REQ-UI-007: unknown/reserved border styles behave as solid and signal a warning.
