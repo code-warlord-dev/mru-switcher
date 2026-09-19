@@ -2,7 +2,7 @@
 [repository]
 name = "mru-switcher"
 authors = ["code-warlord-dev"]
-# commit_pins is intentionally unset for 0.3.0: a plugin release is built from its
+# commit_pins is intentionally unset through 0.5.0: a plugin release is built from its
 # own tag, so the plugin-side hash is the tag itself. The Hyprland side is pinned
 # in docs/COMPAT.md (v0.56.2 / efb50993780079460b0cbed1363e2166a2de1d9f). Populate
 # commit_pins when hyprpm distribution starts (M6).
