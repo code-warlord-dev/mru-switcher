@@ -1,5 +1,12 @@
 # MRU Window Switcher for Hyprland
 
+![ci](https://img.shields.io/github/actions/workflow/status/code-warlord-dev/mru-switcher/ci.yml?branch=main&label=ci)
+![release](https://img.shields.io/github/v/release/code-warlord-dev/mru-switcher?label=release)
+![license](https://img.shields.io/github/license/code-warlord-dev/mru-switcher)
+![language](https://img.shields.io/github/languages/top/code-warlord-dev/mru-switcher)
+![C++](https://img.shields.io/badge/C%2B%2B-23-00599C)
+![Hyprland](https://img.shields.io/badge/Hyprland-v0.56.2-blue)
+
 **Alt+Tab that remembers how you actually work** — not where a window sits on a grid.
 
 Built for **[Omarchy](https://omarchy.org)** (and anyone on **[Hyprland](https://hyprland.org)** who wants the same feel): take the best interaction ideas from **[Niri](https://github.com/YaLTeR/niri)** and make them feel native under Hyprland, without replacing the compositor or forcing a different layout philosophy.
