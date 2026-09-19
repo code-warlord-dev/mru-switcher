@@ -86,8 +86,10 @@ is attached. A reference peer is provided at `tools/overlay_stub.py`.
 | peer → plugin | `apply` | — |
 | peer → plugin | `cancel` | — |
 
-Envelope: one JSON object per `\n`, `"v": 1`, `"type"`. Unknown version/type, malformed JSON, or
-oversized lines are ignored. `addr` is `0x` + lowercase hex (same value as `hyprctl clients`).
+Envelope: one JSON object per `\n`, `"v": 1`, `"type"`. The decoder accepts a tolerant subset of JSON —
+arbitrary whitespace and extra unknown JSON keys are tolerated — while unknown `v`/`type`, malformed
+JSON, missing required fields, and oversized lines are ignored. `addr` is `0x` + lowercase hex (same
+value as `hyprctl clients`).
 
 ### Reload
 

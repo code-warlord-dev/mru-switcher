@@ -183,6 +183,7 @@ Full report: `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel.md`; raw 
 - **Rejected primitive:** `CEventLoopManager::doOnReadable` was verified present on the pin but **not usable** here — it consumes the `CFileDescriptor` and exposes no handle to cancel the waiter, so a peer disconnect could not be cleaned up. See ADR-019.
 - **Transport:** AF_UNIX `SOCK_STREAM`, single client, `O_NONBLOCK`, `MSG_NOSIGNAL`; send is best-effort (drop on `EAGAIN`/`EWOULDBLOCK`/`EPIPE`/error).
 - **Config bind timing:** on this pin the registered config values are not populated during `PLUGIN_INIT`; the socket is therefore bound on the `config.reloaded` that follows load (and again, idempotently, at session start). Clearing `external_socket` or switching `ui` away from `external` tears the listener down (REQ-O-001).
+- **Reload vs active session:** a `config.reloaded` that switches `ui` away from `external` (or clears the path) stops the listener immediately; the frozen in-session `ExternalOverlayUI` then sends best-effort to no peer and behaves as `ui = null` (REQ-O-002/REQ-UI-009).
 - **Protocol:** frozen in SPEC §12 Appendix B; reference peer `tools/overlay_stub.py`.
 
 ### M5 nest smoke (2026-09-19) — recorded

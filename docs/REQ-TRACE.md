@@ -103,10 +103,10 @@
 | REQ-O-002 | T-O-06, `t_o_06_null_resolver_and_applied_end` | ExternalOverlayUI over OverlayTransport (session_start/selection/session_end) | M5 |
 | REQ-O-003 | T-O-03, `t_o_03_encode_selection_and_end` | overlay_protocol encode (JSON, `\n` framing, `0x` hex addr) | M5 |
 | REQ-O-004 | T-O-01, T-O-08, `t_o_04_parse_peer_commands`, nest | SessionController::select_index (virtual, Active-only, no focus) + peer `select`/`apply`/`cancel` routing | M5 |
-| REQ-O-005 | T-O-04, T-O-05 | parse: known v/type only; malformed/unknown/oversize ignored + debug | M5 |
-| REQ-O-006 | T-O-07, nest | listener/client fd watch via `wl_event_loop_add_fd` / `wl_event_source_remove` (ADR-019) | M5 |
+| REQ-O-005 | T-O-04, T-O-05, `t_o_07_oversized_drop_and_no_client_send` (log sink) | parse: known v/type only; malformed/unknown/oversize ignored + logged at debug (adapter `Log::logger->log`, core `LogSink`) | M5 |
+| REQ-O-006 | T-O-07, nest | listener/client fd watch via `wl_event_loop_add_fd` / `wl_event_source_remove` (adapter: nest smoke only; loop is compositor-owned, ADR-019) | M5 |
 | REQ-O-007 | T-O-02, `t_o_07_oversized_drop_and_no_client_send` | out-of-range `select` ignored; oversize peer line dropped without send | M5 |
-| REQ-O-008 | T-O-07, nest (unload mid-session) | teardown: remove fd watches, close clients, unlink socket; no leak | M5 |
+| REQ-O-008 | T-O-07, nest (unload mid-session), (adapter: nest smoke only; loop is compositor-owned, ADR-019) | teardown: remove fd watches, close clients, unlink socket; no leak | M5 |
 
 ## Test ID index
 
