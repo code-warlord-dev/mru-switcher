@@ -91,8 +91,9 @@ M3-S3 §7 scope adapter (not implemented), multi-monitor, `ui=border`/`external`
 > some other way (notification/log/patched client) or recorded aspirationally. The rows are **kept**,
 > not deleted; treat them as "capture mechanism unspecified". The plugin itself computes the string
 > (failure-path strings do surface), so this is a **documentation/reproducibility defect, not a plugin
-> defect**; SPEC §3.4 makes the format informative and non-parsable until 1.0, so this is not a SPEC
-> violation and needs no ADR. Details + verdict table:
+> defect**; the SPEC §3.4 format was informative before the M6-T1 contract freeze and is
+> **normative now** (SPEC §0 / §3.4); the visibility caveat remains a **host** limitation, not a SPEC
+> violation, a contract gap, or an ADR trigger. Details + verdict table:
 > `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md` (§SPEC verdict).
 > For smoke runs, assert status state indirectly via `hyprctl activewindow -j` / `focusHistoryID`.
 
