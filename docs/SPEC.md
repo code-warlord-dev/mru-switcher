@@ -335,7 +335,10 @@ active=true index=2 size=5 scope=global
 in that order, as produced by the plugin on 0.56.2. **Normative since the M6-T1 contract freeze (§0):**
 tools may parse the `key=value` pairs strictly; unknown additional keys MAY appear in minor releases
 and MUST be tolerated. When no session is active: `active=false index=0 size=0`, and `scope` is the
-effective `default_scope`. Transport visibility is a host matter — on the pinned Hyprland 0.56.2
+effective `default_scope`. `session=` is the monotonic `session_id` (REQ-S-008) — the id of the
+active session while one is running, and of the most recently started session while idle;
+`last_end=` is `none` until the first session has ended, then the reason the most recent session
+ended (REQ-F-009). Transport visibility is a host matter — on the pinned Hyprland 0.56.2
 `hyprctl dispatch` prints only `ok` and does not surface this payload (`docs/COMPAT.md` matrix row);
 a libwayland dispatcher binding or the plugin log shows it.
 
@@ -359,8 +362,8 @@ in 1.x; a change to any of them requires a major version bump. Additive new keys
 | `border_style` | string/enum | `solid` | Border highlight style; M4: only `solid` has effect; unknown/reserved (`pulse`, `dim`, …) → `solid` + warn-once (REQ-UI-007) |
 | `border_color` | color/string | `0xffffd9a0` | Border highlight colour — documented implementation default (hex `0xAARRGGBB`); format as accepted by the pinned Hyprland; documented in USER/API (REQ-UI-008) |
 | `border_size` | int | `-1` | Border highlight size; `-1` = do not touch window border size (colour only) (REQ-UI-008) |
-| `lock_history_on_session` | bool/int | `true` | Enable lock-in while Active |
-| `restore_focus_on_cancel` | bool/int | `false` | On cancel, focus `session_origin` if still valid |
+| `lock_history_on_session` | bool | `true` | Enable lock-in while Active |
+| `restore_focus_on_cancel` | bool | `false` | On cancel, focus `session_origin` if still valid |
 | `external_socket` | string | (empty) | Path for the External UI protocol (M5, ADR-018): AF_UNIX stream socket bound by the plugin. Empty path or bind failure ⇒ `ui = external` behaves as `null` + warn-once (REQ-O-001) |
 
 **REQ-CFG-001** Invalid string enums SHOULD fall back to default and MAY notify once.
