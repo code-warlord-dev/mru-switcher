@@ -221,12 +221,37 @@ static void build_state() {
     // the controller holds a UIPort&, so a stable SessionUIBackendProxy is installed
     // once and rebuilds the concrete backend from the CURRENT config on each
     // session start. A `hyprctl reload` therefore takes effect on the NEXT session,
-    // never mid-session. `external` starts the socket lazily here and degrades to
-    // NullUI + warn-once when the path is empty or the socket cannot start
-    // (REQ-O-001); `null`/unknown use the no-op backend.
+    // never mid-session. `external` binds the socket at load (so a peer can connect
+    // ahead of the first session) and degrades to NullUI + warn-once when the path
+    // is empty or the socket cannot start (REQ-O-001); `null`/unknown use the no-op
+    // backend.
     st.border_io = std::make_unique<HyprctlBorderPropIo>();
     st.overlay_socket = std::make_unique<HyprlandOverlaySocket>();
-    st.ui = std::make_unique<SessionUIBackendProxy>([&st]() -> std::unique_ptr<mru::domain::UIPort> {
+    // Peer commands map onto existing, bounds-safe controller paths
+    // (REQ-O-004/REQ-O-007); guarded() keeps a hostile peer from escaping into the
+    // compositor (HIGH-4). The handler closes over PluginState, so it is valid for
+    // the whole plugin lifetime; the controller is created right below and only
+    // dereferenced once peer data actually arrives.
+    HyprlandOverlaySocket::CommandHandler overlay_commands = [&st](const overlay_protocol::Command &cmd) {
+        (void)guarded([&] {
+            const auto to_result = [](const mru::domain::SessionController::CommandResult &r) {
+                return r.ok ? ok_result() : err_result(r.error);
+            };
+            switch (cmd.type) {
+            case overlay_protocol::CommandType::Select:
+                return to_result(st.controller->select_index(cmd.index));
+            case overlay_protocol::CommandType::Apply:
+                return to_result(st.controller->apply());
+            case overlay_protocol::CommandType::Cancel:
+                return to_result(st.controller->cancel());
+            }
+            return ok_result();
+        });
+    };
+    if (effective_ui_backend(st.config) == UiBackend::External)
+        (void)st.overlay_socket->ensure_started(st.config.external_socket, overlay_commands);
+
+    st.ui = std::make_unique<SessionUIBackendProxy>([&st, &overlay_commands]() -> std::unique_ptr<mru::domain::UIPort> {
         if (effective_ui_backend(st.config) == UiBackend::Border) {
             return std::make_unique<BorderHighlightUI>(
                 *st.border_io,
@@ -249,27 +274,9 @@ static void build_state() {
                 });
         }
         if (effective_ui_backend(st.config) == UiBackend::External) {
-            // Peer commands map onto existing, bounds-safe controller paths
-            // (REQ-O-004/REQ-O-007); guarded() keeps a hostile peer from escaping
-            // into the compositor (HIGH-4).
-            const bool socket_ok = st.overlay_socket->ensure_started(
-                st.config.external_socket, [&st](const overlay_protocol::Command &cmd) {
-                    (void)guarded([&] {
-                        const auto to_result = [](const mru::domain::SessionController::CommandResult &r) {
-                            return r.ok ? ok_result() : err_result(r.error);
-                        };
-                        switch (cmd.type) {
-                        case overlay_protocol::CommandType::Select:
-                            return to_result(st.controller->select_index(cmd.index));
-                        case overlay_protocol::CommandType::Apply:
-                            return to_result(st.controller->apply());
-                        case overlay_protocol::CommandType::Cancel:
-                            return to_result(st.controller->cancel());
-                        }
-                        return ok_result();
-                    });
-                });
-            if (socket_ok) {
+            // ensure_started is idempotent; it restarts only when the reloaded path
+            // changed, and covers the null->external reload transition.
+            if (st.overlay_socket->ensure_started(st.config.external_socket, overlay_commands)) {
                 return std::make_unique<ExternalOverlayUI>(
                     *st.overlay_socket, [&st](const mru::domain::WindowRef &ref) {
                         OverlayWindowInfo info;
