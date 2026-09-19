@@ -319,7 +319,7 @@ Registered only in `PLUGIN_INIT`. Types follow Hyprland config value types used 
 | `border_size` | int | `-1` | Border highlight size; `-1` = do not touch window border size (colour only) (REQ-UI-008) |
 | `lock_history_on_session` | bool/int | `true` | Enable lock-in while Active |
 | `restore_focus_on_cancel` | bool/int | `false` | On cancel, focus `session_origin` if still valid |
-| `external_socket` | string | (empty) | Path for External UI protocol — **reserved, no effect until M5** (registered so `hyprctl getoption` shows the documented surface; ADR-016 __5__) |
+| `external_socket` | string | (empty) | Path for the External UI protocol (M5, ADR-018): AF_UNIX stream socket bound by the plugin. Empty path or bind failure ⇒ `ui = external` behaves as `null` + warn-once (REQ-O-001) |
 
 **REQ-CFG-001** Invalid string enums SHOULD fall back to default and MAY notify once.
 
@@ -347,7 +347,7 @@ on_session_end(reason: Applied | Cancelled)  # UI; internal SessionEndReason is 
 |---------|--------------|
 | `null` | No compositor side effects |
 | `border` | Visible highlight of selected window; cleared on session end; MUST NOT leave permanent rule damage |
-| `external` | Best-effort notify via socket; session logic MUST work if peer absent |
+| `external` | Best-effort notify via AF_UNIX socket (M5, ADR-018); session logic MUST work if peer absent |
 
 UI provisioning follows ADR-004 / ADR-017; the config default stays `null` in M4 (ADR-011) and concrete border symbols are adapter-private, recorded in `docs/COMPAT.md` (REQ-UI-011).
 
@@ -384,6 +384,53 @@ UI provisioning follows ADR-004 / ADR-017; the config default stays `null` in M4
 **REQ-UI-011** Prefer public compositor/plugin APIs for border mutation on the pinned Hyprland revision. Exact symbols are adapter-private and recorded in `docs/COMPAT.md`. Function hooks are not required for M4 compliance.
 
 M4 UI out of scope: live window previews inside the plugin; full behaviour of `pulse` / `dim` (reserved only); the M5 external overlay protocol; changing the default `ui` from `null` to `border` (optional product decision + CHANGELOG, not required by REQ-UI-*).
+
+### 5.3 External overlay (M5)
+
+ME-5 implements the `external` backend (ADR-018): an out-of-process overlay fed by the plugin over an
+AF_UNIX stream socket, with peer-issued selection commands. The protocol is frozen in §12 Appendix B.
+
+**REQ-O-001** If the effective backend is `external` but `external_socket` is empty or the socket
+cannot be bound, the plugin SHALL use `NullUI` behaviour for that session and MAY emit at most one
+warning per plugin lifetime (REQ-UI-002 continuation).
+
+**REQ-O-002** On session start with `ui = external` and a successfully bound socket, the plugin SHALL
+install `ExternalOverlayUI` as the session UIPort. The absence, slowness, or death of a peer MUST NOT
+change session logic: outgoing messages are best-effort (REQ-PERF-003) and MAY be dropped under
+backpressure; the session and its focus behaviour MUST remain identical to `ui = null`.
+
+**REQ-O-003** `ExternalOverlayUI` SHALL emit exactly one protocol message per UIPort lifecycle call
+in the following mapping:
+
+| UIPort call | Message (§12 Appendix B) |
+|-------------|--------------------------|
+| `on_session_start(snapshot, index)` | `session_start` with the full window list (`addr`, `title`, `class`) and `index` |
+| `on_selection_changed(index)` | `selection` with `index` |
+| `on_session_end(reason)` | `session_end` with `reason` = `applied` \| `cancelled` (UIEndReason mapping, REQ-F-009) |
+
+**REQ-O-004** Peer commands SHALL map to controller operations as follows, all deduced on the
+compositor main thread and only while data is readable (REQ-RE-001):
+
+| Peer message | Effect |
+|--------------|--------|
+| `select` with index `i` | `SessionController::select_index(i)` — Active-only, `i < snapshot.size()`, **virtual selection only**; ignored otherwise |
+| `apply` | `SessionController::apply()` (idempotent on Idle) |
+| `cancel` | `SessionController::cancel()` (idempotent on Idle) |
+
+**REQ-O-005** Peer data with an unknown version, unknown `type`, malformed JSON, or an oversized/
+invalid line SHALL be ignored and logged at debug; it MUST NOT change session state or focus.
+
+**REQ-O-006** All socket I/O SHALL run on the compositor main thread (event-driven via
+`CEventLoopManager::doOnReadable` on the pinned revision, R0 memo) and SHALL be non-blocking;
+`mru:*` dispatchers MUST never block on the socket (REQ-PERF-001).
+
+**REQ-O-007** Peer input SHALL NOT grant ability to focus an arbitrary window: `select` only moves the
+virtual selection within the existing Snapshot (REQ-F-003) and `apply`/`cancel` reuse the existing,
+bounds-safe controller paths. No new focus pathway exists for the peer.
+
+**REQ-O-008** On plugin teardown / `PLUGIN_EXIT` (or socket teardown), all socket fds (listener, client,
+waiter) SHALL be closed and any pending read callbacks SHALL be deregistered so no callback runs after
+unload and no fd is leaked.
 
 ---
 
@@ -467,6 +514,14 @@ When `restore_focus_on_cancel = true`:
 | T-ID-02 | ref validity is decided by weak-ref lock(), not the closed flag (REQ-ID-006, ADR-016 __1__) |
 | T-S-09 | policy refresh mid-session does not change the frozen restore flag (REQ-S-009) |
 | T-S-10 | non-cancel session end (NoWindows / plugin shutdown) never moves focus (REQ-S-006, REQ-R-003) |
+| T-O-01 | `select_index` in an Active session moves the virtual selection and notifies UI (REQ-O-004, REQ-F-003) |
+| T-O-02 | `select_index` out of range / Idle is a no-op without focus (REQ-O-004) |
+| T-O-03 | `session_start`/`selection`/`session_end` serialize per Appendix B incl. JSON escaping of `title`/`class` (REQ-O-003) |
+| T-O-04 | peer `select`/`apply`/`cancel` parse; `apply`/`cancel` map to controller ops (REQ-O-004) |
+| T-O-05 | unknown version/type, broken JSON, oversized line → ignored, session unaffected (REQ-O-005) |
+| T-O-06 | `ExternalOverlayUI` with absent/failing transport does not abort the session (REQ-O-002, REQ-UI-001) |
+| T-O-07 | AF_UNIX server: accept first client, line framing, non-blocking send/recv (REQ-O-006; loopback test) |
+| T-O-08 | peer `apply`/`cancel` at Idle are safe idempotent no-ops (covers REQ-O-004 idle leg) |
 
 T-UI-03..07 continue the T-UI series begun in M2 (T-UI-01/02).
 
@@ -495,17 +550,28 @@ Modifier release MUST be bound by the user (or documented wrapper); the plugin d
 
 ---
 
-## 12. Appendix B — External UI protocol (draft, M5)
+## 12. Appendix B — External UI protocol (normative, M5)
 
-Versioned line protocol (text, UTF-8), one JSON object per line (draft):
+**Transport:** AF_UNIX **SOCK_STREAM** socket bound by the plugin at
+`plugin:mru-switcher:external_socket`. The plugin listens; the **first** accepted client is the
+overlay (later clients are closed). Framing: newline-delimited UTF-8, **one JSON object per line**,
+no embedded newlines in strings (escaped as `\n`). All I/O is non-blocking and best-effort
+(REQ-O-002, REQ-O-006).
+
+**Plugin → peer** (one message per UIPort lifecycle call, REQ-O-003):
 
 ```json
-{"v":1,"type":"session_start","windows":[{"addr":"0x...","title":"...","class":"..."}],"index":1}
+{"v":1,"type":"session_start","windows":[{"addr":"0x1a2b3c","title":"term","class":"foot"},{"addr":"0x4d5e6f","title":"editor","class":"neovide"}],"index":1}
 {"v":1,"type":"selection","index":2}
 {"v":1,"type":"session_end","reason":"applied"}
 ```
 
-Peer MAY send:
+- `addr`: lowercase hexadecimal, `0x`-prefixed, of `WindowRef.address`.
+- `title` / `class`: JSON-escaped strings; missing/empty metadata is serialized as `""`.
+- `index`: integer index into the `session_start` window list (same meaning as `selection`).
+- `session_end.reason`: `applied` (UIEndReason Applied) | `cancelled` (UIEndReason Cancelled).
+
+**Peer → plugin** (optional control, REQ-O-004):
 
 ```json
 {"v":1,"type":"select","index":3}
@@ -513,7 +579,11 @@ Peer MAY send:
 {"v":1,"type":"cancel"}
 ```
 
-Normative freeze deferred to M5; plugin MUST ignore unknown types.
+- `select` index is bounds-checked against the session snapshot; out-of-range/Idle is a no-op.
+- Unknown version, unknown `type`, malformed JSON, and oversized/incomplete lines are ignored and
+  logged at debug (REQ-O-005).
+
+Version `1` is normative for M5 and stays stable for the 0.x line; a future `v=2` is additive.
 
 ---
 

@@ -221,7 +221,7 @@ SessionController
 
 - `NullUI` — no compositor side effects; always available (default `ui = null` in M4, ADR-011).
 - `BorderHighlightUI` — M4. Solid border highlight of the selected window via public window-prop mechanisms ("public props first, fail-soft", ADR-017). Concrete pin symbols (Hyprland 0.56.2 / `efb5099…`) are **adapter-private**, recorded in `docs/COMPAT.md`; see the R0 memo `docs/agent-state/research/2026-09-17-m4-border-api.md` and the `UIPort` header `include/mru/domain/ui_port.hpp`.
-- `ExternalOverlayUI` — M5 (best-effort socket protocol; external peer absent → `null` fallback, REQ-UI-002).
+- `ExternalOverlayUI` — M5 (ADR-018): best-effort AF_UNIX stream socket (event-driven reads via `CEventLoopManager::doOnReadable` on the pin, R0 memo); peer absent/dies → session logic unaffected, messages dropped (REQ-O-002).
 
 ### BorderHighlightUI (M4)
 
@@ -339,7 +339,8 @@ Effective UI policy is decided at session start and frozen for the Active sessio
 read config ui
   null     → NullUI
   border   → BorderHighlightUI(style, color, size)
-  external → NullUI + warn-once   (until M5)
+  external → ExternalOverlayUI(socket, resolver)   (M5, ADR-018)
+             empty/broken socket → NullUI + warn-once (REQ-O-001)
 ```
 
 ---
