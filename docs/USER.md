@@ -73,7 +73,7 @@ and the plugin re-reads its settings (via the `config.reloaded` event):
 
 - `debounce_ms` — applies to the MRU updates that happen **after** the reload.
 - Everything else (`default_scope`, `start_offset`, `wrap`,
-  `lock_history_on_session`, `restore_focus_on_cancel`, `ui`, and the
+  `lock_history_on_session`, `restore_focus_on_cancel`, `ui`, `external_socket`, and the
   border-* keys) — applies to the **next** session you start.
 
 A session that is already running is never changed mid-flight: its frozen
@@ -141,11 +141,13 @@ hyprctl dispatch mru:cycle next
 hyprctl dispatch mru:apply
 ```
 
-On Hyprland 0.56.x, `hyprctl dispatch mru:status` prints only `ok`: the plugin
-carries the status payload in a field `hyprctl` surfaces only on failure, so it
-is not visible through IPC on this version. (Failure messages do surface, e.g.
-`mru-switcher: not initialized`.) External tools already assert session state
-indirectly:
+The status payload is frozen for 1.x: `active= index= size= scope= session= last_end=` — SPEC §3.4,
+normative since the M6-T1 contract freeze; tolerate unknown additional keys. On Hyprland 0.56.x,
+`hyprctl dispatch mru:status` prints only `ok`: the plugin carries the status payload in a field
+`hyprctl` surfaces only on failure, so it is not visible through IPC on this version — read it with a
+libwayland dispatcher binding or from the plugin log. This is a documented host limitation
+(`docs/COMPAT.md` matrix), not a plugin defect. (Failure messages do surface, e.g.
+`mru-switcher: not initialized`.) External tools already assert session state indirectly:
 
 ```bash
 hyprctl activewindow -j

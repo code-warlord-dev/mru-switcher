@@ -41,7 +41,9 @@ Ends the session without applying selection (see `restore_focus_on_cancel`).
 mru:status
 ```
 
-Debug/status string (format not frozen until 1.0).
+Debug/status string. Payload format is **frozen in SPEC §3.4** since the M6-T1 contract freeze:
+`active=… index=… size=… scope=… session=… last_end=…`; additional keys may appear in minor releases
+(tolerate them). On Hyprland 0.56.x `hyprctl dispatch` shows only `ok` — see `docs/COMPAT.md`.
 
 ---
 

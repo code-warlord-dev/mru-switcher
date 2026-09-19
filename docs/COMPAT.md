@@ -16,6 +16,7 @@
 |----------------|-----------------|--------------|----------------|-------|
 | 0.0.0 (docs) | — | — | n/a | M0 docs only |
 | 0.2.0 | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | **nest tested 2026-09-15, re-verified 2026-09-17** | First `.so`; headers at `/usr/include/hyprland` (distro `hyprland` pkg). Nest deps: **aquamarine `0.15.0`** (`libaquamarine.so.14`), Wayland backend. Live re-verify: `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md` |
+| 0.5.0 → 1.0 | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | **nest tested 2026-09-15..19 (M3–M5 smokes)** | **IPC caveat — host limitation (M6-T1):** `hyprctl dispatch` prints only `ok`; the `mru:status` payload (SPEC §3.4) rides in the error field of a *successful* dispatch result, which `hyprctl` surfaces only on failure — read it via a libwayland dispatcher binding or the plugin log. Host limitation, not a plugin defect; failure-path errors (e.g. `mru-switcher: not initialized`) do surface through `hyprctl` |
 
 ## Internal API expectations (adapter)
 
@@ -90,8 +91,9 @@ M3-S3 §7 scope adapter (not implemented), multi-monitor, `ui=border`/`external`
 > some other way (notification/log/patched client) or recorded aspirationally. The rows are **kept**,
 > not deleted; treat them as "capture mechanism unspecified". The plugin itself computes the string
 > (failure-path strings do surface), so this is a **documentation/reproducibility defect, not a plugin
-> defect**; SPEC §3.4 makes the format informative and non-parsable until 1.0, so this is not a SPEC
-> violation and needs no ADR. Details + verdict table:
+> defect**; the SPEC §3.4 format was informative before the M6-T1 contract freeze and is
+> **normative now** (SPEC §0 / §3.4); the visibility caveat remains a **host** limitation, not a SPEC
+> violation, a contract gap, or an ADR trigger. Details + verdict table:
 > `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md` (§SPEC verdict).
 > For smoke runs, assert status state indirectly via `hyprctl activewindow -j` / `focusHistoryID`.
 
