@@ -184,7 +184,6 @@ TEST(t_h_06_origin_invalid_restore_never_focuses_dead) {
     CHECK(f.sc.last_end_reason() == SessionEndReason::UserCancel);
 }
 
-
 // --- T-H-06 (5): deterministic stress — 300 interleaved closes (fixed-seed
 // LCG picks the victim) mixed with cycle next/prev. Invariants on every step:
 // snapshot size never grows, index stays in bounds OR the session ended
@@ -213,8 +212,7 @@ TEST(t_h_06_stress_300_interleaved_close_cycle) {
     for (std::size_t step = 0; step < kSteps; ++step) {
         if (f.sc.is_active()) {
             const std::size_t before = f.sc.active_snapshot()->size();
-            const std::size_t victim_i =
-                static_cast<std::size_t>(next_rand() % live.size());
+            const std::size_t victim_i = static_cast<std::size_t>(next_rand() % live.size());
             const WindowRef victim = live[victim_i];
             f.set_valid(victim, false);
             f.sc.on_window_invalid(victim);
@@ -224,28 +222,28 @@ TEST(t_h_06_stress_300_interleaved_close_cycle) {
             const auto &snap = f.sc.active_snapshot();
             if (f.sc.is_active()) {
                 CHECK(snap.has_value());
-                CHECK(snap->size() + 1 == before);       // exactly one prune
+                CHECK(snap->size() + 1 == before); // exactly one prune
                 CHECK(!in_snapshot(snap->windows(), victim));
-                CHECK(f.sc.index() < snap->size());      // clamp within bounds
-                CHECK(f.fg.focused.empty()); // no focus while Active (REQ-F-003)
+                CHECK(f.sc.index() < snap->size()); // clamp within bounds
+                CHECK(f.fg.focused.empty());        // no focus while Active (REQ-F-003)
             } else {
                 CHECK(f.sc.last_end_reason() == SessionEndReason::NoWindows);
-                CHECK(f.ui.ends.size() == 1);            // single terminal UI end
+                CHECK(f.ui.ends.size() == 1); // single terminal UI end
                 CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
             }
         }
 
         // Interleave a cycle between closes while the session is alive.
         if (f.sc.is_active()) {
-            const SessionController::CommandResult r = f.sc.cycle(
-                (next_rand() % 2 == 0) ? Direction::Next : Direction::Prev);
+            const SessionController::CommandResult r =
+                f.sc.cycle((next_rand() % 2 == 0) ? Direction::Next : Direction::Prev);
             CHECK(r.ok);
             const auto &snap = f.sc.active_snapshot();
             CHECK(snap.has_value());
-            CHECK(f.sc.index() < snap->size());          // index in bounds
-            CHECK(f.ui.ends.size() <= 1);                // REQ-F-007
-            CHECK(f.fg.focused.empty());                 // REQ-F-003 / REQ-RE-003
-            CHECK(snap->size() <= pool.size());          // size never grows
+            CHECK(f.sc.index() < snap->size()); // index in bounds
+            CHECK(f.ui.ends.size() <= 1);       // REQ-F-007
+            CHECK(f.fg.focused.empty());        // REQ-F-003 / REQ-RE-003
+            CHECK(snap->size() <= pool.size()); // size never grows
         }
     }
 
