@@ -260,7 +260,10 @@ The border follows the virtual selection while real focus remains unchanged unti
 
 ### `external`
 
-Reserved for the future external overlay backend.
+Drives an out-of-process overlay over an AF_UNIX socket, so a separate UI can render previews and
+control the selection. It is opt-in and off by default: set `ui = external` and `external_socket`.
+If no overlay is attached, switching behaves exactly as with `null`. See
+[docs/USER.md](docs/USER.md) and [docs/API.md](docs/API.md) for the protocol.
 
 ---
 
@@ -290,9 +293,9 @@ The dispatcher surface is intentionally small. The plugin owns the switching ses
 
 ## Current status
 
-**v0.4.0**
+**v0.5.0**
 
-The core MRU workflow, plugin integration, scopes, configuration surface, and border UI are implemented and verified against the pinned Hyprland release.
+The core MRU workflow, plugin integration, scopes, configuration surface, border UI, and the external overlay backend are implemented and verified against the pinned Hyprland release.
 
 The current release includes:
 
@@ -302,12 +305,13 @@ The current release includes:
 * five switching scopes
 * configuration and dispatcher API
 * border highlight UI
+* external overlay socket + protocol (`ui = external`)
 * focus restoration on cancel
 * invalidation and teardown handling
 * CI builds and test coverage
 * live nested-Hyprland verification
 
-The next major direction is an **external overlay UI**, followed by the path toward `v1.0`.
+The next major direction is **hardening toward `v1.0`** (contract freeze, hyprpm distribution, stress cases).
 
 See the [roadmap](docs/ROADMAP.md) for details.
 

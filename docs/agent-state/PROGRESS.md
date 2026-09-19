@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-19 (M5 fully closed: PR #40 squash-merged f3906b6 — external overlay socket, protocol, live nest 13/13, ADR-019, review blockers fixed; CI 6/6; v0.5.0 tag awaiting human gate)
+Updated: 2026-09-19 (v0.5.0 released — M5 external overlay: PR #40 squash f3906b6, live nest 13/13, ADR-018/019, CI 6/6; next: M6 hardening)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md

@@ -190,6 +190,20 @@ Full report: `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel.md`; raw 
 
 Full report: `docs/agent-state/reports/2026-09-19-m5-s3-nest-smoke.md`; raw evidence `/tmp/mru-nest-m5/report/`. Build `build-plugin-m5/mru-switcher.so`, pin `efb5099` (v0.56.2, aquamarine 0.15.0, Wayland nested). 13/13 rows PASS: load/bind before first session, peer `session_start`/`selection`/`session_end`, peer `select`/`apply`/`cancel`, out-of-bounds `select` ignored, empty-path degrade, path restore, unload mid-session (no crash/leak), repeated reload cycles. Three branch-only defects were found and fixed during the smoke (dangling handler capture → SEGV; lazy bind; socket left listening after path cleared).
 
+### Known limitations (0.5.0)
+
+- **Reloading a changed `.so` from the same path in the same Hyprland process is unreliable.** On
+  this pin, loading a rebuilt `mru-switcher.so` over a path the process already `load`/`unload`ed
+  can crash during init (observed once, `hyprlandCrashReport75967`; not reproducible on a fresh
+  process). Operator guidance: when the binary changes, load it in a fresh nested session or from a
+  new path. This is tracked for M6 hardening; it does not affect a normal `load`/`unload` cycle of an
+  unchanged binary.
+- **Non-cancel session end is unit-only live.** Discriminating "a session ended for any other reason
+  never moves focus" live requires a second monitor / out-of-scope origin, which the single-monitor
+  nest cannot stage honestly; covered by `t_s_10_*` (see the M4 boundary note above).
+- The three M5 smoke defects (dangling overlay command-handler capture, lazy socket bind, listener
+  surviving path clear) were **fixed on the M5 branch** and are not open issues in 0.5.0.
+
 ## Verification checklist (per release)
 
 - [x] Hash check passes on load
