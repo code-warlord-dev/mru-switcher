@@ -147,6 +147,8 @@ static void guarded_listener(std::string_view tag, const std::function<void(void
     }
 }
 
+static bool try_start_overlay_socket();
+
 static void subscribe_events() {
     auto &st = state();
 
@@ -198,11 +200,58 @@ static void subscribe_events() {
             st.config = mru::plugin::config::read_config(st.config_v2);
             st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
             st.controller->set_policy(policy_from_config(st.config));
+            // Early bind for `ui=external`: on this pin config values are only
+            // populated after the reload that follows plugin load, so this is the
+            // first reliable moment to open the socket for a peer that wants to
+            // connect before the first session. It also tears the socket down when
+            // the reloaded config no longer selects `external`.
+            (void)try_start_overlay_socket();
         });
     }));
 }
 
 // --- wiring ---------------------------------------------------------------------
+
+// REQ-O-004/REQ-O-007: peer commands map onto existing, bounds-safe controller
+// paths; guarded() (HIGH-4) keeps a hostile peer from escaping into the compositor.
+// The handler closes over PluginState (stable for the plugin lifetime) and is
+// stored by value inside the socket server, so it must never capture locals.
+static HyprlandOverlaySocket::CommandHandler overlay_command_handler() {
+    return [](const overlay_protocol::Command &cmd) {
+        auto &st = state();
+        (void)guarded([&] {
+            const auto to_result = [](const mru::domain::SessionController::CommandResult &r) {
+                return r.ok ? ok_result() : err_result(r.error);
+            };
+            switch (cmd.type) {
+            case overlay_protocol::CommandType::Select:
+                return to_result(st.controller->select_index(cmd.index));
+            case overlay_protocol::CommandType::Apply:
+                return to_result(st.controller->apply());
+            case overlay_protocol::CommandType::Cancel:
+                return to_result(st.controller->cancel());
+            }
+            return ok_result();
+        });
+    };
+}
+
+// Binds/refreshes the overlay socket when the effective backend is `external`.
+// ensure_started is idempotent for the same path and restarts on a changed path
+// (config reload); returns false when the path is empty or the socket cannot
+// start (REQ-O-001) so the facade degrades to NullUI. A non-external/empty-path
+// config tears the socket down so no listener outlives the backend that owns it
+// (REQ-O-001/REQ-O-008); `stop()` is idempotent and never runs on the hot path.
+static bool try_start_overlay_socket() {
+    auto &st = state();
+    if (!st.overlay_socket)
+        return false;
+    if (effective_ui_backend(st.config) != UiBackend::External || st.config.external_socket.empty()) {
+        st.overlay_socket->stop();
+        return false;
+    }
+    return st.overlay_socket->ensure_started(st.config.external_socket, overlay_command_handler());
+}
 
 static void build_state() {
     auto &st = state();
@@ -227,31 +276,13 @@ static void build_state() {
     // backend.
     st.border_io = std::make_unique<HyprctlBorderPropIo>();
     st.overlay_socket = std::make_unique<HyprlandOverlaySocket>();
-    // Peer commands map onto existing, bounds-safe controller paths
-    // (REQ-O-004/REQ-O-007); guarded() keeps a hostile peer from escaping into the
-    // compositor (HIGH-4). The handler closes over PluginState, so it is valid for
-    // the whole plugin lifetime; the controller is created right below and only
-    // dereferenced once peer data actually arrives.
-    HyprlandOverlaySocket::CommandHandler overlay_commands = [&st](const overlay_protocol::Command &cmd) {
-        (void)guarded([&] {
-            const auto to_result = [](const mru::domain::SessionController::CommandResult &r) {
-                return r.ok ? ok_result() : err_result(r.error);
-            };
-            switch (cmd.type) {
-            case overlay_protocol::CommandType::Select:
-                return to_result(st.controller->select_index(cmd.index));
-            case overlay_protocol::CommandType::Apply:
-                return to_result(st.controller->apply());
-            case overlay_protocol::CommandType::Cancel:
-                return to_result(st.controller->cancel());
-            }
-            return ok_result();
-        });
-    };
-    if (effective_ui_backend(st.config) == UiBackend::External)
-        (void)st.overlay_socket->ensure_started(st.config.external_socket, overlay_commands);
+    // Best-effort early bind (see try_start_overlay_socket). On this pin the
+    // registered config values are not yet populated during PLUGIN_INIT, so the
+    // reliable bind happens on the first `config.reloaded` that follows the load;
+    // the factory call below is the final safety net.
+    (void)try_start_overlay_socket();
 
-    st.ui = std::make_unique<SessionUIBackendProxy>([&st, &overlay_commands]() -> std::unique_ptr<mru::domain::UIPort> {
+    st.ui = std::make_unique<SessionUIBackendProxy>([&st]() -> std::unique_ptr<mru::domain::UIPort> {
         if (effective_ui_backend(st.config) == UiBackend::Border) {
             return std::make_unique<BorderHighlightUI>(
                 *st.border_io,
@@ -274,9 +305,7 @@ static void build_state() {
                 });
         }
         if (effective_ui_backend(st.config) == UiBackend::External) {
-            // ensure_started is idempotent; it restarts only when the reloaded path
-            // changed, and covers the null->external reload transition.
-            if (st.overlay_socket->ensure_started(st.config.external_socket, overlay_commands)) {
+            if (try_start_overlay_socket()) {
                 return std::make_unique<ExternalOverlayUI>(
                     *st.overlay_socket, [&st](const mru::domain::WindowRef &ref) {
                         OverlayWindowInfo info;
