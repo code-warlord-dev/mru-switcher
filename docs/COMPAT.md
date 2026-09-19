@@ -22,6 +22,8 @@
 ### Stress evidence (M6, pin v0.56.2)
 
 - **Rapid Tab (T-H-08, issue #52):** `docs/agent-state/reports/2026-09-19-m6-rapid-tab-smoke.md` — 200× `mru:cycle next` in **0.89s**, zero errors, focus immobile during cycles, exactly one focus change on `mru:apply`; 200 cycles + 4 apply checkpoints in **1.09s**; no-side-effect invariant + manual-focus history rotation + clean teardown all PASS. Live behavior matches the domain hammer (`t_h_08_*`, 1000 cycles, zero focus, exact-once-apply).
+- **Window-close storm (T-H-06, issue #53):** `docs/agent-state/reports/2026-09-19-m6-window-close-smoke.md` — kill 1 mid-session window → apply lands exactly once on the MRU neighbor; kill all-but-one → focus on survivor; kill all mid-session → graceful end (`status ok`, nest + plugin alive, no crash); fresh-windows final session + clean teardown all PASS (SPEC §2.6/§2.8, REQ-S-006).
+- **Monitor disconnect (T-H-07, issue #51):** `docs/agent-state/reports/2026-09-19-m6-monitor-disconnect-smoke.md` — 2nd monitor feasible **only** via `hyprctl output create headless` (config `monitor=` lines ignored on this pin); `output remove` mid-`scope=monitor`-session → apply lands once on the MRU neighbor, no crash; scope=monitor positive PASS. Compositor migrates windows to the surviving monitor (no ghosts).
 - **Observation (triaged, non-blocking):** back-to-back `cycle→apply` sessions re-land on the same window when chained within the 400 ms debounce window — by design of lock-in + single-pending-job debounce (REQ-H-001/006); real held-Alt rapid-Tab (single session) unaffected. Tracked in issue #65.
 
 ## Internal API expectations (adapter)
