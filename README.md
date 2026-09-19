@@ -1,185 +1,409 @@
-# MRU Window Switcher for Hyprland
+<p align="center">
+  <img src="banner.webp" alt="MRU Switcher for Hyprland" width="100%">
+</p>
 
-![ci](https://img.shields.io/github/actions/workflow/status/code-warlord-dev/mru-switcher/ci.yml?branch=main&label=ci)
-![release](https://img.shields.io/github/v/release/code-warlord-dev/mru-switcher?label=release)
-![license](https://img.shields.io/github/license/code-warlord-dev/mru-switcher)
-![language](https://img.shields.io/github/languages/top/code-warlord-dev/mru-switcher)
-![C++](https://img.shields.io/badge/C%2B%2B-23-00599C)
-![Hyprland](https://img.shields.io/badge/Hyprland-v0.56.2-blue)
+<h1 align="center">MRU Window Switcher</h1>
 
-**Alt+Tab that remembers how you actually work** — not where a window sits on a grid.
+<p align="center">
+  <strong>Switch contexts. Blazing fast.</strong>
+</p>
 
-Built for **[Omarchy](https://omarchy.org)** (and anyone on **[Hyprland](https://hyprland.org)** who wants the same feel): take the best interaction ideas from **[Niri](https://github.com/YaLTeR/niri)** and make them feel native under Hyprland, without replacing the compositor or forcing a different layout philosophy.
+<p align="center">
+  A Niri-inspired MRU Alt+Tab experience for Hyprland.
+  <br>
+  Built around how you actually switch between windows — not where they happen to be on the screen.
+</p>
 
-> **Goal:** give Hyprland (and Omarchy) a Niri-class global Alt+Tab — MRU order, frozen list while tabbing, focus only on modifier release — as a proper plugin with explicit contracts, not a fragile bind script.
+<p align="center">
+  <a href="https://github.com/code-warlord-dev/mru-switcher/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/code-warlord-dev/mru-switcher/ci.yml?branch=main&label=CI" alt="CI">
+  </a>
+  <a href="https://github.com/code-warlord-dev/mru-switcher/releases">
+    <img src="https://img.shields.io/github/v/release/code-warlord-dev/mru-switcher" alt="Release">
+  </a>
+  <a href="https://github.com/code-warlord-dev/mru-switcher/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/code-warlord-dev/mru-switcher" alt="License">
+  </a>
+  <img src="https://img.shields.io/badge/C%2B%2B-23-00599C" alt="C++23">
+  <img src="https://img.shields.io/badge/Hyprland-v0.56.2-58E1FF" alt="Hyprland v0.56.2">
+</p>
 
 ---
 
-## Why this exists
+## What is it?
 
-Hyprland is excellent at tiling, workspaces, and motion. What many people still miss after using Niri is a **predictable global window switcher**:
+**MRU Window Switcher** brings a proper, predictable Alt+Tab workflow to [Hyprland](https://hyprland.org).
 
-| What you want | What you often get instead |
-|---------------|----------------------------|
-| Jump to *the window you used a moment ago* | Workspace-local or stack-order cycling |
-| Hold Alt, tap Tab, list stays still | List **jumps** as focus events reorder it |
-| Focus commits when you **release** Alt | Every Tab already moves real focus (and pollutes history) |
+It is inspired by **[Niri](https://github.com/YaLTeR/niri)**'s workflow: windows are switched by **most-recently-used (MRU) order**, the list stays stable while you hold Alt, and the actual focus changes only when you release it.
 
-Niri’s model is simple and hard to unlearn: **most-recently-used order**, a **frozen list while you tab**, **real focus only on release**. This plugin brings that contract into Hyprland as a first-class plugin — designed for Omarchy’s “batteries included, still under your control” desktop, not as a one-off dotfiles hack.
-
-We are **not** trying to turn Hyprland into Niri. Scrolling columns, Niri’s layout engine, and its whole shell stay where they belong. We borrow **one sharp UX idea** and implement it with Hyprland’s plugin API, explicit invariants, and a testable domain core.
-
----
-
-## What you get (in one screen)
+In other words:
 
 ```text
-Alt held  →  Tab / Shift+Tab move a *virtual* selection through an MRU snapshot
-Alt up    →  focus lands on the selected window once
+Alt + Tab
+    │
+    ├── Tab       → move through the MRU list
+    ├── Tab       → move again
+    ├── Shift+Tab → go back
+    │
+    └── release Alt → focus the selected window
 ```
 
-Under the hood (so it keeps working after a week of real use, not only in a demo):
+No focus jumping while you browse.
+No MRU history being rewritten underneath you.
+No guessing which window comes next.
 
-- **Snapshot** — the candidate list is fixed for the whole Alt-hold session  
-- **Lock-in** — intermediate focuses do not rewrite MRU while you switch  
-- **Debounce** — brief focus blips do not instantly reshuffle history  
-- **Stable identity** — `address + generation`, so a recycled window id cannot steal focus  
-- **Scopes** — global / monitor / workspace / visible / app when you need a narrower ring  
+Just **Alt+Tab that behaves like you expect**.
 
-Dispatch surface (implemented in M2, SPEC §3.3): `mru:cycle`, `mru:apply`, `mru:cancel`, `mru:status`.
+## See it in action
 
----
+<p align="center">
+  <img src="docs/images/mru-switcher.gif" alt="MRU Window Switcher in action" width="900">
+</p>
 
-## Project status
-
-M0 (design gate), **M1** (pure domain core + tests), **M2** (loadable `.so`, Null UI, four dispatchers), **M3** (all five scopes + full 8-key config surface, verified live in a nested session) and **M4** (border highlight UI — `ui = border` opt-in, `solid` highlight via public window props on the pinned Hyprland, per-session frozen backend, exact restore verified live in a nested smoke) are **done on `main`** ([v0.4.0]). Optional next: the M5 external overlay. The loadable plugin is pinned to Hyprland **v0.56.2** ([docs/COMPAT.md](docs/COMPAT.md); note: runtime `hyprctl keyword` changes to plugin keys are not picked up — see [docs/USER.md](docs/USER.md)); CI builds the `.so` and runs the domain + plugin-core tests. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md) and [docs/VERSION-MAP.md](docs/VERSION-MAP.md).
-
-| If you are… | Start here |
-|-------------|------------|
-| Curious user / Omarchy explorer | This README → [docs/USER.md](docs/USER.md) (binds & config) |
-| Implementing the plugin | [docs/SPEC.md](docs/SPEC.md) → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Reviewing design decisions | [docs/DECISIONS.md](docs/DECISIONS.md) |
-| Wiring agents / automation | [AGENTS.md](AGENTS.md) |
+The preview shows the core interaction: the selection moves through the MRU snapshot while the real focus stays where it is until the switch is committed.
 
 ---
 
-## Agents
+## Why?
 
-| File | Role |
-|------|------|
-| [AGENTS.md](AGENTS.md) | Orchestrator contract: subagents, git/GitHub, token economy, state sync |
-| [.agents/skills/README.md](.agents/skills/README.md) | Full skills inventory, activation matrix, conventions |
+Traditional window switching tends to be tied to workspace order, stack order, or the compositor's current layout.
 
-Skills live under [`.agents/skills/`](.agents/skills/). Project + ecosystem skills are **vendored in-tree** (see skills README).
+That's not always how people think.
 
----
+When you're working, the mental model is usually much simpler:
 
-## Documentation
+> "Take me back to the thing I was just using."
 
-### Core contracts
+MRU Switcher keeps that context explicit.
 
-| File | Description |
-|------|-------------|
-| [docs/SPEC.md](docs/SPEC.md) | **Normative** behaviour, dispatchers, config, tests |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | ADRs |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Plugin design, domain, ports, diagrams |
-| [docs/HYPRLAND-PLUGIN-SYSTEM.md](docs/HYPRLAND-PLUGIN-SYSTEM.md) | Host PluginAPI, Event::bus, constraints |
-| [docs/FAILURE-MODES.md](docs/FAILURE-MODES.md) | Failure matrix (state / dispatcher / UI / tests) |
-| [docs/TRANSITION-TABLE.md](docs/TRANSITION-TABLE.md) | SessionController transitions |
-| [docs/REQ-TRACE.md](docs/REQ-TRACE.md) | REQ → test → implementation traceability |
+### The interaction model
 
-### Product / user
+| Action                     | What happens                           |
+| -------------------------- | -------------------------------------- |
+| First `Alt+Tab`            | Starts an MRU switching session        |
+| `Tab`                      | Selects the next window                |
+| `Shift+Tab`                | Selects the previous window            |
+| Release `Alt`              | Applies the selection                  |
+| `Escape`                   | Cancels the session                    |
+| Mouse / other focus events | Do not reorder the active MRU snapshot |
 
-| File | Description |
-|------|-------------|
-| [docs/USER.md](docs/USER.md) | Binds, scopes, config, FAQ |
-| [docs/API.md](docs/API.md) | Public dispatchers + config keys |
-| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | Mermaid / PlantUML |
+The important part is that **selection and focus are separate**.
 
-### Planning and ops
-
-| File | Description |
-|------|-------------|
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Milestones M0–M6 |
-| [docs/VERSION-MAP.md](docs/VERSION-MAP.md) | Semver ↔ milestones ↔ tags |
-| [docs/COMPAT.md](docs/COMPAT.md) | Hyprland pin matrix |
-| [docs/GOVERNANCE.md](docs/GOVERNANCE.md) | ADR index, DoD, dependency rules |
-| [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) | Logging, session_id, status |
-| [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) | Threats and mitigations |
-| [docs/SUPPORT-AND-RELEASE.md](docs/SUPPORT-AND-RELEASE.md) | Support axes, release, rollback |
-| [docs/SECURITY.md](docs/SECURITY.md) | Trust model (in-process plugin) |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contribution guidelines |
-| [CHANGELOG.md](CHANGELOG.md) | Keep a Changelog |
-
-### Design notes and agent state
-
-| File | Description |
-|------|-------------|
-| [docs/design-notes/scheduler-and-debounce.md](docs/design-notes/scheduler-and-debounce.md) | SchedulerPort |
-| [docs/design-notes/window-identity.md](docs/design-notes/window-identity.md) | WindowRef generation |
-| [docs/design-notes/apply-after-invalidation.md](docs/design-notes/apply-after-invalidation.md) | Prune / clamp / apply |
-| [docs/agent-state/SESSION.md](docs/agent-state/SESSION.md) | Live session state block |
-| [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md) | Milestone checkboxes |
-
-**Reading order (implementers):**  
-[HYPRLAND-PLUGIN-SYSTEM](docs/HYPRLAND-PLUGIN-SYSTEM.md) → [ARCHITECTURE](docs/ARCHITECTURE.md) → [SPEC](docs/SPEC.md) → [FAILURE-MODES](docs/FAILURE-MODES.md) → [DECISIONS](docs/DECISIONS.md) → [REQ-TRACE](docs/REQ-TRACE.md) → [ROADMAP](docs/ROADMAP.md) → [AGENTS](AGENTS.md).
-
-**Reading order (users, after ship):** [USER](docs/USER.md) → [API](docs/API.md).
+You can browse the list without making Hyprland actually focus every intermediate window.
 
 ---
 
-## Design summary
+## Features
 
-- **Snapshot** on session start — list does not reorder while tabbing.
-- **Apply-on-release** — focus only on `mru:apply` / modifier release.
-- **History lock-in + debounce** — via SchedulerPort; no MRU updates during Active session.
-- **Scopes:** global, monitor, workspace, visible, app (`class` only).
-- **UI:** default **`null`** in M4; `border` → `BorderHighlightUI` (public window-prop mechanism, restore-by-value, `solid` style first — ADR-017; pinned symbols in `docs/COMPAT.md`); `external` falls back to null until M5.
-- **Identity:** `WindowRef { address, generation }`.
-- **Language:** native plugin **C++ only**; overlay may be any language.
+* **MRU window ordering** — switch by recent usage rather than layout position
+* **Frozen session snapshot** — the candidate list stays stable while tabbing
+* **Apply-on-release** — real focus changes only when the session is committed
+* **History lock-in** — intermediate switching does not corrupt MRU history
+* **Debounce** — short-lived focus changes do not immediately reshuffle history
+* **Five scopes**
+
+  * `global`
+  * `monitor`
+  * `workspace`
+  * `visible`
+  * `app`
+* **Stable window identity** — address + generation prevents recycled window IDs from becoming stale references
+* **Optional border highlight** — visually shows the currently selected window without moving real focus
+* **Safe invalidation** — closing a selected window during a session is handled without crashing
+* **Explicit dispatchers** — designed as a real Hyprland plugin rather than a collection of shell binds
 
 ---
 
-## Build (domain tests)
+## Installation
+
+MRU Switcher is a native Hyprland plugin and currently targets **Hyprland v0.56.2**.
+
+### Build from source
+
+Clone the repository:
 
 ```bash
-cmake -S . -B build -DMRU_BUILD_TESTS=ON -DMRU_BUILD_PLUGIN=OFF
-cmake --build build -j
-ctest --test-dir build --output-on-failure
+git clone https://github.com/code-warlord-dev/mru-switcher.git
+cd mru-switcher
 ```
 
-Building the plugin (a real `.so`) requires the pinned Hyprland headers (v0.56.2, see [docs/COMPAT.md](docs/COMPAT.md)). With them, `MRU_BUILD_PLUGIN=ON` configures and builds `build/mru-switcher.so` — the CI `plugin-build` job does exactly this. Without those headers, leave the option off (the default) and run the tests above.
+Build the plugin:
+
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DMRU_BUILD_PLUGIN=ON
+
+cmake --build build -j
+```
+
+The resulting plugin is:
+
+```text
+build/mru-switcher.so
+```
+
+Load it in Hyprland:
+
+```bash
+hyprctl plugin load /absolute/path/to/mru-switcher.so
+```
+
+Or configure it directly:
+
+```ini
+plugin = /absolute/path/to/mru-switcher.so
+```
+
+> **Compatibility matters.** Hyprland plugins are tightly coupled to compositor internals. MRU Switcher deliberately fails closed when the expected Hyprland ABI/API does not match the pinned version.
+
+See the [compatibility matrix](docs/COMPAT.md) for the tested Hyprland revision.
 
 ---
 
-## Dispatchers (implemented)
+## Quick setup
+
+Add the following binds to `hyprland.conf`:
+
+```ini
+# Forward
+bind = ALT, TAB, mru:cycle, next
+
+# Backward
+bind = ALT SHIFT, TAB, mru:cycle, prev
+
+# Apply selection when Alt is released
+bindrt = ALT, ALT_L, mru:apply
+
+# Cancel
+bind = ALT, Escape, mru:cancel
+```
+
+That's enough to get the basic workflow running.
+
+### Optional configuration
+
+```ini
+plugin {
+    mru-switcher {
+        debounce_ms             = 400
+        default_scope           = global
+        start_offset            = second
+        wrap                    = true
+        ui                      = border
+        border_style            = solid
+        border_color            = 0xffffd9a0
+        border_size             = -1
+        lock_history_on_session = true
+        restore_focus_on_cancel = false
+    }
+}
+```
+
+After changing plugin configuration:
+
+```bash
+hyprctl reload
+```
+
+Configuration changes apply to the **next** MRU session. An already active session keeps the policy it started with.
+
+For the complete configuration reference, see [docs/USER.md](docs/USER.md).
+
+---
+
+## Scopes
+
+MRU Switcher can work with different window groups depending on what you're doing:
+
+```ini
+bind = ALT, TAB, mru:cycle, next global
+bind = ALT, TAB, mru:cycle, next monitor
+bind = ALT, TAB, mru:cycle, next workspace
+bind = ALT, TAB, mru:cycle, next visible
+bind = ALT, TAB, mru:cycle, next app
+```
+
+| Scope       | Windows included                               |
+| ----------- | ---------------------------------------------- |
+| `global`    | All mapped windows                             |
+| `monitor`   | Windows on the current monitor                 |
+| `workspace` | Windows on the current workspace               |
+| `visible`   | Windows on currently visible workspaces        |
+| `app`       | Windows belonging to the active window's class |
+
+If no scope is specified, `default_scope` is used.
+
+---
+
+## UI
+
+The switching logic is independent from the visual presentation.
+
+### `null`
+
+No visual feedback.
+
+Useful for minimal setups, testing, or users who prefer a completely keyboard-driven workflow.
+
+### `border`
+
+Highlights the currently selected window's border while the MRU session is active.
+
+The important distinction is:
 
 ```text
-mru:cycle  [next|prev] [scope?]   # omitted direction = next
+Selected window ≠ focused window
+```
+
+The border follows the virtual selection while real focus remains unchanged until `mru:apply`.
+
+### `external`
+
+Reserved for the future external overlay backend.
+
+---
+
+## Dispatchers
+
+MRU Switcher exposes a small explicit dispatcher API:
+
+```text
+mru:cycle [next|prev] [scope]
 mru:apply
 mru:cancel
 mru:status
 ```
 
-Example binds: see [docs/USER.md](docs/USER.md).
+Examples:
+
+```bash
+hyprctl dispatch mru:cycle next
+hyprctl dispatch mru:cycle prev
+hyprctl dispatch mru:apply
+hyprctl dispatch mru:cancel
+```
+
+The dispatcher surface is intentionally small. The plugin owns the switching session and its invariants rather than pushing state management into shell scripts or configuration glue.
 
 ---
 
-## Roadmap (short)
+## Current status
 
-| Milestone | Focus | Status |
-|-----------|--------|--------|
-| M0 | Docs, skills, AGENTS, consistency | ✅ done |
-| M1 | Domain + unit tests | ✅ done |
-| M2 | Loadable plugin (Null UI), COMPAT pin | ✅ done |
-| M3 | Scopes + full config surface | ✅ done |
-| M4 | Border UI + style interface | **in progress** |
-| M5–M6 | Overlay, v1.0 | planned |
+**v0.4.0**
 
-Details: [docs/ROADMAP.md](docs/ROADMAP.md), progress: [docs/agent-state/PROGRESS.md](docs/agent-state/PROGRESS.md).
+The core MRU workflow, plugin integration, scopes, configuration surface, and border UI are implemented and verified against the pinned Hyprland release.
+
+The current release includes:
+
+* domain core and tests
+* loadable native `.so` plugin
+* MRU session management
+* five switching scopes
+* configuration and dispatcher API
+* border highlight UI
+* focus restoration on cancel
+* invalidation and teardown handling
+* CI builds and test coverage
+* live nested-Hyprland verification
+
+The next major direction is an **external overlay UI**, followed by the path toward `v1.0`.
+
+See the [roadmap](docs/ROADMAP.md) for details.
+
+---
+
+## Compatibility
+
+MRU Switcher is currently pinned and tested against:
+
+| Component  | Version                              |
+| ---------- | ------------------------------------ |
+| Hyprland   | `v0.56.2`                            |
+| C++        | C++23                                |
+| Aquamarine | `0.15.0` in live nested verification |
+
+The plugin checks the expected Hyprland build identity and **fails closed on a mismatch** rather than attempting to run against an unknown compositor ABI.
+
+If Hyprland changes its internal APIs, rebuild and verify the plugin against the corresponding compatibility entry before using it.
+
+See [docs/COMPAT.md](docs/COMPAT.md).
+
+---
+
+## Building and testing
+
+The domain and plugin-core tests can be built without Hyprland headers:
+
+```bash
+cmake -S . -B build \
+  -DMRU_BUILD_TESTS=ON \
+  -DMRU_BUILD_PLUGIN=OFF
+
+cmake --build build -j
+
+ctest --test-dir build --output-on-failure
+```
+
+Building the actual plugin requires the pinned Hyprland headers:
+
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DMRU_BUILD_PLUGIN=ON
+
+cmake --build build -j
+```
+
+CI performs the corresponding build and test checks.
+
+---
+
+## For developers
+
+The project keeps the user-facing behaviour deliberately small while documenting the implementation in depth.
+
+If you want to understand the internals:
+
+1. [Plugin system](docs/HYPRLAND-PLUGIN-SYSTEM.md)
+2. [Architecture](docs/ARCHITECTURE.md)
+3. [Specification](docs/SPEC.md)
+4. [Failure modes](docs/FAILURE-MODES.md)
+5. [Architecture decisions](docs/DECISIONS.md)
+6. [Requirements traceability](docs/REQ-TRACE.md)
+
+Other useful references:
+
+* [User Guide](docs/USER.md)
+* [API Reference](docs/API.md)
+* [Compatibility](docs/COMPAT.md)
+* [Roadmap](docs/ROADMAP.md)
+* [Contributing](docs/CONTRIBUTING.md)
+* [Security](docs/SECURITY.md)
+* [Changelog](CHANGELOG.md)
+
+---
+
+## The idea
+
+MRU Switcher is intentionally not an attempt to make Hyprland behave like Niri.
+
+It takes one interaction pattern that works exceptionally well:
+
+**"Switch back to what I was using."**
+
+…and gives it a native home inside Hyprland.
+
+Inspired by Niri's workflow, implemented as a proper Hyprland plugin.
 
 ---
 
 ## License
 
-[MIT](LICENSE)
+MIT — see [LICENSE](LICENSE).
+
+---
+
+<p align="center">
+  <sub>Built for people who switch contexts more often than they switch workspaces.</sub>
+</p>
