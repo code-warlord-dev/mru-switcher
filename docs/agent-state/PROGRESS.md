@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-19 (M4 fully closed: PR #35 merged 03c0ae4 — optional restore_focus_on_cancel: live nest N1–N4 PASS, T-S-09/T-S-10 regression, REQ-R-003 clarification; v0.4.0 released; awaiting human review → M5)
+Updated: 2026-09-19 (M5 code + docs complete on branch feat/m5-external-overlay: protocol frozen, ExternalOverlayUI + socket, live nest 13/13 PASS, ADR-019; PR pending — M5 checkbox closes on merge to main)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -82,9 +82,15 @@ Updated: 2026-09-19 (M4 fully closed: PR #35 merged 03c0ae4 — optional restore
 - [x] restore_focus_on_cancel optional path — live nest N1–N4 PASS (origin refocus, dead-origin no-op, REQ-S-009 freeze; pin 0.56.2/efb5099), regression T-S-09/T-S-10 (mutation-checked), SPEC §6 numbered as REQ-R-003; report `reports/2026-09-19-m4-restore-on-cancel.md`, review `reports/2026-09-19-m4-restore-on-cancel-review.md`
 
 ## M5 External overlay
-- [ ] Protocol draft frozen
-- [ ] ExternalOverlayUI + fallback
-- [ ] external_socket config key
+- [x] M5-R0 research overlay/socket API on pin 0.56.2 (memo `research/2026-09-19-m5-overlay-socket-api.md`)
+- [x] Protocol draft frozen — SPEC §12 Appendix B normative; SPEC §5.3 REQ-O-001..008 + T-O-01..08 (ADR-018 design gate, PR #38 e5cd2ba)
+- [x] M5-D1 design gate — ADR-018 (Accepted) + ADR-019 fd-watch refinement
+- [x] M5-S1 domain `SessionController::select_index` (REQ-O-004, T-O-01/02/08) — commit e85b4d3
+- [x] M5-S2 `overlay_protocol` + `ExternalOverlayUI` over `OverlayTransport` (REQ-O-002/003/005, T-O-03/04/05/06) — commit 1d882cb
+- [x] M5-S3 `OverlaySocketServer` + `HyprlandOverlaySocket` + `ui=external` wiring + reference stub (REQ-O-001/004/006/007/008, T-O-07) — commits 7e3d77a..4deb303
+- [x] external_socket config key now has effect; empty/unbindable → null + warn-once (REQ-O-001)
+- [x] ExternalOverlayUI + fallback; ADR-019 removable fd watch; docs S5 (SPEC/ARCHITECTURE/COMPAT/API/USER/CHANGELOG/REQ-TRACE)
+- [ ] M5-S6 PR + CI + merge to main (then close M5 checkbox)
 
 ## M6 Hardening -> v1.0
 - [ ] CI unit tests

@@ -159,7 +159,7 @@ hyprctl activewindow -j
 |-------|-----------|
 | `null` | No visual feedback (logic only; useful for tests and minimal setups) |
 | `border` | Temporarily highlight the **selected** window's border while you hold Alt and cycle (**M4+**) |
-| `external` | Drive an external overlay via socket (**M5**; until then falls back to `null` with a one-time warning) |
+| `external` | Drive an external overlay via an AF_UNIX socket (**M5+**; see below). Empty/unbindable path → behaves as `null` with a one-time warning |
 
 Default is `null`. To enable border highlight:
 
@@ -188,6 +188,34 @@ If the border APIs are unavailable on your Hyprland build, the plugin keeps swit
 ### UI settings reload
 
 `ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel (REQ-UI-009, REQ-CFG-002).
+
+### External overlay (`ui = external`, M5+)
+
+An out-of-process overlay (any language) can render previews/search and drive the selection. The
+plugin binds an AF_UNIX stream socket at `external_socket` and speaks the line-framed JSON protocol
+frozen in `docs/SPEC.md` §12 Appendix B (`docs/API.md` has the message table).
+
+```conf
+plugin {
+    mru-switcher {
+        ui              = external
+        external_socket = /run/user/1000/mru-overlay.sock
+    }
+}
+```
+
+- The socket is bound at load (after the initial config reload) so an overlay can connect **before**
+  the first Alt+Tab. Start the overlay like any other Hyprland autostart process, e.g.
+  `exec-once = /path/to/overlay` (with the socket path matching `external_socket`), or let it reconnect.
+- If the overlay is absent or dies mid-session, switching still works exactly as with `ui = null`;
+  outgoing messages are dropped (best-effort). The plugin never blocks on the peer.
+- Clearing `external_socket` or changing `ui` away from `external` and reloading stops the listener.
+- A reference peer for testing ships at `tools/overlay_stub.py`:
+
+  ```bash
+  python3 tools/overlay_stub.py /run/user/1000/mru-overlay.sock
+  # then press Alt+Tab; type "s 2", "a" (apply), "c" (cancel), "q" to quit
+  ```
 
 ### Border manual test checklist
 
@@ -236,3 +264,4 @@ Recompile against the new headers. The plugin aborts on hash mismatch to avoid c
 - [ ] `monitor` / `workspace` / `visible` / `app` scopes filter correctly ([live nest §4–5](agent-state/reports/2026-09-17-m3-s3-nest-smoke.md))
 - [ ] Config reload: new `debounce_ms` / `default_scope` apply to the **next** session only; the active session keeps its frozen policy ([T-CFG-02](../tests/domain/test_session_controller.cpp))
 - [ ] `restore_focus_on_cancel = 1` (config file + `hyprctl reload`): `mru:cancel` refocuses the window that was focused at session start; a dead origin is a no-op (no focus change, no crash) — [live nest confirmation](agent-state/reports/2026-09-19-m4-restore-on-cancel.md)
+- [ ] `ui = external` + `external_socket` with `tools/overlay_stub.py`: Alt+Tab starts a session, Tab moves the overlay selection, `s N` jumps, `a`/`c` apply/cancel; killing the stub does not break switching ([live nest report](agent-state/reports/2026-09-19-m5-s3-nest-smoke.md))

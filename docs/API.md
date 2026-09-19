@@ -60,7 +60,7 @@ Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT` (ADR-00
 | `lock_history_on_session` | bool | `true` | |
 | `restore_focus_on_cancel` | bool | `false` | |
 | `ui` | enum | `null` | null \| border \| external |
-| `external_socket` | string | `""` | reserved until M5 |
+| `external_socket` | string | `""` | AF_UNIX path for `ui = external` (M5). Empty or unbindable → behaves as `null` + one warning (REQ-O-001) |
 
 ### Added in M4
 
@@ -69,6 +69,25 @@ Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT` (ADR-00
 | `border_style` | string | `solid` | `solid` required; `pulse` / `dim` reserved → treated as `solid` until implemented; unknown → `solid` + one warning (REQ-UI-007) |
 | `border_color` | color/string | `0xffffd9a0` | Used when `ui = border`. Documented implementation default (hex `0xAARRGGBB`); accepts formats supported by the pinned Hyprland (`rgb(...)` / `rgba(rrggbbaa)` / hex) — REQ-UI-008 |
 | `border_size` | int | `-1` | `-1` = do not modify window border size; `≥ 0` may set the size for the highlighted window for the duration of the highlight |
+
+### Added in M5 — external overlay protocol
+
+`ui = external` makes the plugin bind an AF_UNIX stream socket at `external_socket` and speak a
+line-framed JSON protocol (SPEC §12 Appendix B, ADR-018/ADR-019). The plugin never blocks on the
+peer: messages are best-effort and session/focus behaviour is identical to `ui = null` when no peer
+is attached. A reference peer is provided at `tools/overlay_stub.py`.
+
+| Direction | Message | Fields |
+|-----------|---------|--------|
+| plugin → peer | `session_start` | `windows[]` (`addr`, `title`, `class`), `index` |
+| plugin → peer | `selection` | `index` |
+| plugin → peer | `session_end` | `reason` = `applied` \| `cancelled` |
+| peer → plugin | `select` | `index` (virtual selection only; out-of-range ignored) |
+| peer → plugin | `apply` | — |
+| peer → plugin | `cancel` | — |
+
+Envelope: one JSON object per `\n`, `"v": 1`, `"type"`. Unknown version/type, malformed JSON, or
+oversized lines are ignored. `addr` is `0x` + lowercase hex (same value as `hyprctl clients`).
 
 ### Reload
 
