@@ -50,10 +50,11 @@ plugin {
         wrap                    = true
         ui                      = null     # null | border | external (border from M4; unavailable backends fall back to null)
         border_style            = solid    # border highlight style (M4: solid only; pulse/dim reserved -> solid + warn-once)
-        border_color            = 0xffffd9a0  # border highlight colour (bright accent)
+        border_color            = 0xffffd9a0  # border highlight colour (bright accent; verbatim setprop grammar)
         border_size             = -1       # -1 = leave border size unchanged (colour only)
         lock_history_on_session = true
         restore_focus_on_cancel = false
+        external_socket         =        # AF_UNIX path; required when ui = external (empty = degrade to null)
     }
 }
 ```
@@ -74,7 +75,9 @@ and the plugin re-reads its settings (via the `config.reloaded` event):
 - `debounce_ms` — applies to the MRU updates that happen **after** the reload.
 - Everything else (`default_scope`, `start_offset`, `wrap`,
   `lock_history_on_session`, `restore_focus_on_cancel`, `ui`, `external_socket`, and the
-  border-* keys) — applies to the **next** session you start.
+  border-* keys) — applies to the **next** session you start. Note: switching `ui` away
+  from `external` (or clearing `external_socket`) stops the socket listener at reload;
+  the already-running session continues with its frozen backend (REQ-UI-009).
 
 A session that is already running is never changed mid-flight: its frozen
 window list and selection policy stay exactly as they were when it started.

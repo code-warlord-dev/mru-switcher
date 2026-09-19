@@ -32,7 +32,7 @@ Plugins are shared objects loaded into the Hyprland process. Relevant stable sur
 | Dispatchers | `HyprlandAPI::addDispatcherV2(handle, name, fn)` → `SDispatchResult(std::string)` | Prefer V2; old `addDispatcher` deprecated |
 | Config | `addConfigValue` / `addConfigValueV2` **only inside** `PLUGIN_INIT` | Must live under `plugin:` namespace |
 | Events (preferred) | `Event::bus()->m_events.window.active.listen(...)` etc. | Modern path; `registerCallbackDynamic` deprecated |
-| Focus history | `Desktop::History::windowTracker()->fullHistory()` | Preferred source of MRU order |
+| Focus history | `Desktop::History::windowTracker()->fullHistory()` | Seed/fallback for MRU order (REQ-H-004a/b, ADR-015); primary order is the plugin-owned `HistoryTracker` |
 | Focus application | `g_pCompositor->focusWindow` / `Desktop::focusState()->fullWindowFocus` | Single gateway in our code |
 | Function hooks | `createFunctionHook` + `findFunctionsByName` | **x86_64 only**; last resort, feature-flagged |
 | Private members | `#define private public` around includes | Allowed but increases breakage risk |
@@ -299,7 +299,7 @@ Dispatchers only parse args and forward to `SessionController`. No business logi
 | `mru:cycle` | `[next\|prev] [scope?]` | Start session or move selection |
 | `mru:apply` | — | Focus selected window, end session |
 | `mru:cancel` | — | End session without applying (optional restore) |
-| `mru:status` | — | Debug string (active, index, size) |
+| `mru:status` | — | Frozen payload (SPEC §3.4): `active= index= size= scope= session= last_end=` in order (idle `scope=` = effective `default_scope`) |
 
 Recommended binds (see `USER.md`):
 
@@ -327,13 +327,18 @@ plugin {
         border_size             = -1       # -1 = do not touch size (colour only)
         lock_history_on_session = true
         restore_focus_on_cancel = false
+        external_socket         =        # AF_UNIX path for ui=external (REQ-O-001; empty = degrade to null)
     }
 }
 ```
 
 All keys registered only in `PLUGIN_INIT`.
 
-Effective UI policy is decided at session start and frozen for the Active session: `ui`, `border_style`, `border_color`, and `border_size` are part of the session policy snapshot. A config reload updates only the values used for the **next** Idle → Active transition (REQ-UI-009, REQ-CFG-002). Backend factory (plugin state build / policy refresh):
+Effective UI backend is frozen for the Active session: `SessionUIBackendProxy` rebuilds the
+backend from live config at `on_session_start` and keeps it for the session lifetime
+(REQ-UI-009); `SessionPolicy` itself carries only scope/wrap/start_offset/lock/restore.
+A config reload updates only the values used for the **next** Idle → Active transition
+(REQ-UI-009, REQ-CFG-002). Backend factory (plugin state build / policy refresh):
 
 ```text
 read config ui
