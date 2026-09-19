@@ -742,6 +742,139 @@ TEST(t_o_08_peer_select_then_apply_focuses_chosen) {
     CHECK(!f.sc.is_active());
 }
 
+// --- T-H-05 (M6-T6, issue #52): rapid Tab hammer — 1000 consecutive cycles on
+// one active session. Static source, wrap=true, start_offset=Second. On every
+// step: session stays Active, snapshot identical (no rebuild), index follows
+// advance_index wrap policy, zero FocusGateway calls (REQ-F-003), zero UI end
+// events until the explicit apply (REQ-F-007), no exceptions.
+TEST(t_h_05_rapid_tab_hammer_1000_cycles_wrap) {
+    Fixture f; // defaults: start_offset = Second, wrap = true, lock-in on
+    constexpr std::size_t kWindows = 5;
+    constexpr int kCycles = 1000;
+
+    std::vector<WindowRef> windows;
+    for (std::size_t i = 0; i < kWindows; ++i)
+        windows.push_back(ref(100 + i));
+    f.candidates(windows);
+
+    CHECK(f.sc.cycle(Direction::Next).ok); // session start, index 1 (Second)
+    const auto frozen = f.sc.active_snapshot()->windows();
+    const std::uint64_t sid = f.sc.session_id();
+
+    for (int i = 0; i < kCycles; ++i) {
+        const SessionController::CommandResult r = f.sc.cycle(Direction::Next);
+        CHECK(r.ok);
+        if (!r.ok)
+            break;
+        CHECK(f.sc.is_active());
+        // Snapshot frozen: same size and composition (REQ-SNAP-001/003).
+        CHECK(f.sc.active_snapshot()->size() == kWindows);
+        CHECK(f.sc.active_snapshot()->windows() == frozen);
+        // Selection walks the wrap policy exactly: (1 + i + 1) mod 5.
+        EQ(f.sc.index(), (1 + static_cast<std::size_t>(i) + 1) % kWindows);
+        // No source re-query (REQ-S-003) and no new session (REQ-S-008).
+        CHECK(f.source.candidates_calls == 1);
+        CHECK(f.sc.session_id() == sid);
+    }
+
+    // Zero focus calls (REQ-F-003), zero UI end events (REQ-F-007).
+    CHECK(f.fg.focused.empty());
+    CHECK(f.ui.ends.empty());
+    CHECK(f.ui.starts.size() == 1);
+    EQ(f.ui.changes.size(), static_cast<std::size_t>(kCycles));
+    // Lock-in (REQ-H-001): no history commit was scheduled during the hammer.
+    CHECK(f.tracker.order().empty());
+    CHECK(f.tracker.pending_job() == mru::domain::kInvalidJobId);
+
+    // The session survives the hammer; the explicit apply ends it once.
+    const WindowRef selected = f.sc.active_snapshot()->at(f.sc.index());
+    const SessionController::CommandResult a = f.sc.apply();
+    CHECK(a.ok);
+    EQ(f.fg.focused.size(), 1u); // exactly one successful focus (REQ-F-006)
+    CHECK(f.fg.focused[0] == selected);
+    CHECK(f.ui.ends.size() == 1);
+    CHECK(f.ui.ends[0] == UIEndReason::Applied);
+    CHECK(!f.sc.is_active());
+}
+
+// --- T-H-05 (M6-T6): interleave burst — cycle×N -> cancel -> cycle×N -> apply.
+// The apply at the end of the whole burst focuses EXACTLY once (REQ-F-006),
+// ends Applied, and the history commit after unlock promotes the applied window
+// to the MRU head (REQ-RE-003).
+TEST(t_h_05_interleave_burst_cancel_then_apply_focuses_once) {
+    Fixture f;
+    f.candidates({ref(10), ref(20), ref(30), ref(40)});
+    constexpr int kFirst = 500;
+
+    for (int i = 0; i < kFirst; ++i)
+        CHECK(f.sc.cycle(Direction::Next).ok);
+    CHECK(f.sc.is_active());
+    CHECK(f.fg.focused.empty());
+    CHECK(f.ui.ends.empty());
+
+    CHECK(f.sc.cancel().ok);
+    CHECK(!f.sc.is_active());
+    CHECK(f.fg.focused.empty()); // restore_focus_on_cancel=false: no focus
+    CHECK(f.ui.ends.size() == 1);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+
+    // Second burst opens a NEW session; the static source yields an identical
+    // composition again (freeze semantics per session, REQ-SNAP-001).
+    constexpr int kSecond = 500;
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    CHECK(f.sc.session_id() == 2);
+    const auto frozen = f.sc.active_snapshot()->windows();
+    for (int i = 1; i < kSecond; ++i) {
+        CHECK(f.sc.cycle(Direction::Next).ok);
+        CHECK(f.sc.active_snapshot()->windows() == frozen);
+    }
+
+    const WindowRef selected = f.sc.active_snapshot()->at(f.sc.index());
+    const SessionController::CommandResult a = f.sc.apply();
+    CHECK(a.ok);
+    EQ(f.fg.focused.size(), 1u); // exactly one focus across the entire burst
+    CHECK(f.fg.focused[0] == selected);
+    CHECK(f.ui.ends.size() == 2);
+    CHECK(f.ui.ends[0] == UIEndReason::Cancelled);
+    CHECK(f.ui.ends[1] == UIEndReason::Applied);
+    CHECK(f.sc.last_end_reason() == mru::domain::SessionEndReason::Applied);
+    CHECK(!f.sc.is_active());
+
+    // REQ-RE-003: debounce fires after unlock -> applied window at MRU head.
+    f.clock.advance(50);
+    const auto &order = f.tracker.order();
+    EQ(order.size(), 1u);
+    CHECK(order.front() == selected);
+}
+
+// --- T-H-05 (M6-T6): wrap=false hammer clamps at both edges (REQ-SEL-005) —
+// 200 Next cycles pin the index at the last slot, 200 Prev cycles pin it back
+// at the first slot; no focus, no end events, session stays Active.
+TEST(t_h_05_rapid_tab_hammer_wrap_false_clamps) {
+    SessionPolicy p;
+    p.wrap = false;
+    p.start_offset = StartOffset::First;
+    Fixture f(p);
+    f.candidates({ref(1), ref(2), ref(3)});
+
+    CHECK(f.sc.cycle(Direction::Next).ok); // index 0
+    EQ(f.sc.index(), 0u);
+
+    for (int i = 0; i < 200; ++i)
+        CHECK(f.sc.cycle(Direction::Next).ok);
+    EQ(f.sc.index(), 2u); // clamped at the last slot
+    CHECK(f.sc.is_active());
+    CHECK(f.fg.focused.empty());
+    CHECK(f.ui.ends.empty());
+
+    for (int i = 0; i < 200; ++i)
+        CHECK(f.sc.cycle(Direction::Prev).ok);
+    EQ(f.sc.index(), 0u); // clamped at the first slot
+    CHECK(f.sc.is_active());
+    CHECK(f.fg.focused.empty());
+    CHECK(f.ui.ends.empty());
+}
+
 } // namespace
 
 int main() {
