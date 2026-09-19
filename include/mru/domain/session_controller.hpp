@@ -46,6 +46,10 @@ class SessionController {
     // First cycle when Idle builds the Snapshot; subsequent cycles only move the
     // selection inside the existing Snapshot (REQ-S-003).
     [[nodiscard]] CommandResult cycle(Direction dir, std::optional<Scope> scope_override = std::nullopt);
+    // Peer-driven virtual selection (REQ-O-004, ADR-018): move the selection to a
+    // bounds-checked index of the active Snapshot. Never focuses (REQ-F-003). No-op
+    // while Idle or for an out-of-range index (T-O-02).
+    [[nodiscard]] CommandResult select_index(std::size_t i);
     // FocusGateway at most once/success, then Idle (REQ-S-004, REQ-F-006, ADR-014).
     [[nodiscard]] CommandResult apply();
     // Transition to Idle without applying the selection (REQ-S-005).

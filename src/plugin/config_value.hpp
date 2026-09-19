@@ -22,11 +22,12 @@ struct PluginConfig {
     bool restore_focus_on_cancel = false;
     bool ui_null = true;      // explicit ui=null
     bool ui_border = false;   // M4: ui=border -> BorderHighlightUI (REQ-UI-003)
-    bool ui_external = false; // M5: falls back to NullUI + warn-once until then (REQ-UI-002)
+    bool ui_external = false; // M5: ui=external -> ExternalOverlayUI (REQ-O-*, ADR-018)
     bool ui_matched = true;
     BorderStyle border_style = BorderStyle::Solid; // REQ-UI-007
     std::string border_color = "0xffffd9a0";       // REQ-UI-008: verbatim setprop value
     int border_size = -1;                          // REQ-UI-008: -1 = leave size untouched
+    std::string external_socket;                   // REQ-O-001: AF_UNIX path (empty -> null fallback)
 };
 
 PluginConfig default_plugin_config();
@@ -55,9 +56,9 @@ struct ParsedBorderStyle {
 };
 ParsedBorderStyle parse_border_style(std::string_view s);
 
-// Backend actually constructed for the session. `ui=external` is still
-// unimplemented and folds into Null (the caller emits the REQ-UI-002 warning).
-enum class UiBackend { Null, Border };
+// Backend actually constructed for the session (ADR-018): `external` may still
+// degrade to Null at runtime when the socket cannot start (REQ-O-001).
+enum class UiBackend { Null, Border, External };
 UiBackend effective_ui_backend(const PluginConfig &cfg);
 
 // REQ-SEL-002/REQ-S-009: `first`|`second`; unknown falls back to `second`.

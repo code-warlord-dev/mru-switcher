@@ -522,3 +522,152 @@ The R0 memo (`docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md`) ve
 - `docs/COMPAT.md` — pin + external mechanism row (0.56.2 / `efb5099…`)
 - `docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md` — R0 memo
 - `docs/ROADMAP.md` — M5 External overlay
+
+---
+
+## ADR-019: External overlay fd watch — removable `wl_event_loop_add_fd`
+
+**Status:** Accepted (implementation refinement of ADR-018; human design gate 2026-09-19)
+
+**Related:** ADR-018 (External overlay — AF_UNIX stream socket protocol), ADR-007 (domain/plugin split), REQ-O-006, REQ-O-008, REQ-RE-001, REQ-PERF-001/003, ROADMAP M5, SPEC §5.3 + §12 Appendix B
+
+**Date:** 2026-09-19
+
+---
+
+### Context
+
+ADR-018 (Accepted) freezes the M5 external-overlay design:
+
+- Transport: AF_UNIX `SOCK_STREAM`, single client, non-blocking.
+- Reads event-driven on the compositor main thread.
+- Writes best-effort (drop on backpressure / peer death).
+- Core (`OverlaySocketServer`, protocol, `ExternalOverlayUI`) stays Hyprland-free; event-loop wiring lives in the hypr adapter.
+
+The R0 memo (`docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md`) verified that the pinned Hyprland (v0.56.2 / `efb50993780079460b0cbed1363e2166a2de1d9f`) exposes `CEventLoopManager::doOnReadable(CFileDescriptor fd, fn)`. ADR-018 and the original wording of **REQ-O-006** therefore named `doOnReadable` as the registration mechanism.
+
+During implementation of `HyprlandOverlaySocket` it became clear that `doOnReadable`:
+
+1. Takes ownership of the `CFileDescriptor`.
+2. Does **not** return a handle that can later remove the watcher.
+
+Consequence: when a peer disconnects (or the listener must be torn down), the fd-watch cannot be removed without leaking it until plugin unload / compositor restart. This violates the teardown contract of **REQ-O-008** (“Teardown closes socket + listeners”) and creates a long-lived resource leak on a process that is expected to run for days.
+
+The underlying Wayland event loop (`wl_event_loop`) used by Hyprland **does** provide a removable primitive:
+
+```c
+struct wl_event_source *wl_event_loop_add_fd(
+    struct wl_event_loop *loop,
+    int fd,
+    uint32_t mask,
+    wl_event_loop_fd_func_t func,
+    void *data);
+
+void wl_event_source_remove(struct wl_event_source *source);
+```
+
+`g_pCompositor->m_wlEventLoop` is the same loop that backs `doOnReadable`. Using `wl_event_loop_add_fd` therefore preserves every property required by ADR-018 (main-thread, event-driven, non-blocking) while adding the missing removability.
+
+This ADR records the refinement. ADR-018 itself remains immutable (Accepted); only the concrete registration API is updated.
+
+---
+
+### Decision
+
+1. **Registration primitive**
+
+   In the Hyprland adapter (`HyprlandOverlaySocket`) the listener fd and the accepted client fd **SHALL** be registered with:
+
+   ```c
+   wl_event_loop_add_fd(g_pCompositor->m_wlEventLoop, fd, WL_EVENT_READABLE, callback, this)
+   ```
+
+   and removed with:
+
+   ```c
+   wl_event_source_remove(source);
+   source = nullptr;
+   ```
+
+   The adapter **MUST NOT** use `CEventLoopManager::doOnReadable` for these two fds.
+
+2. **Ownership and lifetime**
+
+   - `HyprlandOverlaySocket` owns the two `wl_event_source *` pointers (`listen_source_`, `client_source_`).
+   - `unwatch_listener()` / `unwatch_client()` are idempotent and are called on:
+     - peer HANGUP / ERROR,
+     - normal peer drop (`poll_client` returns false),
+     - path change / config reload that restarts the socket,
+     - `stop()` / destructor / `PLUGIN_EXIT`.
+   - After `unwatch_*` the corresponding source pointer is null; a subsequent `watch_*` may re-register.
+
+3. **Failure policy (unchanged from ADR-018)**
+
+   - If `wl_event_loop_add_fd` returns null for the listener → treat as start failure, stop the server, return false so the facade can degrade to `NullUI` (REQ-O-001 / REQ-UI-002).
+   - If registration of a newly accepted client fails → drop the client immediately; do not keep an unreadable peer.
+   - Callbacks never throw into the compositor (HIGH-4 / REQ-UI-001 pattern).
+
+4. **REQ-O-006 update**
+
+   The normative text of REQ-O-006 is amended as follows (SPEC §5.3):
+
+   > **REQ-O-006** All socket I/O SHALL run on the compositor main thread (event-driven via the Wayland event loop — `wl_event_loop_add_fd` / `wl_event_source_remove` on the pinned revision) and SHALL be non-blocking; a slow, absent or dead peer MUST NOT stall any `mru:*` dispatcher or focus path (REQ-PERF-001/003, REQ-RE-001).
+
+   Architecture documentation (ARCHITECTURE §8 / §11) is updated to match. ADR-018’s Decision §2 is left as historical record; this ADR is the authoritative source for the concrete API after acceptance.
+
+5. **No change to protocol, transport or domain contracts**
+
+   Everything else from ADR-018 remains in force:
+
+   - AF_UNIX STREAM, single client, O_NONBLOCK,
+   - best-effort sends,
+   - line-framed JSON protocol (Appendix B),
+   - Hyprland-free core,
+   - fallback to NullUI,
+   - next-session-only reload semantics.
+
+---
+
+### Consequences
+
+#### Positive
+
+- Peer disconnect and plugin teardown no longer leak fd-watches (REQ-O-008 satisfied).
+- Same main-thread, event-driven, non-blocking properties that ADR-018 required.
+- Explicit, removable handles make the adapter’s lifetime model obvious and unit-testable in principle (the loop itself remains a compositor object).
+- Clear separation of “design intent” (ADR-018) and “pin-accurate implementation detail” (this ADR).
+
+#### Negative / risks
+
+- Slightly lower-level API surface (`wl_event_loop_*` instead of the Hyprland convenience wrapper). Mitigated by confining the calls to a single thin adapter file.
+- Future Hyprland changes to the event-loop ownership model would require a new ADR (same risk existed with `doOnReadable`).
+- Reviewers must remember that ADR-018’s original wording is superseded for the registration primitive only; the rest of the design is unchanged.
+
+#### Follow-ups (not M5 exit)
+
+- None required for M5 exit criteria. Optional: a short COMPAT note recording that `doOnReadable` was evaluated and rejected for lack of removability on pin `efb5099`.
+
+---
+
+### Compliance mapping
+
+| Topic | REQ / ADR |
+|-------|-----------|
+| Event-driven main-thread I/O | REQ-O-006 (amended), REQ-RE-001, REQ-PERF-001/003 |
+| Teardown removes watches + closes socket | REQ-O-008 |
+| Fail-soft start / NullUI fallback | REQ-O-001, REQ-UI-002, ADR-011 |
+| Domain stays Hyprland-free | ADR-007 |
+| Original design intent | ADR-018 (immutable) |
+| Concrete registration API | **this ADR** |
+
+---
+
+### References
+
+- `docs/DECISIONS.md` — ADR-018 (Accepted)
+- `docs/SPEC.md` §5.3 — REQ-O-001..008 (REQ-O-006 amended by this ADR)
+- `docs/ARCHITECTURE.md` §8 / §11 — UIPort and overlay socket wiring
+- `docs/COMPAT.md` — pin Hyprland v0.56.2 / `efb5099…`
+- `docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md` — R0 memo
+- Implementation: `src/plugin/hypr/hyprland_overlay_socket.{hpp,cpp}` (M5)
+- Wayland server API: `wl_event_loop_add_fd`, `wl_event_source_remove` (`wayland-server.h`)

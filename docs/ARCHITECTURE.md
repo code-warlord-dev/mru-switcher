@@ -221,7 +221,7 @@ SessionController
 
 - `NullUI` — no compositor side effects; always available (default `ui = null` in M4, ADR-011).
 - `BorderHighlightUI` — M4. Solid border highlight of the selected window via public window-prop mechanisms ("public props first, fail-soft", ADR-017). Concrete pin symbols (Hyprland 0.56.2 / `efb5099…`) are **adapter-private**, recorded in `docs/COMPAT.md`; see the R0 memo `docs/agent-state/research/2026-09-17-m4-border-api.md` and the `UIPort` header `include/mru/domain/ui_port.hpp`.
-- `ExternalOverlayUI` — M5 (ADR-018): best-effort AF_UNIX stream socket (event-driven reads via `CEventLoopManager::doOnReadable` on the pin, R0 memo); peer absent/dies → session logic unaffected, messages dropped (REQ-O-002).
+- `ExternalOverlayUI` — M5 (ADR-018; fd-watch mechanism ADR-019): best-effort AF_UNIX stream socket; event-driven reads on the compositor main thread via removable Wayland event sources (`wl_event_loop_add_fd` / `wl_event_source_remove` on the pin, ADR-019); peer absent/dies → session logic unaffected, messages dropped (REQ-O-002). The concrete protocol lives in `src/plugin/overlay_protocol.*` (core), the POSIX server in `src/plugin/overlay_socket_server.*` (core), and the Hyprland fd watch in `src/plugin/hypr/hyprland_overlay_socket.*` (adapter).
 
 ### BorderHighlightUI (M4)
 
@@ -339,8 +339,11 @@ Effective UI policy is decided at session start and frozen for the Active sessio
 read config ui
   null     → NullUI
   border   → BorderHighlightUI(style, color, size)
-  external → ExternalOverlayUI(socket, resolver)   (M5, ADR-018)
+  external → ExternalOverlayUI(socket, resolver)   (M5, ADR-018; fd watch ADR-019)
              empty/broken socket → NullUI + warn-once (REQ-O-001)
+             socket is bound early (on the config.reloaded that follows plugin load)
+             so a peer may connect before the first session; clearing the path or
+             switching `ui` away from `external` tears the listener down.
 ```
 
 ---

@@ -70,7 +70,11 @@ ParsedBorderStyle parse_border_style(std::string_view s) {
 }
 
 UiBackend effective_ui_backend(const PluginConfig &cfg) {
-    return cfg.ui_border ? UiBackend::Border : UiBackend::Null; // external -> Null (REQ-UI-002)
+    if (cfg.ui_border)
+        return UiBackend::Border;
+    if (cfg.ui_external)
+        return UiBackend::External; // ADR-018; runtime socket failure degrades to Null
+    return UiBackend::Null;
 }
 
 mru::domain::StartOffset parse_start_offset(std::string_view s) {

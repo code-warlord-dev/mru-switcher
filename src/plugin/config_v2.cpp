@@ -78,10 +78,10 @@ bool register_all(HANDLE handle, Values &out) {
     if (!HyprlandAPI::addConfigValueV2(handle, out.restore_focus_on_cancel))
         return false;
 
-    // ADR-016 __5__: reserved for the M5 external UI protocol; registered so the
-    // documented 11-key surface (SPEC §4) is complete, but read_config() ignores it.
+    // ADR-018: AF_UNIX path bound by the plugin when `ui=external`. Registered in
+    // PLUGIN_INIT; read_config() consumes it for the M5 external overlay.
     out.external_socket = Config::Values::makeConfigValue<Config::Values::String>(
-        KEY_EXTERNAL_SOCKET, "External UI protocol socket — reserved, no effect until M5 (ADR-016 __5__)", "");
+        KEY_EXTERNAL_SOCKET, "External UI protocol AF_UNIX socket path (ui=external; ADR-018)", "");
     if (!HyprlandAPI::addConfigValueV2(handle, out.external_socket))
         return false;
 
@@ -119,6 +119,9 @@ mru::plugin::PluginConfig read_config(const Values &values) {
     // border_color is forwarded verbatim to `setprop`; border_size -1 = untouched.
     cfg.border_color = read(values.border_color);
     cfg.border_size = static_cast<int>(read(values.border_size));
+
+    // REQ-O-001 / ADR-018: empty path means `ui=external` degrades to null.
+    cfg.external_socket = read(values.external_socket);
     return cfg;
 }
 
