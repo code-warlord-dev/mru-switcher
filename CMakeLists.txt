@@ -69,6 +69,11 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(domain_test_stress_window_close PRIVATE mru_domain)
   mru_warnings(domain_test_stress_window_close)
   add_test(NAME domain_stress_window_close COMMAND domain_test_stress_window_close)
+
+  add_executable(domain_test_stress_focus_invalidation tests/domain/test_stress_focus_invalidation.cpp)
+  target_link_libraries(domain_test_stress_focus_invalidation PRIVATE mru_domain)
+  mru_warnings(domain_test_stress_focus_invalidation)
+  add_test(NAME domain_stress_focus_invalidation COMMAND domain_test_stress_focus_invalidation)
 endif()
 
 # --- Plugin pure helpers (no Hyprland headers; unit-testable) ---
