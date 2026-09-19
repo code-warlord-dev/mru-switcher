@@ -686,6 +686,62 @@ TEST(t_s_10_plugin_shutdown_never_restores) {
     CHECK(!f.sc.is_active());
 }
 
+// --- T-O-01: select_index moves the virtual selection and notifies UIPort (REQ-O-004).
+TEST(t_o_01_select_index_moves_virtual_selection) {
+    Fixture f;
+    f.candidates({ref(10), ref(20), ref(30)});
+    CHECK(f.sc.cycle(Direction::Next).ok); // index 1 -> ref(20)
+    CHECK(f.sc.index() == 1);
+
+    const SessionController::CommandResult r = f.sc.select_index(2);
+    CHECK(r.ok);
+    CHECK(f.sc.index() == 2);
+    CHECK(f.sc.active_snapshot()->at(f.sc.index()) == ref(30));
+    CHECK(!f.ui.changes.empty());
+    CHECK(f.ui.changes.back() == 2); // UIPort notified (virtual only)
+    CHECK(f.fg.focused.empty());     // REQ-F-003: never focuses
+    CHECK(f.sc.is_active());         // session continues
+}
+
+// --- T-O-02: select_index out of range, empty snapshot, or Idle is a no-op (REQ-O-004).
+TEST(t_o_02_select_index_noop_out_of_range_or_idle) {
+    Fixture f;
+    f.candidates({ref(10), ref(20)});
+    CHECK(f.sc.cycle(Direction::Next).ok); // index 1
+
+    CHECK(f.sc.select_index(2).ok); // out of range -> ignored
+    CHECK(f.sc.index() == 1);
+    CHECK(f.sc.select_index(99).ok);
+    CHECK(f.sc.index() == 1);
+    const std::size_t before_changes = f.ui.changes.size();
+    (void)f.sc.select_index(2);
+    CHECK(f.ui.changes.size() == before_changes); // no UIPort notification
+
+    (void)f.sc.cancel(); // Idle from here
+    const std::size_t before = f.sc.index();
+    CHECK(f.sc.select_index(1).ok); // Idle -> no-op
+    CHECK(f.sc.index() == before);
+    CHECK(f.ui.changes.size() == before_changes);
+}
+
+// --- T-O-08: peer select-then-apply maps to the controller ops and focuses the
+// chosen window exactly once (REQ-O-004, REQ-F-006).
+TEST(t_o_08_peer_select_then_apply_focuses_chosen) {
+    Fixture f;
+    f.candidates({ref(10), ref(20), ref(30)});
+    CHECK(f.sc.cycle(Direction::Next).ok); // index 1 -> ref(20)
+
+    CHECK(f.sc.select_index(0).ok); // peer picks ref(10)
+    CHECK(f.sc.active_snapshot()->at(f.sc.index()) == ref(10));
+
+    CHECK(f.sc.apply().ok);
+    CHECK(f.fg.focused.size() == 1);
+    CHECK(f.fg.focused[0] == ref(10));
+    CHECK(f.ui.ends.size() == 1);
+    CHECK(f.ui.ends[0] == UIEndReason::Applied);
+    CHECK(!f.sc.is_active());
+}
+
 } // namespace
 
 int main() {
