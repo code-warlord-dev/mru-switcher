@@ -1,13 +1,13 @@
 # Session State
 Updated: 2026-09-19
-Human goal: M4 closed — deliver the full M4 report (Russian) to the human; M5 starts only after human approval
-Active milestone: M4 COMPLETE (last optional item `restore_focus_on_cancel` closed in PR #35); v0.4.0 released
-Branch: main @ 03c0ae4 (PR #35 squash-merged; feat/m4-restore-on-cancel deleted)
-PR: #35 MERGED (CI 6/6 green, self-reviewed); issue #34 CLOSED
-Release: v0.4.0 tagged; restore work deliberately under [Unreleased] — no new tag proposed (tests/docs only; human gate §16.2)
-Next action: deliver full M4 report in Russian → await human review/approval → M5 only after that
+Human goal: add README badges to main (done, PR #37); then deliver M5 (external overlay) fully
+Active milestone: M5 EXTERNAL OVERLAY — code + docs complete on branch; M5 closes on merge to main
+Branch: feat/m5-external-overlay @ 4deb303 (from main @ e5cd2ba; assets extracted to chore/assets-banner PR #39; M5 history rebased clean)
+PR: M5 PR pending (this step); #38 (ADR-018 gate) MERGED; #39 (assets) open; #37 (badges) MERGED
+Next action: open M5 PR → CI 6/6 → plugin-spec-compliance + code-review self-review → squash-merge → close M5 checkbox
 Blocked: none
-State: nest N1–N4 PASS live on pin 0.56.2/efb5099; T-S-09/T-S-10 green + mutation-checked (M1/M2/M3 correctly RED); SPEC §6 clarification = REQ-R-003; ctest 12/12 on merged main; reviewer APPROVE WITH NITS — all closed
-SPEC focus: REQ-R-001/002/003, REQ-S-005/006/007/009, REQ-F-003, REQ-H-001; T-S-05/06/09/10, T-CFG-02
-Open: FM-22 abrupt-eject stuck borders (documented gap); perf loop / FFM highlight-follow untested; T-S-10 boundary unit-only (documented)
-Last artifact: docs/agent-state/reports/2026-09-19-m4-restore-on-cancel-review.md
+State: core ctest 15/15 (clang debug + ASan/UBSan + gcc); .so builds; plugin-guards clean; nest smoke 13/13 PASS on pin 0.56.2/efb5099 (session_start/selection/session_end, peer select/apply/cancel, bounds, empty-path degrade, unload no-leak)
+Fixes during smoke: dangling handler capture (SEGV), bind-on-config.reloaded (PLUGIN_INIT values empty on pin), stop socket on non-external/empty path
+SPEC focus: REQ-O-001..008, REQ-O-006 (amended, ADR-019), REQ-UI-002/009, REQ-PERF-001/003, REQ-RE-001; T-O-01..08
+Open: ADR-019 accepted (human) — human gate for adr/* resolved; doOnReadable explicitly rejected; same-path binary reload crash is an operator note (fresh nest when .so changes)
+Last artifact: docs/agent-state/reports/2026-09-19-m5-s3-nest-smoke.md

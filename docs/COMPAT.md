@@ -27,6 +27,7 @@
 | Config reload signal | `Event::bus()->m_events.config.reloaded` | Re-read config values only at next session if signal absent |
 | Window id | Stable address used by hyprctl + generation in plugin registry | Generation always plugin-local |
 | Border highlight (M4, `ui=border`) | Per-window `setprop address:0x<ptr> active_border_color <color>` / `inactive_border_color <color>` via `HyprlandAPI::invokeHyprctlCommand` (public; in-process hyprctl router, `PRIORITY_SET_PROP`; no focus side effect) | Unavailable/failed → `NullUI` + warn-once (REQ-UI-002); `IHyprWindowDecoration` documented fallback only
+| Overlay fd watch (M5, `ui=external`) | `wl_event_loop_add_fd(g_pCompositor->m_wlEventLoop, fd, WL_EVENT_READABLE, cb, this)` + `wl_event_source_remove(source)` (`wayland-server.h`; removable; ADR-019) | `CEventLoopManager::doOnReadable` **rejected** — takes ownership of the fd and returns no removable handle, so a disconnected peer's watch would leak until unload (REQ-O-008). Unavailable/failed → `NullUI` + warn-once (REQ-O-001) |
 
 ## M2 Nest Smoke Results (2026-09-15)
 
@@ -173,6 +174,21 @@ Full report: `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel.md`; raw 
 | N1b (extra, additive) | `ui=border`, `border_size=4`, `restore=1` | **PASS** | size override `4` visible during the session, restored to the compositor's `2` after cancel (REQ-UI-008 restore leg) |
 
 **Boundary note:** the non-cancel-end leg (T-S-10 — "a session ended for any other reason never moves focus") stays **unit-only**. Discriminating it live requires the origin to remain valid while the session ends for a different reason (e.g. the origin outside the session scope / on a second monitor), which this single-monitor nest cannot stage honestly; no weak live substitute was improvised. Covered by T-S-10 in `tests/domain/test_session_controller.cpp` (ctest 12/12 on this build).
+
+## M5 external overlay socket — mechanism (pin `efb5099`, v0.56.2)
+
+**Source of truth:** `docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md` (R0 memo) + ADR-018/ADR-019. Socket I/O runs on the compositor main thread through the Wayland event loop; no blocking work on the `mru:*` dispatcher path (REQ-PERF-001/003).
+
+- **Registration:** listener + first accepted client fd are watched with `wl_event_loop_add_fd(g_pCompositor->m_wlEventLoop, …)` and removed with `wl_event_source_remove(...)` (ADR-019).
+- **Rejected primitive:** `CEventLoopManager::doOnReadable` was verified present on the pin but **not usable** here — it consumes the `CFileDescriptor` and exposes no handle to cancel the waiter, so a peer disconnect could not be cleaned up. See ADR-019.
+- **Transport:** AF_UNIX `SOCK_STREAM`, single client, `O_NONBLOCK`, `MSG_NOSIGNAL`; send is best-effort (drop on `EAGAIN`/`EWOULDBLOCK`/`EPIPE`/error).
+- **Config bind timing:** on this pin the registered config values are not populated during `PLUGIN_INIT`; the socket is therefore bound on the `config.reloaded` that follows load (and again, idempotently, at session start). Clearing `external_socket` or switching `ui` away from `external` tears the listener down (REQ-O-001).
+- **Reload vs active session:** a `config.reloaded` that switches `ui` away from `external` (or clears the path) stops the listener immediately; the frozen in-session `ExternalOverlayUI` then sends best-effort to no peer and behaves as `ui = null` (REQ-O-002/REQ-UI-009).
+- **Protocol:** frozen in SPEC §12 Appendix B; reference peer `tools/overlay_stub.py`.
+
+### M5 nest smoke (2026-09-19) — recorded
+
+Full report: `docs/agent-state/reports/2026-09-19-m5-s3-nest-smoke.md`; raw evidence `/tmp/mru-nest-m5/report/`. Build `build-plugin-m5/mru-switcher.so`, pin `efb5099` (v0.56.2, aquamarine 0.15.0, Wayland nested). 13/13 rows PASS: load/bind before first session, peer `session_start`/`selection`/`session_end`, peer `select`/`apply`/`cancel`, out-of-bounds `select` ignored, empty-path degrade, path restore, unload mid-session (no crash/leak), repeated reload cycles. Three branch-only defects were found and fixed during the smoke (dangling handler capture → SEGV; lazy bind; socket left listening after path cleared).
 
 ## Verification checklist (per release)
 

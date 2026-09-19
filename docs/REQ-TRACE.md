@@ -99,6 +99,14 @@
 | REQ-SCH-003 | T-H-03 | job replace | M1 |
 | REQ-RE-001–004 | T-RE-01, nest | reentrancy / apply+active | M2 |
 | REQ-PERF-001–004 | review | hot path constraints | M2 |
+| REQ-O-001 | `test_config_value` (external), nest smoke step 10/12 | `ui=external` fallback: empty/unbindable path -> null + warn-once (config_value + mru_plugin factory) | M5 |
+| REQ-O-002 | T-O-06, `t_o_06_null_resolver_and_applied_end` | ExternalOverlayUI over OverlayTransport (session_start/selection/session_end) | M5 |
+| REQ-O-003 | T-O-03, `t_o_03_encode_selection_and_end` | overlay_protocol encode (JSON, `\n` framing, `0x` hex addr) | M5 |
+| REQ-O-004 | T-O-01, T-O-08, `t_o_04_parse_peer_commands`, nest | SessionController::select_index (virtual, Active-only, no focus) + peer `select`/`apply`/`cancel` routing | M5 |
+| REQ-O-005 | T-O-04, T-O-05, `t_o_07_oversized_drop_and_no_client_send` (log sink) | parse: known v/type only; malformed/unknown/oversize ignored + logged at debug (adapter `Log::logger->log`, core `LogSink`) | M5 |
+| REQ-O-006 | T-O-07, nest | listener/client fd watch via `wl_event_loop_add_fd` / `wl_event_source_remove` (adapter: nest smoke only; loop is compositor-owned, ADR-019) | M5 |
+| REQ-O-007 | T-O-02, `t_o_07_oversized_drop_and_no_client_send` | out-of-range `select` ignored; oversize peer line dropped without send | M5 |
+| REQ-O-008 | T-O-07, nest (unload mid-session), (adapter: nest smoke only; loop is compositor-owned, ADR-019) | teardown: remove fd watches, close clients, unlink socket; no leak | M5 |
 
 ## Test ID index
 
@@ -165,3 +173,11 @@
 | bonus_on_window_invalid_prunes | FM-04 prune + clamp | M2 |
 | bonus_on_window_invalid_empties | REQ-S-006 empty -> Cancelled | M2 |
 | bonus_apply_cancel_idempotent | FM-12/13 idempotent no-op | M2 |
+| T-O-01 | peer select moves virtual selection only (no focus) | M5 |
+| T-O-02 | peer select out-of-range / idle is a no-op | M5 |
+| T-O-03 | encode session_start / selection / session_end | M5 |
+| T-O-04 | decode peer select / apply / cancel | M5 |
+| T-O-05 | reject invalid peer input (v/type/JSON/oversize) | M5 |
+| T-O-06 | absent peer safe; message sequence correct; null resolver | M5 |
+| T-O-07 | socket start/stop lifecycle, first-client-wins, framing, peer close, oversize | M5 |
+| T-O-08 | peer select then apply focuses chosen window | M5 |

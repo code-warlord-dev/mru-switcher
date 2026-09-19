@@ -8,8 +8,11 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- M5 external overlay backend (`ui = external`, opt-in): the plugin binds an AF_UNIX stream socket at `plugin:mru-switcher:external_socket` and speaks the frozen line-framed JSON protocol (SPEC §12 Appendix B) so an out-of-process overlay can render the window list and drive the selection. New domain op `SessionController::select_index` (bounds-checked, Active-only, virtual selection — never focuses), Hyprland-free core (`overlay_protocol`, `external_overlay_ui`, `overlay_socket_server`), Hyprland fd-watch adapter, and a reference peer `tools/overlay_stub.py` (REQ-O-001..008, T-O-01..08)
+- M5 design refinement **ADR-019** (Accepted): overlay listener/client fds use removable `wl_event_loop_add_fd` / `wl_event_source_remove` instead of `doOnReadable`, which returns no handle to cancel a disconnected peer's watch (REQ-O-006 amended in SPEC §5.3; ARCHITECTURE §8/§11 and COMPAT updated)
 - Domain regression coverage for the optional restore path: **T-S-09** (`t_s_09_restore_flag_frozen_mid_session`) — a `hyprctl reload` of `restore_focus_on_cancel` mid-session does not change the frozen flag; the next session applies the new value (REQ-S-009, REQ-R-001) — and **T-S-10** (`t_s_10_empty_snapshot_never_restores`, `t_s_10_plugin_shutdown_never_restores`) — a session ending for a non-cancel reason (empty snapshot / `NoWindows`, plugin shutdown) never moves focus, even when the session origin stays valid (REQ-S-005/006, REQ-R-003)
 - Restore-on-cancel leg confirmed live in a nested session (pin v0.56.2 / `efb5099`): `mru:cancel` refocuses the session origin and a dead origin is a no-op — live nest confirmation (see `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel.md`)
+- M5 nest smoke (pin v0.56.2 / `efb5099`, 13/13 PASS): socket bound before the first session, peer `session_start`/`selection`/`session_end`, peer `select`/`apply`/`cancel`, out-of-bounds select ignored, empty-path degrade, path restore, unload mid-session without crash/leak (report: `docs/agent-state/reports/2026-09-19-m5-s3-nest-smoke.md`)
 
 ### Changed
 

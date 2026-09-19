@@ -26,6 +26,16 @@ SessionController::CommandResult SessionController::cycle(Direction dir, std::op
     return {true, ""};
 }
 
+SessionController::CommandResult SessionController::select_index(std::size_t i) {
+    // REQ-O-004 / T-O-02: Active-only and bounds-checked; out-of-range or empty
+    // snapshot is a no-op, Idle is a no-op.
+    if (!active_ || !snapshot_ || snapshot_->empty() || i >= snapshot_->size())
+        return {true, ""};
+    index_ = i;
+    ui_.on_selection_changed(index_); // REQ-F-003: virtual only, never focuses
+    return {true, ""};
+}
+
 SessionController::CommandResult SessionController::begin_session(Scope scope) {
     std::vector<WindowRef> candidates = source_.candidates(scope);
     if (candidates.empty())

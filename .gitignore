@@ -4,3 +4,4 @@
 *.o
 *.so
 *.log
+__pycache__/

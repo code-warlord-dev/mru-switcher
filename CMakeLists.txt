@@ -73,7 +73,10 @@ add_library(mru_plugin_core STATIC
   src/plugin/status_format.cpp
   src/plugin/mru_merge.cpp
   src/plugin/border_highlight_ui.cpp
-  src/plugin/session_ui.cpp)
+  src/plugin/session_ui.cpp
+  src/plugin/overlay_protocol.cpp
+  src/plugin/external_overlay_ui.cpp
+  src/plugin/overlay_socket_server.cpp)
 target_include_directories(mru_plugin_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)
 target_link_libraries(mru_plugin_core PUBLIC mru_domain)
 mru_warnings(mru_plugin_core)
@@ -116,6 +119,27 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(plugin_session_ui PRIVATE mru_plugin_core mru_domain)
   mru_warnings(plugin_session_ui)
   add_test(NAME plugin_session_ui COMMAND plugin_session_ui)
+
+  # T-O-03..05: Appendix B encode/decode over the frozen M5 protocol (ADR-018).
+  add_executable(plugin_overlay_protocol tests/plugin/test_overlay_protocol.cpp)
+  target_include_directories(plugin_overlay_protocol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_overlay_protocol PRIVATE mru_plugin_core mru_domain)
+  mru_warnings(plugin_overlay_protocol)
+  add_test(NAME plugin_overlay_protocol COMMAND plugin_overlay_protocol)
+
+  # T-O-06: ExternalOverlayUI over a fake transport (peer absent stays safe).
+  add_executable(plugin_external_overlay_ui tests/plugin/test_external_overlay_ui.cpp)
+  target_include_directories(plugin_external_overlay_ui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_external_overlay_ui PRIVATE mru_plugin_core mru_domain)
+  mru_warnings(plugin_external_overlay_ui)
+  add_test(NAME plugin_external_overlay_ui COMMAND plugin_external_overlay_ui)
+
+  # T-O-07: AF_UNIX server over a real loopback socket (no Hyprland needed).
+  add_executable(plugin_overlay_socket_server tests/plugin/test_overlay_socket_server.cpp)
+  target_include_directories(plugin_overlay_socket_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_overlay_socket_server PRIVATE mru_plugin_core mru_domain)
+  mru_warnings(plugin_overlay_socket_server)
+  add_test(NAME plugin_overlay_socket_server COMMAND plugin_overlay_socket_server)
 endif()
 
 if(MRU_BUILD_PLUGIN)
@@ -127,7 +151,8 @@ if(MRU_BUILD_PLUGIN)
     src/plugin/hypr/hypr_window_source.cpp
     src/plugin/hypr/hypr_focus_gateway.cpp
     src/plugin/hypr/hypr_scheduler.cpp
-    src/plugin/hypr/hyprctl_border_prop_io.cpp)
+    src/plugin/hypr/hyprctl_border_prop_io.cpp
+    src/plugin/hypr/hyprland_overlay_socket.cpp)
   target_include_directories(mru_plugin_hypr PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin

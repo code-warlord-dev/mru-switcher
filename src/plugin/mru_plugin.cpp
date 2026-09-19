@@ -2,6 +2,7 @@
 
 #include <string_view>
 
+#include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/plugins/PluginSystem.hpp>
 
@@ -146,6 +147,8 @@ static void guarded_listener(std::string_view tag, const std::function<void(void
     }
 }
 
+static bool try_start_overlay_socket();
+
 static void subscribe_events() {
     auto &st = state();
 
@@ -197,11 +200,58 @@ static void subscribe_events() {
             st.config = mru::plugin::config::read_config(st.config_v2);
             st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
             st.controller->set_policy(policy_from_config(st.config));
+            // Early bind for `ui=external`: on this pin config values are only
+            // populated after the reload that follows plugin load, so this is the
+            // first reliable moment to open the socket for a peer that wants to
+            // connect before the first session. It also tears the socket down when
+            // the reloaded config no longer selects `external`.
+            (void)try_start_overlay_socket();
         });
     }));
 }
 
 // --- wiring ---------------------------------------------------------------------
+
+// REQ-O-004/REQ-O-007: peer commands map onto existing, bounds-safe controller
+// paths; guarded() (HIGH-4) keeps a hostile peer from escaping into the compositor.
+// The handler closes over PluginState (stable for the plugin lifetime) and is
+// stored by value inside the socket server, so it must never capture locals.
+static HyprlandOverlaySocket::CommandHandler overlay_command_handler() {
+    return [](const overlay_protocol::Command &cmd) {
+        auto &st = state();
+        (void)guarded([&] {
+            const auto to_result = [](const mru::domain::SessionController::CommandResult &r) {
+                return r.ok ? ok_result() : err_result(r.error);
+            };
+            switch (cmd.type) {
+            case overlay_protocol::CommandType::Select:
+                return to_result(st.controller->select_index(cmd.index));
+            case overlay_protocol::CommandType::Apply:
+                return to_result(st.controller->apply());
+            case overlay_protocol::CommandType::Cancel:
+                return to_result(st.controller->cancel());
+            }
+            return ok_result();
+        });
+    };
+}
+
+// Binds/refreshes the overlay socket when the effective backend is `external`.
+// ensure_started is idempotent for the same path and restarts on a changed path
+// (config reload); returns false when the path is empty or the socket cannot
+// start (REQ-O-001) so the facade degrades to NullUI. A non-external/empty-path
+// config tears the socket down so no listener outlives the backend that owns it
+// (REQ-O-001/REQ-O-008); `stop()` is idempotent and never runs on the hot path.
+static bool try_start_overlay_socket() {
+    auto &st = state();
+    if (!st.overlay_socket)
+        return false;
+    if (effective_ui_backend(st.config) != UiBackend::External || st.config.external_socket.empty()) {
+        st.overlay_socket->stop();
+        return false;
+    }
+    return st.overlay_socket->ensure_started(st.config.external_socket, overlay_command_handler());
+}
 
 static void build_state() {
     auto &st = state();
@@ -216,13 +266,22 @@ static void build_state() {
     st.source = std::make_unique<HyprlandWindowSource>(*st.registry, *st.tracker);
     st.fg = std::make_unique<HyprlandFocusGateway>(*st.registry);
 
-    // Backend factory (ADR-004 / ADR-017, ARCHITECTURE §11). REQ-UI-009: the
-    // controller holds a UIPort&, so a stable SessionUIBackendProxy is installed
+    // Backend factory (ADR-004 / ADR-017 / ADR-018, ARCHITECTURE §11). REQ-UI-009:
+    // the controller holds a UIPort&, so a stable SessionUIBackendProxy is installed
     // once and rebuilds the concrete backend from the CURRENT config on each
     // session start. A `hyprctl reload` therefore takes effect on the NEXT session,
-    // never mid-session. `external` is still unimplemented and falls back to NullUI
-    // with one warning (REQ-UI-002); `null`/unknown use the no-op backend.
+    // never mid-session. `external` binds the socket at load (so a peer can connect
+    // ahead of the first session) and degrades to NullUI + warn-once when the path
+    // is empty or the socket cannot start (REQ-O-001); `null`/unknown use the no-op
+    // backend.
     st.border_io = std::make_unique<HyprctlBorderPropIo>();
+    st.overlay_socket = std::make_unique<HyprlandOverlaySocket>();
+    // Best-effort early bind (see try_start_overlay_socket). On this pin the
+    // registered config values are not yet populated during PLUGIN_INIT, so the
+    // reliable bind happens on the first `config.reloaded` that follows the load;
+    // the factory call below is the final safety net.
+    (void)try_start_overlay_socket();
+
     st.ui = std::make_unique<SessionUIBackendProxy>([&st]() -> std::unique_ptr<mru::domain::UIPort> {
         if (effective_ui_backend(st.config) == UiBackend::Border) {
             return std::make_unique<BorderHighlightUI>(
@@ -235,7 +294,7 @@ static void build_state() {
                     // would reset every session and spam one notification per
                     // Alt+Tab session while the border API is broken. This static
                     // drops repeat warns BEFORE addNotification, mirroring the
-                    // ui=external pattern above; the backend's own `warned_`
+                    // ui=external pattern below; the backend's own `warned_`
                     // instance latch only dedupes within one backend instance.
                     static bool warned = false;
                     if (warned)
@@ -245,13 +304,26 @@ static void build_state() {
                                                  CHyprColor{1, 0.7, 0, 1}, 5000);
                 });
         }
+        if (effective_ui_backend(st.config) == UiBackend::External) {
+            if (try_start_overlay_socket()) {
+                return std::make_unique<ExternalOverlayUI>(
+                    *st.overlay_socket, [&st](const mru::domain::WindowRef &ref) {
+                        OverlayWindowInfo info;
+                        if (const PHLWINDOW w = st.registry->resolve(ref)) {
+                            info.title = w->m_title;
+                            info.window_class = w->m_class;
+                        }
+                        return info; // REQ-O-003: metadata best-effort, addr from ref
+                    });
+            }
+        }
         if (st.config.ui_external) {
             static bool warned = false;
             if (!warned) {
                 warned = true;
-                HyprlandAPI::addNotification(PHANDLE,
-                                             "mru-switcher: ui=external reserved until M5, falling back to ui=null",
-                                             CHyprColor{1, 0.7, 0, 1}, 5000);
+                HyprlandAPI::addNotification(
+                    PHANDLE, "mru-switcher: ui=external unavailable (empty/broken external_socket), using ui=null",
+                    CHyprColor{1, 0.7, 0, 1}, 5000);
             }
         }
         return std::make_unique<NullUI>();
@@ -278,6 +350,7 @@ static void teardown_state() {
                                           // state reset) while controller/ui/tracker are alive
     st.controller.reset();
     st.ui.reset();
+    st.overlay_socket.reset(); // after ui: ExternalOverlayUI holds its transport& (ADR-018)
     st.border_io.reset();
     st.fg.reset();
     st.source.reset();

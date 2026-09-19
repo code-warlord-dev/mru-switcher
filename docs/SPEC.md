@@ -420,9 +420,11 @@ compositor main thread and only while data is readable (REQ-RE-001):
 **REQ-O-005** Peer data with an unknown version, unknown `type`, malformed JSON, or an oversized/
 invalid line SHALL be ignored and logged at debug; it MUST NOT change session state or focus.
 
-**REQ-O-006** All socket I/O SHALL run on the compositor main thread (event-driven via
-`CEventLoopManager::doOnReadable` on the pinned revision, R0 memo) and SHALL be non-blocking;
-`mru:*` dispatchers MUST never block on the socket (REQ-PERF-001).
+**REQ-O-006** All socket I/O SHALL run on the compositor main thread (event-driven via the Wayland
+event loop — `wl_event_loop_add_fd` / `wl_event_source_remove` on the pinned revision, ADR-019;
+`doOnReadable` was evaluated and rejected for the listener/client fds because it returns no handle
+to remove the watcher) and SHALL be non-blocking; a slow, absent or dead peer MUST NOT stall any
+`mru:*` dispatcher or focus path (REQ-PERF-001/003, REQ-RE-001).
 
 **REQ-O-007** Peer input SHALL NOT grant ability to focus an arbitrary window: `select` only moves the
 virtual selection within the existing Snapshot (REQ-F-003) and `apply`/`cancel` reuse the existing,
