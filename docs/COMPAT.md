@@ -160,6 +160,20 @@ Full report: `docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md`; raw evid
 2. **`hyprctl keyword` channel limitation (D1 — COMPAT/USER).** `hyprctl keyword plugin:mru-switcher:<key> <value>` is accepted by hyprlang (getoption reflects it) but never reaches the plugin's cached config on this pin: `st.config` refreshes only on the `config.reloaded` event, which a config-file edit + full `hyprctl reload` fires and a keyword change does not (discriminators: `/tmp/mru-nest-m4/report/02e-configfile-reload.txt`, `02f-keyword-discriminator.txt`; plugin handle unchanged across reload — no restart involved). **Config file + `hyprctl reload` is the supported runtime channel.** This matches SPEC REQ-CFG-002/003 (refresh on `config.reloaded`) — no SPEC change; user-facing note in `docs/USER.md` "Config reload".
 3. **R0 memo correction (border_size).** `getprop … border_size` IS supported on this pin and returns the effective integer (probe: `/tmp/mru-nest-m4/report/09-border-size-probe.txt`); after a `setprop`-carried `unset` the effective size is unchanged, so size restore is by captured value with an `unset` fallback (`border_size = -1` default keeps the size untouched, REQ-UI-008).
 
+### M4 restore-on-cancel live confirmation (2026-09-19) — recorded
+
+Full report: `docs/agent-state/reports/2026-09-19-m4-restore-on-cancel.md`; raw evidence `/tmp/mru-nest-restore/report/`; build `build-plugin-restore/mru-switcher.so` (branch `feat/m4-restore-on-cancel` @ `bb03942`, sha256 `daa5bd97189c0612b263197cf093fb462f4e1c895bb85ad259c8d21798467897`, 448 328 B) on pin `efb5099` (v0.56.2, aquamarine 0.15.0, Wayland nested, single monitor). Channel: config file + `hyprctl reload` only (D1).
+
+| Row | Config | Verdict | One-line evidence |
+|-----|--------|---------|-------------------|
+| N1 | `ui=border`, `restore=1` | **PASS** | cycle ×2 left `activewindow` on the origin (REQ-F-003) while the highlight followed C→B; `mru:cancel` after a forced focus displacement refocused the origin and every window's `active_border_color`/`inactive_border_color`/`border_size` were byte-exact the pre-session baseline — no `0deg`, no empty gradient, no stuck highlight (D2 fix confirmed live) |
+| N2 | `ui=null`, `restore=1` | **PASS** | zero border prop deltas in every shot; cancel (from a displaced focus) refocused the origin |
+| N3 | `ui=border`, `restore=1`, origin closed mid-session | **PASS** | origin killed via `killactive`; session survived the prune (highlight stayed), `mru:cancel` changed no focus (REQ-R-002) and borders were restored; no crash, plugin still loaded |
+| N4 | `ui=border`, `restore=1` → mid-session file edit to `restore=0` + `hyprctl reload` | **PASS** | cancel **still** refocused the origin (frozen policy, REQ-S-009) while `getoption plugin:mru-switcher:restore_focus_on_cancel` already read `int: 0`; a NEW session then cancelled **without** refocusing (new value applies to the next session) |
+| N1b (extra, additive) | `ui=border`, `border_size=4`, `restore=1` | **PASS** | size override `4` visible during the session, restored to the compositor's `2` after cancel (REQ-UI-008 restore leg) |
+
+**Boundary note:** the non-cancel-end leg (T-S-10 — "a session ended for any other reason never moves focus") stays **unit-only**. Discriminating it live requires the origin to remain valid while the session ends for a different reason (e.g. the origin outside the session scope / on a second monitor), which this single-monitor nest cannot stage honestly; no weak live substitute was improvised. Covered by T-S-10 in `tests/domain/test_session_controller.cpp` (ctest 12/12 on this build).
+
 ## Verification checklist (per release)
 
 - [x] Hash check passes on load
