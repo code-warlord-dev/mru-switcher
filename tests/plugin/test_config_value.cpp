@@ -89,7 +89,7 @@ TEST(cfg_06_defaults) {
     EQ(cfg.debounce_ms, 400);
     EQ(cfg.default_scope, Scope::Global);
     CHECK(cfg.wrap);
-    CHECK(cfg.lock_history_on_session);
+    CHECK(cfg.lock_history_on_session); // reserved key: default stays true (REQ-H-010)
     CHECK(!cfg.restore_focus_on_cancel);
     CHECK(cfg.ui_null);
     CHECK(!cfg.ui_border);

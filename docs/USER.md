@@ -102,7 +102,6 @@ plugin {
         border_style            = solid    # border highlight style (M4: solid only; pulse/dim reserved -> solid + warn-once)
         border_color            = 0xffffd9a0  # border highlight colour (bright accent; verbatim setprop grammar)
         border_size             = -1       # -1 = leave border size unchanged (colour only)
-        lock_history_on_session = true
         restore_focus_on_cancel = false
         external_socket         =        # AF_UNIX path; required when ui = external (empty = degrade to null)
     }
@@ -124,7 +123,7 @@ and the plugin re-reads its settings (via the `config.reloaded` event):
 
 - `debounce_ms` — applies to the MRU updates that happen **after** the reload.
 - Everything else (`default_scope`, `start_offset`, `wrap`,
-  `lock_history_on_session`, `restore_focus_on_cancel`, `ui`, `external_socket`, and the
+  `restore_focus_on_cancel`, `ui`, `external_socket`, and the
   border-* keys) — applies to the **next** session you start. Note: switching `ui` away
   from `external` (or clearing `external_socket`) stops the socket listener at reload;
   the already-running session continues with its frozen backend (REQ-UI-009).
@@ -148,7 +147,11 @@ observed by the plugin on Hyprland 0.56.2 — edit the config file and run
 | Release `Alt` | Focuses the selected window and ends the session |
 | `Escape` | Cancels the session without changing focus (unless `restore_focus_on_cancel` is set) |
 
-While a session is active, intermediate focus changes (mouse, other keybinds) do **not** reorder the list (lock-in).
+While a session is active, intermediate focus changes (mouse, other keybinds) do **not**
+reorder the list — lock-in is always on and cannot be switched off (there is a reserved,
+ignored `lock_history_on_session` key for 0.x config compatibility: see [API.md](API.md)).
+A focus change made just before you open a session is committed immediately, so
+back-to-back switches rotate the list deterministically (ADR-021).
 
 ---
 
@@ -293,7 +296,7 @@ plugin {
 By design (Niri / classic Alt+Tab). Focus is applied only on release so intermediate workspaces and history stay clean.
 
 **Order jumps when I tab quickly.**  
-Ensure `lock_history_on_session = true` and that you are not mixing other focus binds that bypass the plugin during the session.
+History is always frozen while a session is running: **lock-in is mandatory and there is no setting to turn it off**. Make sure you are not mixing other focus binds that bypass the plugin during the session. Quick consecutive `cycle`/`apply` pairs now rotate the history deterministically instead of landing on the same window (ADR-021), so a fast A↔B toggle behaves the same whether or not you wait for `debounce_ms`.
 
 **Special workspaces / scratchpads.**  
 A scratchpad window is switchable only while it is **shown**; when hidden it is

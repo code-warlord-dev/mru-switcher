@@ -204,15 +204,16 @@ The files under `examples/` are your starting point, not a minimal inline
 snippet:
 
 * `examples/mru-switcher.conf` — the complete `plugin { mru-switcher { … } }`
-  block, every key documented inline: purpose, default, allowed values, and a
-  short recommendation.
+  block, every user-facing key documented inline: purpose, default, allowed
+  values, and a short recommendation.
 * `examples/mru-switcher-bindings.conf` — the four recommended keybindings.
 
 The plugin reads its settings when it loads; after editing the config, run
 `hyprctl reload` and changes apply to your **next** Alt+Tab session (an open
 session keeps the policy it started with). Quick reference of the options:
 behaviour (`debounce_ms`, `start_offset`, `wrap`), default scope, history
-behaviour (`lock_history_on_session`, `restore_focus_on_cancel`), and the UI
+behaviour (`restore_focus_on_cancel` — history lock-in while a session is open
+is mandatory and has no setting), and the UI
 backend (`ui`, plus `border_style` / `border_color` / `border_size` for the
 border backend and `external_socket` for the external one).
 
@@ -268,8 +269,11 @@ mru:status
 * **`unknown key` / `unknown value` warnings** — the example files match the
   currently released keys; make sure you are not mixing an older example with
   a newer plugin or vice versa.
-* **List order jumps while tabbing** — keep `lock_history_on_session = true`
-  and avoid other focus binds that bypass the plugin mid-session.
+* **List order jumps while tabbing** — the history is always frozen while a
+  session is running (lock-in is mandatory, not a setting), so exit the session
+  cleanly with `mru:apply` / `mru:cancel` and avoid other focus binds that
+  bypass the plugin mid-session. Back-to-back `cycle`/`apply` pairs rotate the
+  list deterministically (ADR-021).
 * **Config changes not applying** — edit the file and run
   `hyprctl reload`; an already-open session keeps its original settings until
   apply/cancel.

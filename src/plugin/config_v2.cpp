@@ -69,7 +69,8 @@ bool register_all(HANDLE handle, Values &out) {
         return false;
 
     out.lock_history_on_session = Config::Values::makeConfigValue<Config::Values::Bool>(
-        KEY_LOCK_HISTORY_ON_SESSION, "Freeze MRU order while a session is active", true);
+        KEY_LOCK_HISTORY_ON_SESSION,
+        "Reserved and ignored: MRU history is always locked while a session is active (REQ-H-010)", true);
     if (!HyprlandAPI::addConfigValueV2(handle, out.lock_history_on_session))
         return false;
 
@@ -95,6 +96,22 @@ mru::plugin::PluginConfig read_config(const Values &values) {
     cfg.start_offset = parse_start_offset(read(values.start_offset));
     cfg.wrap = read(values.wrap);
     cfg.lock_history_on_session = read(values.lock_history_on_session);
+    // REQ-H-010 / ADR-021: the key is reserved and its value is ignored — lock-in is
+    // mandatory (REQ-H-001). A non-default value gets exactly one notification per
+    // plugin lifetime: read_config() runs again on every `config.reloaded`, and an
+    // old config copied from 0.x must not spam the user (same warn-once pattern as
+    // the border_style fallback below).
+    if (!cfg.lock_history_on_session) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            HyprlandAPI::addNotification(
+                PHANDLE,
+                "mru-switcher: lock_history_on_session is reserved and ignored - MRU lock-in is always on "
+                "while switching (see docs/USER.md)",
+                CHyprColor{1, 0.7, 0, 1}, 5000);
+        }
+    }
     cfg.restore_focus_on_cancel = read(values.restore_focus_on_cancel);
 
     const ParsedUi ui = parse_ui_backend(read(values.ui));

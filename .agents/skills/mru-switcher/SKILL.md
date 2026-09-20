@@ -27,7 +27,10 @@ This skill encodes the **project contracts** for the MRU window switcher plugin.
 2. **Snapshot** is fixed at session start (only pruning allowed).
 3. **`mru:cycle` never focuses** — selection is virtual.
 4. Focus only via **FocusGateway** on apply (or explicit restore-on-cancel).
-5. While Active and `lock_history_on_session` — **no MRU list updates** (lock-in).
+5. While Active, the MRU list is **frozen** — **lock-in is mandatory and unconditional**
+   (REQ-H-001/010, ADR-021; the `lock_history_on_session` key is reserved and ignored).
+   A promotion still pending from the previous session is flushed at session start
+   (REQ-H-011).
 6. Domain layer has **no** Hyprland types (`PHLWINDOW`, `g_p*`).
 
 ## Session machine
@@ -40,11 +43,13 @@ Active --cycle--> Active (index only)
 ### First cycle
 
 1. Resolve scope (arg or `default_scope`)
-2. Build candidate list from HistoryTracker order ∩ scope ∩ validity
-3. If empty → fail dispatcher (`no windows`)
-4. Create Snapshot + Selection (`start_offset` first|second)
-5. UI `on_session_start`
-6. State = Active
+2. Flush a pending debounced promotion (`HistoryTracker::flush_pending`, REQ-H-011) —
+   committed before candidates are read so the new snapshot sees it at the head
+3. Build candidate list from HistoryTracker order ∩ scope ∩ validity
+4. If empty → fail dispatcher (`no windows`)
+5. Create Snapshot + Selection (`start_offset` first|second)
+6. UI `on_session_start`; lock-in engages unconditionally (REQ-H-001)
+7. State = Active
 
 ### Subsequent cycle
 
@@ -78,7 +83,9 @@ Return proper `SDispatchResult` errors for bad args / empty candidates.
 - Seed from `Desktop::History::windowTracker()->fullHistory()` when available
 - Else maintain list from `window.active`
 - Debounce commits with `debounce_ms`
-- Ignore updates while session Active if lock-in enabled
+- Never update while a session is Active: lock-in is mandatory (REQ-H-001)
+- At session start `flush_pending()` commits a still-pending promotion immediately
+  (validity guard included), before the snapshot is built (REQ-H-011, ADR-021)
 
 ## Scopes
 

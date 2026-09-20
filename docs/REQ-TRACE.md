@@ -15,7 +15,7 @@
 | REQ-S-006 | T-F-04, T-S-10 | SessionController | M1 |
 | REQ-S-007 | T-S-05 | SessionController | M1 |
 | REQ-S-008 | T-S-01, observability | session_id monotonic | M2 |
-| REQ-S-009 | T-CFG-02, T-S-09 | immutable SessionPolicy | M2 |
+| REQ-S-009 | T-CFG-02, T-S-09 | immutable SessionPolicy (no lock-in flag — REQ-H-010) | M2 |
 | REQ-S-010 | T-S-07 | ignore scope override when Active | M2 |
 | REQ-S-011 | — | no session timeout | M1 |
 | REQ-SNAP-001 | T-S-01 | Snapshot / History order | M1 |
@@ -37,7 +37,7 @@
 | REQ-F-007 | T-F-03, T-F-04, T-F-05 | single UI end | M2 |
 | REQ-F-008 | T-F-05 | FocusResult InvalidTarget/Failed | M2 |
 | REQ-F-009 | T-S-02, T-S-03, T-F-05, mru:status | SessionEndReason | M2 |
-| REQ-H-001 | T-H-01, bonus_focus_during_active | lock-in | M2 |
+| REQ-H-001 | T-H-01, T-H-10, T-H-11, bonus_focus_during_active | lock-in (mandatory + unconditional, ADR-021) | M2 |
 | REQ-H-002 | T-H-02 | debounce schedule | M1 |
 | REQ-H-003 | T-H-02 | debounce commit | M1 |
 | REQ-H-004 | integration, nest | History seed | M2 |
@@ -48,7 +48,9 @@
 | REQ-H-006 | T-H-03 | single pending job | M1 |
 | REQ-H-007 | T-H-02 | FakeClock / main thread | M2 |
 | REQ-H-008 | T-H-04 | cancel on unload | M2 |
-| REQ-H-009 | T-H-05 | invalid before fire | M1 |
+| REQ-H-009 | T-H-05, T-H-10 | invalid before fire (also on flush) | M1 |
+| REQ-H-010 | T-CFG-06 (key stays registered + default `true`), warn-once: nest/manual | reserved key, value ignored (ADR-021) | M6 |
+| REQ-H-011 | T-H-10, T-H-11 | flush pending promotion at session start (ADR-021) | M6 |
 | REQ-ID-001 | T-ID-01 | WindowRef type | M1 |
 | REQ-ID-002 | T-ID-01 | generation bump | M2 |
 | REQ-ID-003 | T-ID-01, T-merge-03 | equality | M2 |
@@ -147,6 +149,8 @@
 | T-H-06 | window-close stress under Active (prune/clamp, NoWindows drain, dead origin, 300-step LCG) | M6 |
 | T-H-07 | focus-invalidation storm (§2.8 bounds, Failed-definitive, monitor drain, 500-apply storm) | M6 |
 | T-H-08 | rapid Tab hammer (1000-cycle wrap, interleave burst, wrap=false clamp; nest smoke) | M6 |
+| T-H-10 | flush pending promotion at session start: immediate commit without clock advance, REQ-H-009 guard on an invalid pending window, no-op without a pending job (REQ-H-011, ADR-021) | M6 |
+| T-H-11 | chained `cycle→apply` sessions without clock advance rotate (applied windows differ; flush precedes snapshot construction) — #65 regression (REQ-H-011, REQ-F-006) | M6 |
 | T-H-seed | init seed from compositor or empty | M2 |
 | T-F-01 | cycle no FocusGateway | M1 |
 | T-F-02 | apply one focus | M1 |
