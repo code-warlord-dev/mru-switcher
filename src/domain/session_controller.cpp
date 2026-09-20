@@ -37,6 +37,16 @@ SessionController::CommandResult SessionController::select_index(std::size_t i) 
 }
 
 SessionController::CommandResult SessionController::begin_session(Scope scope) {
+    // REQ-H-011 / ADR-021: a promotion left pending by the previous session (or by
+    // an Idle focus burst) is committed BEFORE the candidate list is built and
+    // BEFORE lock-in engages. Ordering matters: source_.candidates() hands out the
+    // plugin-owned MRU order (REQ-SNAP-001a), so flushing later would hand this
+    // session a stale head and back-to-back `cycle -> apply` taps would land on the
+    // same window depending on whether debounce_ms elapsed (#65). The call is a
+    // no-op when nothing is pending, and the flushed window still passes the
+    // REQ-H-009 validity guard.
+    tracker_.flush_pending();
+
     std::vector<WindowRef> candidates = source_.candidates(scope);
     if (candidates.empty())
         return {false, "no windows"}; // REQ-S-002 guard, FM-11
@@ -45,9 +55,8 @@ SessionController::CommandResult SessionController::begin_session(Scope scope) {
     index_ = initial_index(policy_.start_offset, snapshot_->size()); // REQ-SEL-001/002
     session_origin_ = source_.focused();                             // REQ-S-007
     ++session_id_;                                                   // REQ-S-008
-    snapshot_policy_ = policy_;                                      // REQ-S-009
-    if (snapshot_policy_.lock_history_on_session)
-        tracker_.set_session_locked(true); // lock-in (REQ-H-001)
+    snapshot_policy_ = policy_;                                      // REQ-S-009 (no lock flag: REQ-H-001/010)
+    tracker_.set_session_locked(true);                               // lock-in is mandatory (REQ-H-001, ADR-021)
 
     active_ = true;
     ui_.on_session_start(*snapshot_, index_);
@@ -137,8 +146,7 @@ SessionController::CommandResult SessionController::end_session(SessionEndReason
     session_origin_.reset();
     last_end_reason_ = reason; // diagnostics (REQ-F-009, mru:status)
 
-    if (snapshot_policy_.lock_history_on_session)
-        tracker_.set_session_locked(false); // unlock (REQ-H-001)
+    tracker_.set_session_locked(false); // unlock is unconditional (REQ-H-001, ADR-021)
 
     ui_.on_session_end(reason == SessionEndReason::Applied ? UIEndReason::Applied
                                                            : UIEndReason::Cancelled); // REQ-F-007/009

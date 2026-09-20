@@ -26,11 +26,13 @@ Declared in M6-T1 (issue #50) after a line-by-line audit of §2–§4 against `s
 3. **Configuration keys** (§4): every registered key under `plugin:mru-switcher:` — 11 total:
    `debounce_ms`, `default_scope`, `start_offset`, `wrap`, `ui`, `border_style`, `border_color`,
    `border_size`, `lock_history_on_session`, `restore_focus_on_cancel`, `external_socket` — names, types,
-   defaults, and reload semantics (REQ-CFG-001..004, REQ-S-009, REQ-UI-009) are frozen.
+   defaults, and reload semantics (REQ-CFG-001..004, REQ-S-009, REQ-UI-009) are frozen. **Except:** the
+   `lock_history_on_session` value is **reserved and ignored** (lock-in while Active is mandatory — REQ-H-010,
+   ADR-021); the key stays registered for 1.x, and its removal is a 2.0 candidate.
 4. **Snapshot / apply / restore semantics** (§2): snapshot frozen at first cycle, prune only (REQ-SNAP-003/004);
    virtual selection — `mru:cycle` never focuses (REQ-F-003); exactly one focus per `mru:apply` through
    FocusGateway (REQ-F-006) with apply-after-invalidation per §2.8; lock-in + debounce (REQ-H-001..003,
-   ADR-001..003); restore on an explicit `mru:cancel` only (REQ-R-003).
+   REQ-H-011, ADR-001..003, ADR-021); restore on an explicit `mru:cancel` only (REQ-R-003).
 5. **External UI protocol** (§12 Appendix B, protocol version `v=1`): frozen as shipped in M5.
 
 **Versioning rule (semver):** in 1.x, breaking any frozen contract above — a dispatcher rename, a grammar
@@ -83,7 +85,7 @@ change only with a CHANGELOG entry, and every such change must be reconciled bef
 
 **REQ-S-008** Each session SHALL receive a monotonic `session_id` (uint64, plugin lifetime) for diagnostics and logs.
 
-**REQ-S-009** At session start the controller SHALL snapshot **SessionPolicy** (effective scope, wrap, start_offset, lock_history_on_session, restore_focus_on_cancel, ui backend choice for this session). Runtime config reload MUST NOT mutate the active session's policy; new values apply to the **next** session only.
+**REQ-S-009** At session start the controller SHALL snapshot **SessionPolicy** (effective scope, wrap, start_offset, restore_focus_on_cancel, ui backend choice for this session). Runtime config reload MUST NOT mutate the active session's policy; new values apply to the **next** session only. (History lock-in is not part of the policy: it is mandatory while Active — REQ-H-001, ADR-021.)
 
 **REQ-S-010** While Active, a `mru:cycle` that includes a **scope** token differing from the session policy scope MUST **ignore** the override and continue with the existing Snapshot (MUST NOT rebuild). Implementations MAY log at debug. (Ergonomic default: switching keybinds mid-hold does not abort the session.)
 
@@ -127,7 +129,7 @@ change only with a CHANGELOG entry, and every such change must be reconciled bef
 
 ### 2.5 History and lock-in
 
-**REQ-H-001** HistoryTracker SHALL update MRU ordering only when session state is Idle (when `lock_history_on_session = true`).
+**REQ-H-001** HistoryTracker SHALL NOT update MRU ordering while a session is Active — lock-in is **mandatory** and unconditional (ADR-021). While Idle, ordering updates per REQ-H-002/003.
 
 **REQ-H-002** When Idle, a focus event SHALL start/reset a debounce timer of `debounce_ms` milliseconds.
 
@@ -150,6 +152,10 @@ change only with a CHANGELOG entry, and every such change must be reconciled bef
 **REQ-H-008** On plugin unload, session end, or destruction of HistoryTracker, all pending debounce jobs SHALL be cancelled and MUST NOT run after teardown.
 
 **REQ-H-009** If the window referenced by a pending debounce job becomes invalid before fire, the job SHALL be cancelled and MUST NOT commit to the MRU list.
+
+**REQ-H-010** The `lock_history_on_session` config key is **reserved**: it SHALL remain registered under `plugin:mru-switcher:` and its value SHALL NOT affect behaviour (lock-in is mandatory per REQ-H-001). The plugin MAY emit a warn-once notification when the key is set to a non-default value, pointing at the documentation. The key SHALL NOT be advertised as a working option in `examples/`, README, or USER.md. (ADR-021)
+
+**REQ-H-011** At session start, a **pending** debounced focus commit SHALL be flushed — cancelled and committed immediately, subject to the REQ-H-009 validity guard — **before** lock-in engages, so that consecutive sessions separated by less than `debounce_ms` still observe the previously applied window in MRU order. With no pending job the operation is a no-op; no pending job may survive into the Active state (REQ-H-006/008). (ADR-021)
 
 ### 2.6 Scopes
 
@@ -362,7 +368,7 @@ in 1.x; a change to any of them requires a major version bump. Additive new keys
 | `border_style` | string/enum | `solid` | Border highlight style; M4: only `solid` has effect; unknown/reserved (`pulse`, `dim`, …) → `solid` + warn-once (REQ-UI-007) |
 | `border_color` | color/string | `0xffffd9a0` | Border highlight colour — documented implementation default (hex `0xAARRGGBB`); format as accepted by the pinned Hyprland; documented in USER/API (REQ-UI-008) |
 | `border_size` | int | `-1` | Border highlight size; `-1` = do not touch window border size (colour only) (REQ-UI-008) |
-| `lock_history_on_session` | bool | `true` | Enable lock-in while Active |
+| `lock_history_on_session` | bool | `true` | **Reserved — value ignored.** Lock-in while a session is Active is mandatory (REQ-H-001/010, ADR-021). Kept registered for 0.x config compatibility; non-default values trigger a warn-once notification. Removal is a 2.0 candidate |
 | `restore_focus_on_cancel` | bool | `false` | On cancel, focus `session_origin` if still valid |
 | `external_socket` | string | (empty) | Path for the External UI protocol (M5, ADR-018): AF_UNIX stream socket bound by the plugin. Empty path or bind failure ⇒ `ui = external` behaves as `null` + warn-once (REQ-O-001) |
 

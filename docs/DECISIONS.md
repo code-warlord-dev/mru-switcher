@@ -920,9 +920,79 @@ Excluded as noise for this project stage: stars, forks, downloads, codecov, CMak
 
 ### Outstanding implementation tracking (not ADR status)
 
-- [ ] Text merged into `docs/DECISIONS.md` — **done in this change set**
-- [ ] `examples/mru-switcher.conf` and `examples/mru-switcher-bindings.conf` exist and match SPEC defaults (or clearly document intentional demo overrides) — follow-up ticket D2
-- [ ] README Installation section leads with hyprpm and uses only real paths for source builds — follow-up ticket D2
-- [ ] USER.md Quick start no longer shows `/path/to/mru-switcher.so` as the primary example — follow-up ticket D2
-- [ ] `hyprpm.toml` `commit_pins` finalised on the v1.0.0 tag commit — M6-T9
-- [ ] Optional `scripts/install.sh` (if shipped) passes the success/failure criteria in §4 on a clean environment — follow-up ticket D2
+- [x] Text merged into `docs/DECISIONS.md` — **done in this change set**
+- [x] `examples/mru-switcher.conf` and `examples/mru-switcher-bindings.conf` exist and match SPEC defaults (`ui = border` is an intentional, documented demo override) — PR #71
+- [x] README Installation section leads with hyprpm and uses only real paths for source builds — PR #71
+- [x] USER.md Quick start uses the canonical `~/.local/src/mru-switcher` path — PR #71
+- [ ] `hyprpm.toml` `commit_pins` finalised on the v1.0.0 tag commit — M6-T9 (human gate)
+- [x] `scripts/install.sh` shipped — PR #72
+
+---
+
+## ADR-021: History lock-in is mandatory; `lock_history_on_session` is reserved; pending promotion is flushed at session start
+
+**Status:** Accepted (human decision 2026-09-20)
+
+**Related:** ADR-001 (snapshot), ADR-002 (apply-on-release), ADR-014 (apply-after-invalidation), SPEC §0 freeze, §2.5 REQ-H-001/006/008/009, §2.8, §4 config surface, issues #65 and #67
+
+**Date:** 2026-09-20
+
+---
+
+### Context
+
+Two findings from the M6 hardening pass concern the same mechanism — MRU history while a session is Active:
+
+1. **Dead config knob (#67, M6-T2 audit).** `SessionController::on_focus` ignores focus events unconditionally while a session is Active; `lock_history_on_session` only gated the `HistoryTracker::set_session_locked` calls at session begin/end. With `lock_history_on_session = false` the tracker was left "unlocked" but never received anything during a session, so the value had **no observable effect**. The key was advertised in `examples/`, USER.md and README as a working toggle.
+2. **Chained applies re-land on the same window (#65, M6-T6 live smoke).** On apply, the promotion of the applied window is scheduled through the debounce (`HistoryTracker::on_focus` → `SchedulerPort(debounce_ms = 400)`); if the next session starts inside that window, `set_session_locked(true)` cancels the pending job (REQ-H-006/008), so the promotion never lands. Four back-to-back `cycle → apply` sequences from the same window all landed on the same target; the nest smoke recorded `stress-b` returning to its starting window after 200 cycles.
+
+Holding Alt (the normal workflow) is a single session and is unaffected by either finding. Both, however, are user-visible contract questions that must be answered before the 1.0 freeze.
+
+### Decision
+
+**1. Lock-in while Active is mandatory — the frozen list is the product, not an option.**
+
+`lock_history_on_session` becomes **reserved**:
+
+- The key SHALL stay **registered** under `plugin:mru-switcher:` (existing 0.x configs keep parsing; no unknown-key breakage).
+- Its value SHALL be **ignored**; the plugin MAY emit a warn-once notification when it is set to a non-default value.
+- It SHALL NOT be presented as a configurable option in `examples/`, README, or USER.md beyond a single “reserved / ignored” line.
+- It remains part of the 11-key surface for the 1.x contract freeze (SPEC §0 list unchanged), with the semantics recorded as reserved.
+- Removing the key from the surface is a **2.0** candidate, not a 1.x change.
+
+Rationale: the frozen list while browsing *is* the product (ADR-001/002). A “live history during switching” mode is an anti-feature for an MRU switcher, and supporting it would add a worse-than-default mode, extra tests, and extra documentation for no audience. Honest truth beats a knob that lies.
+
+**2. A pending focus promotion is flushed at session start.**
+
+`begin_session` SHALL commit a pending debounced focus event **before** engaging lock-in (a `flush_pending()` operation on `HistoryTracker`):
+
+- If a pending job exists, it is cancelled and its window is committed immediately (subject to the REQ-H-009 validity guard).
+- If no job is pending, the operation is a no-op.
+- Lock-in still guarantees **no MRU updates during** a session — REQ-H-006/008 (“no pending job may outlive lock-in”) hold by construction, because nothing is pending once lock-in engages.
+
+Rationale: MRU order must reflect the window the user actually focused. Without the flush, fast chained taps depend on whether >400 ms elapsed between applies — a timing-dependent user-visible defect. The flush is bounded, deterministic, and adds no config surface.
+
+### Consequences
+
+**Positive**
+
+- One honest behaviour: history is frozen exactly while the session is Active, and rotates deterministically between sessions.
+- Chained `cycle → apply` taps alternate correctly (A→B→A), independent of timing.
+- Config surface tells the truth; docs stop advertising a dead knob.
+- `SessionPolicy` loses a field whose only effect was to disable a core behaviour.
+
+**Negative / risks**
+
+- A behaviour change lands in the 0.x line: recorded in CHANGELOG and reconciled before the v1.0.0 tag (per the §0 freeze rule), with regression tests.
+- Warn-once on a non-default value may surprise users who copied an old example; the notification text points at the docs.
+- `flush_pending()` is a new domain API: it must stay on the same thread as the scheduler and must not resurrect an invalid window (REQ-H-009).
+
+### Follow-ups
+
+- SPEC updates: REQ-H-001 (unconditional lock-in), REQ-H-010 (reserved key), REQ-H-011 (flush), REQ-S-009 (policy list), §4 table row, §0 freeze note.
+- Implementation: `HistoryTracker::flush_pending()`, `SessionController::begin_session` ordering, plugin warn-once for a non-default value, `SessionPolicy` field removal.
+- Tests: chained-apply rotation without debounce advance, flush of an invalid pending ref, no-op flush, lock-in with nothing pending, teardown cancel unchanged.
+- Docs: examples/README/USER/API/ARCHITECTURE/skill wording; COMPAT note for #65; CHANGELOG.
+- Issues **#65** and **#67** are resolved by this ADR.
+
+---

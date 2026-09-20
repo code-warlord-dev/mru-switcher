@@ -16,6 +16,7 @@ void HistoryTracker::on_focus(WindowRef ref) {
         return;
 
     cancel_pending(); // replace previous debounce job (REQ-H-006, REQ-SCH-003)
+    pending_ref_ = ref;
     pending_ = scheduler_.schedule_after(debounce_ms_, [this, ref] { commit(ref); });
 }
 
@@ -23,6 +24,15 @@ void HistoryTracker::set_session_locked(bool locked) {
     if (locked && !locked_)
         cancel_pending(); // no pending job may outlive lock-in (REQ-H-006/008)
     locked_ = locked;
+}
+
+void HistoryTracker::flush_pending() {
+    if (pending_ == kInvalidJobId || !pending_ref_.has_value())
+        return; // nothing pending -> no-op (REQ-H-011)
+
+    const WindowRef ref = *pending_ref_;
+    cancel_pending(); // the scheduled job must not fire later (REQ-H-006/008)
+    commit(ref);      // same path as a timer fire: REQ-H-009 guard applies
 }
 
 void HistoryTracker::set_debounce_ms(std::uint32_t debounce_ms) {
@@ -41,6 +51,7 @@ void HistoryTracker::seed(std::vector<WindowRef> initial) {
 }
 
 void HistoryTracker::cancel_pending() {
+    pending_ref_.reset();
     if (pending_ == kInvalidJobId)
         return;
     scheduler_.cancel(pending_);
@@ -49,6 +60,7 @@ void HistoryTracker::cancel_pending() {
 
 void HistoryTracker::commit(WindowRef ref) {
     pending_ = kInvalidJobId;
+    pending_ref_.reset();
 
     if (!is_valid_(ref))
         return; // REQ-H-009: invalid before fire, never commit

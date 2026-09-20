@@ -27,6 +27,9 @@ struct Values {
     SP<Config::Values::String> border_color;
     SP<Config::Values::Int> border_size;
     SP<Config::Values::Bool> wrap;
+    // REQ-H-010 / ADR-021: reserved key — still registered (0.x configs keep
+    // parsing) and still read so read_config() can warn once when it is `false`;
+    // its value never reaches SessionPolicy (lock-in is mandatory, REQ-H-001/011).
     SP<Config::Values::Bool> lock_history_on_session;
     SP<Config::Values::Bool> restore_focus_on_cancel;
     // REQ-O-001 / ADR-018: `external_socket` consumed by read_config() (M5);

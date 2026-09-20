@@ -40,7 +40,8 @@ static mru::domain::SessionPolicy policy_from_config(const PluginConfig &cfg) {
     policy.default_scope = cfg.default_scope;
     policy.start_offset = cfg.start_offset; // REQ-SEL-002/REQ-S-009
     policy.wrap = cfg.wrap;
-    policy.lock_history_on_session = cfg.lock_history_on_session;
+    // No lock-in flag: `lock_history_on_session` is reserved and ignored, lock-in
+    // while Active is mandatory (REQ-H-001/010, ADR-021).
     policy.restore_focus_on_cancel = cfg.restore_focus_on_cancel;
     return policy;
 }
