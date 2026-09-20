@@ -1,4 +1,4 @@
-// M6-T8 (issue #54) — focus-invalidation stress harness (T-H-07).
+// M6-T8 (issue #51) — focus-invalidation stress harness (T-H-07).
 //
 // Domain-only regression battery for SPEC §2.8 apply-after-invalidation
 // (REQ-F-006 at-most-one-successful-focus, REQ-F-007 exactly one UI end,

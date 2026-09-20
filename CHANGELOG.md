@@ -60,6 +60,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 - **Same-path `.so` reload crash pinned down (M6-B1, issue #55):** nested repro (6 runs on pin v0.56.2) — overwriting the already-loaded plugin path **in place** (same inode) between `plugin unload` and `plugin load` crashes Hyprland **deterministically** (3/3 SEGV inside `dlsym`/`loadPluginInternal`; byte content irrelevant — a same-bytes overwrite crashed too), while replacement via a **new inode** (`rm`+`cp`, `mv`/rename; `cmake` relink also produces a fresh inode) reloads cleanly (3/3); unchanged-binary load/unload stays clean (M5 control, 13/13). Plugin-side code is not implicated — no speculative mitigation was attempted. Evidence: `docs/agent-state/reports/2026-09-20-m6-b1-reload-repro.md`; `docs/COMPAT.md` Known limitations sharpened with the trigger + operator guidance; `docs/USER.md` "Updating the plugin" section documents the safe update flow
 
+- **Release-prep docs pass (M6-T9 prep, issue #54):** T-H-06/07/08/10/11 promoted into the normative SPEC §9 testing table (parity with `docs/REQ-TRACE.md`; T-H-09 intentionally unused — numbering stable, no renumbering); `hyprpm.toml` `commit_pins` plugin-side hash finalized to main `320c4cb` (no longer provisional; re-verify against the tagged commit); VERSION-MAP 1.0.0 row and COMPAT 1.0.0 row pin annotation updated. Docs/metadata only — no behavior change; the `v1.0.0` tag itself remains explicitly gated on a human release command
+
 ### Tests
 
 - **Strict `mru:status` format test (M6-T2, issue #46):** `tests/plugin/test_status_format.cpp` now asserts exact full-string payload (`active= index= size= scope= session= last_end=` in order) for active + idle cases, plus additive-suffix tolerance per SPEC §3.4
