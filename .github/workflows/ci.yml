@@ -182,3 +182,39 @@ jobs:
             echo "V1 config API (getConfigValue/addConfigValue/dataPtr) and ->ptr() config access are forbidden"; exit 1
           fi
           echo OK
+
+  release-guard:
+    # M6-T3 (issue #49): cheap release-readiness invariants — grep + python3
+    # stdlib only, no toolchain install, ~30s on stock ubuntu-24.04.
+    # Nested Hyprland smoke stays a MANUAL pre-tag gate on purpose: a CI
+    # runner cannot stage an honest nested Wayland/compositor deterministically
+    # (see docs/agent-state/reports/2026-09-19-m6-manual-nest-gate.md).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: ctest matrix holds the M6 stress binaries (T-H-06/07/08)
+        run: |
+          # Floor 17 = 8 domain (6 base + 2 M6 stress binaries:
+          # domain_stress_window_close = T-H-06, domain_stress_focus_invalidation
+          # = T-H-07; T-H-08 rides inside domain_session_controller) + 9
+          # plugin-core binaries. Counted from add_test() declarations, so no
+          # Hyprland headers or configure step are required.
+          n=$(grep -c '^[[:space:]]*add_test(' CMakeLists.txt || true)
+          echo "add_test count: ${n} (floor 17)"
+          [ "${n}" -ge 17 ] || { echo "::error::ctest matrix shrank to ${n} < 17 — a test binary was dropped"; exit 1; }
+          echo OK
+      - name: REQ-TRACE covers the M6 stress tests
+        run: |
+          for id in T-H-06 T-H-07 T-H-08; do
+            grep -q "$id" docs/REQ-TRACE.md || { echo "::error::docs/REQ-TRACE.md lacks $id"; exit 1; }
+          done
+          echo "OK: T-H-06/07/08 present in REQ-TRACE"
+      - name: CHANGELOG [Unreleased] is non-empty
+        run: |
+          awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md \
+            | grep -qE '^[[:space:]]*[-*] ' \
+            || { echo "::error::CHANGELOG [Unreleased] has no bullets under Added/Changed/Fixed/Tests"; exit 1; }
+          echo OK
+      - name: hyprpm.toml parses and commit_pins is populated (REQ-H-004)
+        run: |
+          python3 -c "import tomllib; d=tomllib.load(open('hyprpm.toml','rb')); pins=d.get('repository',{}).get('commit_pins',[]); assert pins, 'commit_pins empty'; print('commit_pins:', pins)"

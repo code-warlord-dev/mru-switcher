@@ -31,7 +31,7 @@ See also AGENTS.md §16.
 - [ ] VERSION-MAP row  
 - [ ] COMPAT matrix row with commit  
 - [ ] Unit tests green  
-- [ ] Nested smoke (plugin releases)  
+- [ ] Nested smoke (plugin releases) — manual nest gate per `docs/agent-state/reports/2026-09-19-m6-manual-nest-gate.md` (required pre-tag for v1.0.0)  
 - [ ] REQ-TRACE updated for new REQs  
 - [ ] Tag annotated `vX.Y.Z`  
 - [ ] Checksums for artifacts (when binary shipped)  
