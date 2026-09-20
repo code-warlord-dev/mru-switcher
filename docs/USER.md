@@ -295,7 +295,7 @@ plugin {
 **Why doesn’t focus move on every Tab?**  
 By design (Niri / classic Alt+Tab). Focus is applied only on release so intermediate workspaces and history stay clean.
 
-**Order jumps when I tab quickly.**  
+**Why doesn't history jump when I tab quickly?**  
 History is always frozen while a session is running: **lock-in is mandatory and there is no setting to turn it off**. Make sure you are not mixing other focus binds that bypass the plugin during the session. Quick consecutive `cycle`/`apply` pairs now rotate the history deterministically instead of landing on the same window (ADR-021), so a fast A↔B toggle behaves the same whether or not you wait for `debounce_ms`.
 
 **Special workspaces / scratchpads.**  
