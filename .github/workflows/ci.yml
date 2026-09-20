@@ -228,7 +228,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: bash -n (syntax)
-        run: bash -n scripts/install.sh
+        run: |
+          bash -n scripts/install.sh
+          bash -n scripts/setup-bindings.sh
       - name: shellcheck (fallback to bash -n with a clear message)
         run: |
           sudo apt-get update -qq || true
@@ -245,6 +247,8 @@ jobs:
         run: |
           ./scripts/install.sh --help > /dev/null
           ./scripts/install.sh --version
+          ./scripts/setup-bindings.sh --help > /dev/null
+          ./scripts/setup-bindings.sh --version
       - name: --dry-run in a clean temp dir exits 0 and writes nothing
         run: |
           tmp="$(mktemp -d)"
@@ -273,4 +277,36 @@ jobs:
           check 2 "invalid --jobs" --jobs 0
           check 3 "non-canonical layout without opt-in"
           echo "OK: negative cases behaved as documented"
+      - name: setup-bindings sandbox (backend detect, dry-run no-write, force+backup, negative)
+        run: |
+          sb="$(mktemp -d)"
+          SB_PATH="$(pwd)/scripts/setup-bindings.sh"
+          mkdir -p "$sb/examples"
+          cp examples/mru-switcher-bindings.lua examples/mru-switcher-bindings.conf "$sb/examples/"
+          export XDG_CONFIG_HOME="$sb/hypr-config"
+          # auto -> lua when hyprland.lua exists; dry-run writes nothing
+          touch "$XDG_CONFIG_HOME/hypr/hyprland.lua"
+          before="$(find "$XDG_CONFIG_HOME" -type f | sort)"
+          (cd "$sb" && bash "$SB_PATH" --from "$sb/examples" --dry-run) > /tmp/sb.out 2>&1
+          grep -q 'config backend: lua' /tmp/sb.out || { echo "::error::backend detection failed"; cat /tmp/sb.out; exit 1; }
+          after="$(find "$XDG_CONFIG_HOME" -type f | sort)"
+          [ "$before" = "$after" ] || { echo "::error::--dry-run wrote a file"; exit 1; }
+          # real run writes the lua fragment
+          (cd "$sb" && bash "$SB_PATH" --from "$sb/examples" --quiet) > /tmp/sb.out 2>&1
+          [ -f "$XDG_CONFIG_HOME/hypr/mru-switcher-bindings.lua" ] || { echo "::error::lua fragment not written"; exit 1; }
+          # existing file refuses without --force; --force backs up
+          if (cd "$sb" && bash "$SB_PATH" --from "$sb/examples" --quiet); then
+            echo "::error::second write should refuse without --force"; exit 1
+          fi
+          (cd "$sb" && bash "$SB_PATH" --from "$sb/examples" --quiet --force) > /dev/null 2>&1
+          ls "$XDG_CONFIG_HOME/hypr/"*.bak.* > /dev/null 2>&1 || { echo "::error::--force did not create a backup"; exit 1; }
+          # hyprlang backend -> conf.d target
+          rm -f "$XDG_CONFIG_HOME/hypr/hyprland.lua"
+          (cd "$sb" && bash "$SB_PATH" --from "$sb/examples" --backend hyprlang --quiet) > /dev/null 2>&1
+          [ -f "$XDG_CONFIG_HOME/hypr/conf.d/mru-switcher-bindings.conf" ] || { echo "::error::hyprlang fragment not written"; exit 1; }
+          # unknown flag is a usage error (exit 2)
+          if bash "$SB_PATH" --definitely-not-an-option; then
+            echo "::error::unknown option should fail"; exit 1
+          fi
+          echo "OK: setup-bindings sandbox passed"
 
