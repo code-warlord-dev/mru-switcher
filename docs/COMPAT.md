@@ -10,6 +10,12 @@
 3. Internal APIs (`Desktop::History::...`, `Desktop::focusState::...`) are **adapter-private** and version-gated — not part of the user contract.
 4. If an internal symbol is missing on the pinned revision, the adapter uses the **fallback** path documented below and logs once.
 
+## Known host limitations
+
+| Limitation | Evidence | Impact | Mitigation |
+|------------|----------|--------|------------|
+| On the **Lua keybind path**, release binds on a *modifier* key never fire | 2026-09-20 bisect on `efb5099`/`v0.56.2` host (`docs/agent-state/research/2026-09-20-lua-modifier-release-bisect.md`): `hl.bind("ALT + ALT_R"/"ALT + ALT_L", …, {release=true})` → no callback (modmask 8); ordinary keys with the same modmask fire (`F9` release modmask 0 — fires; `"ALT + TAB"` release modmask 8 — fires) | Apply-on-release silently broken for the documented `hl.bind("ALT_L", {release=true})` recipe; the hyprlang `bindrt = ALT, ALT_L` path on the same pin keeps working | ADR-022: Lua recipe applies on **Tab** release (`examples/mru-switcher-bindings.lua`); hyprlang recipe unchanged |
+
 ## Matrix
 
 | Plugin version | Hyprland commit | Hyprland tag | CI/nest tested | Notes |

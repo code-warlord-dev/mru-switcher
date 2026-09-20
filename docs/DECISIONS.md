@@ -996,3 +996,94 @@ Rationale: MRU order must reflect the window the user actually focused. Without 
 - Issues **#65** and **#67** are resolved by this ADR.
 
 ---
+
+## ADR-022: Keybinding delivery is a first-class install step; host modifier-release caveat
+
+**Status:** Accepted (2026-09-20)
+
+**Context:**
+
+The plugin never captures keys itself (SPEC §11). Alt+Tab only "works" if the user
+bound the four `mru:*` dispatchers to keys, and that binding step lived after
+installation as an optional "First setup" copy-job. On real hosts three gaps showed up:
+
+1. **Bindings are a separate, easily skipped step.** "Install the plugin" (`hyprpm add`
+   / source build) does not equal "Alt+Tab works". Nothing in the installer wrote the
+   binds or told the user the next exact step, so a fresh install can legitimately end
+   with a plugin that does nothing.
+2. **The documented recipe was hyprlang-only.** `bind = …` / `bindrt = ALT, ALT_L` is
+   correct for a hyprlang config, but Omarchy drives a **Lua** config. The Lua equivalent
+   in `docs/USER.md` used `hl.bind("ALT_L", … { release = true })` — a combination that
+   does not fire on the pinned revision (see the host caveat below), and `hl.dispatch`
+   instead of the real `hl.plugin.mru.*` bridge.
+3. **`Alt+Tab` conflicts silently.** Default configs (Omarchy binds `ALT+TAB`→"Focus on
+   next window") coexist with a new MRU bind; `hl.bind`/`bind` add a duplicate rather
+   than replace, so both fire or the wrong one wins. Nothing warned the user.
+
+**Host caveat (verified 2026-09-20, Hyprland v0.56.2 / `efb5099`):** on this revision,
+release-based keybinds whose key is a **modifier** (`hl.bind("ALT_L"|"ALT_R", …, { release = true })`,
+equivalently hyprlang `bindrt = ALT, ALT_L, …`) never fire through the Lua keybind path,
+while release binds on **ordinary** keys fire reliably. Empirical matrix:
+
+| Bind | Fires on release |
+|------|------------------|
+| `hl.bind("F9", …, {release=true})` (ordinary key, modmask 0) | **Yes** |
+| `hl.bind("ALT + TAB", …, {release=true})` (ordinary key, modmask 8) | **Yes** |
+| `hl.bind("ALT + ALT_R", …, {release=true})` (modifier key, modmask 8) | **No** |
+| `hl.bind("ALT + ALT_L", …, {release=true})` (modifier key, modmask 8) | **No** |
+
+`Alt+Tab` key-down (cycle) fired on every attempt; only the modifier-key release event
+never produced a matched bind. The compositor-internal reason was not conclusively pinned
+(the plausible mechanism is the release-time effective-modmask computation excluding a
+sole-modifier trigger), but the failure reproduced consistently and the workaround below is
+equal to the plugin's apply-on-release semantics.
+
+**Decision:**
+
+- **Apply-on-release must be delivered with the install, not after it.** Bindings become
+  a first-class step: recommended recipes accompany the plugin install, and an opt-in
+  helper writes a *plugin-owned* file only.
+- **Two canonical recipes, one per config backend:**
+  - **hyprlang:** `examples/mru-switcher-bindings.conf` (unchanged; `bindrt = ALT, ALT_L`).
+  - **Lua / Omarchy:** new `examples/mru-switcher-bindings.lua` using the real
+    `hl.plugin.mru.*` bridge, with apply-on-release on **Tab release** (`ALT + TAB`,
+    `{ release = true }`) instead of modifier release — an ordinary key, proven to fire,
+    with identical Niri-style semantics `cycle`-on-press / `apply`-on-release. The
+    working modmask form is `"ALT + ALT_L"` (modifier as a separate token), never bare
+    `"ALT_L"` (modmask 0).
+- **New opt-in helper `scripts/setup-bindings.sh`:** detects the config backend
+  (Lua vs hyprlang), detects live conflicts via `hyprctl binds -j`, writes **only** its
+  own `mru-switcher-*` file (never edits `hyprland.conf` / `bindings.lua` / Omarchy
+  defaults), refuses to overwrite existing files without `--force` (which backs up to
+  `<file>.bak.<timestamp>`), supports `--dry-run`, and prints the single source/require
+  line to add. Never auto-reloads unless the user passes the explicit opt-in
+   `--reload` flag (then it runs `hyprctl reload` and degrades to a warning out of
+   a session).
+- **Honest documentation:** README installation states plainly that without bindings the
+  plugin is silent, and that on Lua/Omarchy the hyprlang `source` path may not apply —
+  the Lua fragment (via `hl.plugin.mru.*`) is the working route.
+
+**Consequences:**
+
+- Installation becomes "plugin + binds" by default; the "nothing happens" class of issue
+  shrinks to misconfiguration that the helper reports.
+- Apply-on-release works through two recipes; the Lua recipe deliberately uses ordinary-key
+  release (Tab), preserving the semantics while avoiding the host caveat.
+- No user config is ever rewritten: the helper only creates files under the `mru-switcher`
+  prefix and prints the next manual step (opt-in stays opt-in).
+- Docs that described Lua binds via `hl.dispatch` / bare `ALT_L` release are corrected
+  to the real bridge and the proven modmask form.
+- The host caveat stays recorded in `docs/COMPAT.md` so future pins re-check whether
+  modifier-key release binds work before the Lua recipe changes back.
+
+### Follow-ups
+
+- SPEC §11 wording clarified in docs (no normative behaviour change); README Installation
+  gains the bindings step and the warning; USER.md Quick-start and Troubleshooting gain the
+  working Lua recipe and conflict advice.
+- New `examples/mru-switcher-bindings.lua`, `scripts/setup-bindings.sh` (self-tested in a
+  sandbox with and without an existing file, with and without `--force`).
+- COMPAT matrix row note for the modifier-release caveat on `efb5099` / Lua keybind path.
+- CHANGELOG Unreleased entries.
+
+---

@@ -8,6 +8,28 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Keybinding delivery is a first-class install step (ADR-022), fixing the Lua/Omarchy
+  apply-on-release failure:** the Lua bridge recipe that shipped in `task_0001` used
+  `hl.bind("ALT_L"/"ALT_R", …, {release=true})` (plus `hl.dispatch`), and on the pinned
+  Hyprland (v0.56.2 / efb5099) that combination never fires — release binds on a **modifier**
+  key are dropped by the Lua keybind path (hyprlang `bindrt` on the same pin works). Root cause
+  proved empirically with a bisect matrix (ordinary keys F9 / `ALT + TAB` release work;
+  `ALT + ALT_R` / `ALT + ALT_L` release do not). New `examples/mru-switcher-bindings.lua` —
+  the working Lua recipe via the real `hl.plugin.mru.*` bridge: unbind the Omarchy defaults,
+  cycle/prev on `ALT + TAB` press, apply-on-release committed on **Tab** release (modmask 8
+  rebuild), cancel on `ALT + Escape`. New opt-in `scripts/setup-bindings.sh`: autodetects the
+  config backend (`hyprland.lua` present → Lua fragment, otherwise hyprlang), writes only its own
+  `mru-switcher-*` files under the Hyprland config directory, refuses to overwrite without
+  `--force` (backs up as `<file>.bak.<timestamp>`), live conflict-check via `hyprctl binds -j`
+  (falls back to a static hint when `python3` is unavailable), `--dry-run` writes nothing, exit codes
+  0–6 documented in `--help`; installer job in CI gains a sandbox step for the script. README and
+  USER.md installation sections now make the keybindings a mandatory, explicit step (with the
+  honest warning that without them the plugin loads but Alt+Tab does nothing), with separate
+  recipes for hyprlang and Lua/Omarchy; API.md Lua-bridge example corrected; Troubleshooting/FAQ
+  gain entries for "Alt+Tab does nothing" and the modifier-release caveat; `examples/
+  mru-switcher-bindings.conf` documents why the Lua recipe exists. Docs + packaging only — no
+  domain/plugin behavior change.
+
 - **Lua dispatcher bridge `hl.plugin.mru.*` (task_0001, Omarchy UX):** `cycle` / `apply` /
   `cancel` / `status` registered in `PLUGIN_INIT` via `HyprlandAPI::addLuaFunction`
   (namespace `mru`) as thin wrappers over the existing `dispatch_*` paths — dispatcher

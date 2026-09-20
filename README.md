@@ -168,30 +168,41 @@ Run `./scripts/install.sh --help` for flags.
 
 ## First setup
 
-Copy the example configuration and keybindings into your Hyprland config
-directory (`~/.config/hypr/conf.d/`), then `source` them from `hyprland.conf`.
+**Important: the plugin does not capture the keyboard by itself.** All four
+dispatchers (`mru:cycle`, `mru:apply`, `mru:cancel`, `mru:status`) are what
+your binds call — without the binds installed the plugin loads but **nothing
+happens on Alt+Tab**. Installing the keybindings is a mandatory, explicit step,
+deliberately separate from installing the plugin (see the design decision in
+[docs/DECISIONS.md](docs/DECISIONS.md)).
+
+Setup is two parts: the plugin config, and the keybindings. Which keybinding
+recipe you use depends on your config backend:
+
+* **Hyprlang** (default `hyprland.conf`) → `examples/mru-switcher-bindings.conf`
+* **Lua / Omarchy** (`hyprland.lua`) → `examples/mru-switcher-bindings.lua`
+
+### Part 1 — plugin config
+
 Where the examples come from depends on how you installed the plugin.
 
-### If you built from source
+#### If you built from source
 
 The checkout keeps them at `~/.local/src/mru-switcher/examples`:
 
 ```bash
 mkdir -p ~/.config/hypr/conf.d
 cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
-cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
 ```
 
-### If you installed via hyprpm
+#### If you installed via hyprpm
 
 hyprpm builds the plugin inside its own cache, so a hyprpm install leaves no
-`~/.local/src/mru-switcher` tree to copy from. Download the two example files
-from the repository instead:
+`~/.local/src/mru-switcher` tree to copy from. Download the example file from
+the repository instead:
 
 ```bash
 mkdir -p ~/.config/hypr/conf.d
 curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher.conf -o ~/.config/hypr/conf.d/mru-switcher.conf
-curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher-bindings.conf -o ~/.config/hypr/conf.d/mru-switcher-bindings.conf
 ```
 
 > Installed a **pinned release** rather than `main`? Swap `main` for the tag in
@@ -203,12 +214,47 @@ If you do keep a local checkout of the repository (for example the canonical
 
 ```bash
 cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
+```
+
+### Part 2 — keybindings (choose one backend)
+
+**Hyprlang** — copy the binding file and `source` it (see
+[Part 3](#part-3--load-and-reload) for the wording):
+
+```bash
 cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
 ```
 
-### Then, for either channel
+**Lua / Omarchy** — the Lua fragment must run *before* the plugin's binds so the
+`hl.unbind` lines take effect. Add to your `bindings.lua` (or anywhere already
+loaded):
 
-Add these lines to `hyprland.conf`:
+```lua
+dofile(os.getenv("HOME") .. "/.config/hypr/mru-switcher-bindings.lua")
+```
+
+and install the fragment itself, copied (for a source install):
+
+```bash
+cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.lua ~/.config/hypr/mru-switcher-bindings.lua
+```
+
+or downloaded (for a hyprpm install):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher-bindings.lua -o ~/.config/hypr/mru-switcher-bindings.lua
+```
+
+**Why release-on-Tab for Lua?** On the Lua keybind path, release binds on a *modifier* key (e.g. `hl.bind("ALT + ALT_L", …, {release=true})`, the Lua
+equivalent of `bindrt = ALT, ALT_L`) never fire in the pinned build (Hyprland
+v0.56.2 / efb5099). The Lua recipe therefore commits on the release of **Tab**
+— an ordinary key, which fires reliably — with the same Niri-style result.
+On Hyprlang, the classic `bindrt = ALT, ALT_L` works as written. Full details
+and the evidence matrix are in [docs/DECISIONS.md](docs/DECISIONS.md).
+
+### Part 3 — load and reload
+
+Add these lines to `hyprland.conf` (hyprlang backend only):
 
 ```conf
 source = ~/.config/hypr/conf.d/mru-switcher.conf
@@ -222,15 +268,29 @@ hyprctl reload
 ```
 
 That is the whole classic workflow: `Alt+Tab` cycles the frozen list, releasing
-`Alt` applies the selection, `Escape` cancels. The example config ships with
+the key applies the selection, `Escape` cancels. The example config ships with
 `ui = border` (a first-run override of the plugin default) so you can see the
 selection while you browse; see the comments in the file to switch it back to
 `null`.
 
-If you installed with the guided helper script, it can do this copy for you
-instead: `./scripts/install.sh --write-conf` writes both files verbatim into
-`~/.config/hypr/conf.d/` (and only there — your `hyprland.conf` is never
-edited, so the two `source` lines above are still yours to add).
+### Guided helper for the keybindings
+
+`./scripts/setup-bindings.sh` installs the binding file for you, autodetecting
+the backend (Lua config present → Lua fragment, otherwise hyprlang) and only
+ever touching paths under your Hyprland config directory:
+
+```bash
+./scripts/setup-bindings.sh --dry-run   # preview, writes nothing
+./scripts/setup-bindings.sh             # install with live conflict check
+```
+
+It refuses to overwrite an existing file unless you pass `--force` (which backs
+the old one up as `<file>.bak.<timestamp>`), checks `hyprctl binds -j` for keys
+that would fire together with MRU until you unbind them, and prints the one line
+you need to add to your config. `--help` lists every flag.
+
+The plugin config helper (`install.sh --write-conf`) still only handles the
+hyprlang `.conf` files.
 
 ---
 
@@ -242,7 +302,13 @@ snippet:
 * `examples/mru-switcher.conf` — the complete `plugin { mru-switcher { … } }`
   block, every user-facing key documented inline: purpose, default, allowed
   values, and a short recommendation.
-* `examples/mru-switcher-bindings.conf` — the four recommended keybindings.
+* `examples/mru-switcher-bindings.conf` — the four recommended keybindings,
+  hyprlang flavour (works on the default `hyprland.conf` backend).
+* `examples/mru-switcher-bindings.lua` — the same binds as a Lua fragment for
+  **Lua/Omarchy** configs (`hyprland.lua`), committing on Tab release because
+  of the host modifier-release caveat (see docs/DECISIONS.md).
+* `scripts/setup-bindings.sh` — installs the right binding file for your
+  backend with a live conflict check (`--help` for flags).
 
 The plugin reads its settings when it loads; after editing the config, run
 `hyprctl reload` and changes apply to your **next** Alt+Tab session (an open
@@ -297,8 +363,18 @@ mru:status
 
 * **No visual feedback while switching** — the built-in default is `ui = null`.
   Set `ui = border` (as the example does) to see the selection.
-* **Binds do nothing** — make sure the config was reloaded (`hyprctl reload`)
-  and that `source = …mru-switcher-bindings.conf` is actually in your config.
+* **Alt+Tab does nothing** — first make sure the keybindings are actually
+  installed (`hyprctl binds -j` should list the `mru:` binds after a reload on
+  Hyprlang; on Lua run the recipe in
+  [Part 2](#part-2--keybindings-choose-one-backend)). The plugin does not bind
+  its own keys — without the binds step nothing happens. On Omarchy you must
+  also make sure the default `Alt+Tab` bind ("Focus on next window") is
+  unbindable-in-conflict — the Lua recipe does this with `hl.unbind("ALT + TAB")`;
+  on hyprlang use `unbind = ALT, TAB`.
+* **Selection does not apply when you release the modifier (Lua)** — known host
+  issue: release binds on modifier keys do not fire on the Lua keybind path in
+  the pinned build (see docs/DECISIONS.md). Use the Lua recipe, which applies
+  on Tab release.
 * **Plugin fails to load after a Hyprland update** — this is fail-closed
   behaviour on an ABI mismatch, not a crash. This is expected protection, with a short recovery:
   rebuild against the new headers (source install) or run `hyprpm update` — full walkthrough in

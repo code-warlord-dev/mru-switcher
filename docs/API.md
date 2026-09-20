@@ -138,14 +138,23 @@ local s = hl.plugin.mru.status()       -- same payload as mru:status (§3.4)
 ```
 
 Errors raise a Lua error (e.g. unknown scope token); `status` returns the
-`active=… index=… size=… scope=… session=… last_end=…` string. Omarchy-style:
+`active=… index=… size=… scope=… session=… last_end=…` string. Omarchy-style — the working recipe (host caveat: release binds on a modifier
+key do not fire on the Lua path, so apply commits on **Tab** release, not on
+Alt release — a host limitation (see docs/DECISIONS.md); `hl.plugin.mru.*` is the typed Lua bridge and
+preferred over `hl.dispatch("mru:…")`, which reaches the same dispatchers but
+returns nothing and surfaces errors as strings):
 
 ```lua
+hl.unbind("ALT + TAB")
+hl.unbind("ALT + SHIFT + TAB")
 hl.bind("ALT + TAB",         function() hl.plugin.mru.cycle("next") end)
 hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.cycle("prev") end)
-hl.bind("ALT_L",             function() hl.plugin.mru.apply() end, { release = true })
+hl.bind("ALT + TAB",         function() hl.plugin.mru.apply() end, { release = true })
+hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.apply() end, { release = true })
 hl.bind("ALT + Escape",      function() hl.plugin.mru.cancel() end)
 ```
+
+This exact fragment ships as `examples/mru-switcher-bindings.lua`.
 
 ---
 
