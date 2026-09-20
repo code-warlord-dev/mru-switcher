@@ -1056,7 +1056,9 @@ equal to the plugin's apply-on-release semantics.
   own `mru-switcher-*` file (never edits `hyprland.conf` / `bindings.lua` / Omarchy
   defaults), refuses to overwrite existing files without `--force` (which backs up to
   `<file>.bak.<timestamp>`), supports `--dry-run`, and prints the single source/require
-  line to add. Never auto-reloads.
+  line to add. Never auto-reloads unless the user passes the explicit opt-in
+   `--reload` flag (then it runs `hyprctl reload` and degrades to a warning out of
+   a session).
 - **Honest documentation:** README installation states plainly that without bindings the
   plugin is silent, and that on Lua/Omarchy the hyprlang `source` path may not apply —
   the Lua fragment (via `hl.plugin.mru.*`) is the working route.

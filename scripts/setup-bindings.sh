@@ -346,6 +346,10 @@ main() {
   if [[ "$OPT_BACKEND" == "auto" ]]; then
     OPT_BACKEND="$(detect_backend)"
   fi
+
+  # --verbose traces every command as it runs (matches --help and the ERR-trap hint).
+  ((${VERBOSE:-0})) && set -x
+
   info "config backend: ${OPT_BACKEND} (dir: ${HYPR_DIR})"
 
   report_conflicts

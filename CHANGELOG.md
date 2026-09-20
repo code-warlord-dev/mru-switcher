@@ -21,7 +21,7 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
   config backend (`hyprland.lua` present → Lua fragment, otherwise hyprlang), writes only its own
   `mru-switcher-*` files under the Hyprland config directory, refuses to overwrite without
   `--force` (backs up as `<file>.bak.<timestamp>`), live conflict-check via `hyprctl binds -j`
-  (python3, `--no-python` falls back to a static hint), `--dry-run` writes nothing, exit codes
+  (falls back to a static hint when `python3` is unavailable), `--dry-run` writes nothing, exit codes
   0–6 documented in `--help`; installer job in CI gains a sandbox step for the script. README and
   USER.md installation sections now make the keybindings a mandatory, explicit step (with the
   honest warning that without them the plugin loads but Alt+Tab does nothing), with separate

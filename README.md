@@ -172,7 +172,8 @@ Run `./scripts/install.sh --help` for flags.
 dispatchers (`mru:cycle`, `mru:apply`, `mru:cancel`, `mru:status`) are what
 your binds call — without the binds installed the plugin loads but **nothing
 happens on Alt+Tab**. Installing the keybindings is a mandatory, explicit step,
-deliberately separate from installing the plugin (see ADR-022).
+deliberately separate from installing the plugin (see the design decision in
+[docs/DECISIONS.md](docs/DECISIONS.md)).
 
 Setup is two parts: the plugin config, and the keybindings. Which keybinding
 recipe you use depends on your config backend:
@@ -249,7 +250,7 @@ equivalent of `bindrt = ALT, ALT_L`) never fire in the pinned build (Hyprland
 v0.56.2 / efb5099). The Lua recipe therefore commits on the release of **Tab**
 — an ordinary key, which fires reliably — with the same Niri-style result.
 On Hyprlang, the classic `bindrt = ALT, ALT_L` works as written. Full details
-and the evidence matrix are in [ADR-022](docs/DECISIONS.md).
+and the evidence matrix are in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ### Part 3 — load and reload
 
@@ -305,7 +306,7 @@ snippet:
   hyprlang flavour (works on the default `hyprland.conf` backend).
 * `examples/mru-switcher-bindings.lua` — the same binds as a Lua fragment for
   **Lua/Omarchy** configs (`hyprland.lua`), committing on Tab release because
-  of the host modifier-release caveat (ADR-022).
+  of the host modifier-release caveat (see docs/DECISIONS.md).
 * `scripts/setup-bindings.sh` — installs the right binding file for your
   backend with a live conflict check (`--help` for flags).
 
@@ -372,7 +373,8 @@ mru:status
   on hyprlang use `unbind = ALT, TAB`.
 * **Selection does not apply when you release the modifier (Lua)** — known host
   issue: release binds on modifier keys do not fire on the Lua keybind path in
-  the pinned build (ADR-022). Use the Lua recipe, which applies on Tab release.
+  the pinned build (see docs/DECISIONS.md). Use the Lua recipe, which applies
+  on Tab release.
 * **Plugin fails to load after a Hyprland update** — this is fail-closed
   behaviour on an ABI mismatch, not a crash. This is expected protection, with a short recovery:
   rebuild against the new headers (source install) or run `hyprpm update` — full walkthrough in

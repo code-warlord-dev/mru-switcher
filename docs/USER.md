@@ -136,7 +136,7 @@ hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.apply() end, { release = t
 hl.bind("ALT + Escape",      function() hl.plugin.mru.cancel() end)
 ```
 
-> **Lua caveat (ADR-022):** on the Lua keybind path, release binds on a
+> **Lua caveat (host):** on the Lua keybind path, release binds on a
 > *modifier* key (`hl.bind("ALT + ALT_L", …, { release = true })`, the Lua
 > equivalent of `bindrt`) never fire in the pinned build (Hyprland
 > v0.56.2 / efb5099). The Lua recipe therefore commits on the release of
@@ -443,7 +443,7 @@ window"): the Lua recipe does this with `hl.unbind("ALT + TAB")`; on hyprlang
 use `unbind = ALT, TAB`.
 
 **Selection does not apply when I release Alt (Lua/Omarchy).**  
-Known host limitation (ADR-022): release binds on a *modifier* key never fire
+Known host limitation: release binds on a *modifier* key never fire
 on the Lua keybind path in the pinned build. Use the Lua recipe, which commits
 on **Tab** release — an ordinary key that fires reliably — while keeping the
 Niri-style workflow.
