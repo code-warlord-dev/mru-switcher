@@ -732,6 +732,15 @@ cd ~/.local/src/mru-switcher
 
 **REQ-DIST-013** The installer SHALL NOT silently modify the user’s `hyprland.conf` unless the user passes an explicit opt-in flag. It MAY write or print a fragment under `~/.config/hypr/conf.d/` when requested.
 
+**REQ-DIST-026** If `scripts/install.sh` is shipped, it SHALL additionally:
+
+- **(a) canonical layout** — work in the canonical layout of REQ-DIST-007 by default, and, when run outside it, either refuse with an explicit error naming both remedies (use the canonical checkout, or opt in explicitly) or accept an explicit opt-out (`--dir <path>` / `--allow-non-canonical`). A silent warning is not sufficient.
+- **(b) interface** — support `--dry-run` (change nothing, print the full plan, exit 0), `--quiet` / `--verbose`, and `--jobs N`; reject unknown options and stray positional arguments with a non-zero exit code and a `--help` hint.
+- **(c) `--write-conf`** — write the shipped examples (`examples/*.conf`) **verbatim** into `${XDG_CONFIG_HOME:-$HOME/.config}/hypr/conf.d/` (no duplicate fragment maintained inline in the script), never overwrite an existing file without `--force`, and with `--force` save a `.bak` backup before replacing it.
+- **(d) exit status and summary** — return documented exit codes (0 on success; distinct non-zero codes for usage errors, refused non-canonical layouts, preflight failures, build failures, and refused overwrites), report the failing location on unexpected errors, and print a final summary with the source path, plugin path, detected Hyprland version, and next steps.
+
+**REQ-DIST-027** If the installer is checked in CI, `scripts/install.sh` SHALL be validated at minimum with `bash -n`, `shellcheck` (when available on the runner) and `--dry-run` in a clean temporary directory; a negative case (unknown option) MUST assert a non-zero exit code.
+
 ### 14.5 Examples
 
 **REQ-DIST-014** The repository SHALL ship:
@@ -755,6 +764,13 @@ examples/mru-switcher-bindings.conf
 - cancel (`mru:cancel`)
 
 **REQ-DIST-017** README and USER.md SHALL direct new users to the files under `examples/` as the starting point for configuration, not only to a minimal inline snippet.
+
+**REQ-DIST-025** Documentation SHALL describe how to obtain the shipped `examples/` files for **both** installation channels of REQ-DIST-001, with real, copy-pasteable commands and no placeholder paths (REQ-DIST-008):
+
+- **source** — copy the files from the canonical checkout (`~/.local/src/mru-switcher/examples/…`);
+- **hyprpm** — download the same files from the repository (raw `main` and/or the release tag), or copy them from a local checkout when one exists.
+
+Documentation MUST NOT reference a location that the channel does not guarantee (for example an assumed hyprpm plugin-cache directory) unless that location is verified for the documented setup.
 
 ### 14.6 README as user documentation
 
@@ -815,6 +831,7 @@ after the user has copied the example files.
 - **T-DIST-02** — `hyprpm add` + enable + reload loads the plugin on the pinned revision after the 1.0 tag.  
 - **T-DIST-03** — `examples/mru-switcher.conf` is accepted by hyprlang (no unknown keys, defaults load).  
 - **T-DIST-04** — README and USER.md contain zero occurrences of the substring `/path/to/` or `/absolute/path` in user commands.
+- **T-DIST-05** — `scripts/install.sh` passes `bash -n`, `shellcheck` (when available) and `--dry-run` in a clean temp directory, and an unknown option exits non-zero (CI `installer` job).  
 
 ### 14.10 Out of scope for this section
 
