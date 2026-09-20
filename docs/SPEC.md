@@ -576,8 +576,13 @@ When `restore_focus_on_cancel = true`:
 | T-O-07 | AF_UNIX server: accept first client, line framing, non-blocking send/recv (REQ-O-006; loopback test) |
 | T-O-08 | peer `apply`/`cancel` at Idle are safe idempotent no-ops (covers REQ-O-004 idle leg) |
 | T-FUZZ-01 | overlay protocol parse-path fuzz harness (`tests/fuzz/fuzz_overlay_protocol.cpp`): bounded, deterministic generated + mutated inputs (corpus + raw bytes) — the parser never crashes or throws and structured bad lines (REQ-O-005) yield `nullopt`; runs as a ctest under every CI job incl. the ASan/UBSan `sanitize` job (REQ-O-005, REQ-O-008) |
+| T-H-06 | window-close stress (M6-T7, issue #53): closing the selected window prunes it and clamps the index; closing **all** snapshot windows ends the session as NoWindows (REQ-S-006); dead `session_origin` never receives focus (REQ-R-003, REQ-ID-006); deterministic 300-step interleaved close storm; closing a non-snapshot window is a no-op (`tests/domain/test_stress_window_close.cpp`) |
+| T-H-07 | focus-invalidation stress (M6-T8, issue #51): §2.8 bounds — apply-after-invalidation is repaired by the bounded apply-retry policy; repeated InvalidTarget is bounded (exactly two attempts → InvalidSelection); `FocusResult::Failed` is definitive (no retry, session ends cancelled); 500-apply storm; monitor-disconnect drain ends a monitor-scope session within the bounded policy (`tests/domain/test_stress_focus_invalidation.cpp`) |
+| T-H-08 | rapid-Tab hammer (M6-T6, issue #52): 1000 consecutive `mru:cycle` on one session — no snapshot rebuild, exact-once UI selection traffic, wrap per REQ-SEL-003; cycle → cancel → cycle interleave burst; `wrap = false` hammer clamps at both edges (REQ-SEL-005) (`tests/domain/test_session_controller.cpp`, `t_h_08_*`) |
+| T-H-10 | session-start pending-promotion flush (M6, ADR-021, REQ-H-011): an Idle focus with a pending debounce job is committed immediately — through the REQ-H-009 validity guard — before candidates/lock-in; an invalid pending window is **not** committed; no pending job → no-op (`tests/domain/test_session_controller.cpp`, `t_h_10_*`) |
+| T-H-11 | chained `mru:cycle`+`mru:apply` sessions rotate the MRU order with **no clock advance** between them (#65 regression, ADR-021); negative control verified — fails with `HistoryTracker::flush_pending()` removed |
 
-T-UI-03..07 continue the T-UI series begun in M2 (T-UI-01/02).
+T-UI-03..07 continue the T-UI series begun in M2 (T-UI-01/02). T-H-09 is intentionally unused — the number was reserved during M6 review and never assigned; identifiers stay stable once printed (no renumbering).
 
 ---
 

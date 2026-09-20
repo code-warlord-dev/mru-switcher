@@ -10,7 +10,7 @@ Semver for the **MRU Switcher** project. Plugin binaries still require a rebuild
 | 0.3.0 | `v0.3.0` | M3 | v0.56.2 (`efb5099`) | All scopes + full config surface + `mru:status` |
 | 0.4.0 | `v0.4.0` | M4 | v0.56.2 (`efb5099`) | Border UI (`solid`); restore normalized to `setprop` grammar; `keyword`-channel limitation documented |
 | 0.5.0 | `v0.5.0` | M5 | v0.56.2 (`efb5099`) | External overlay protocol (`ui = external`, AF_UNIX socket); ADR-019 removable fd watch |
-| 1.0.0 | `v1.0.0` | M6 | v0.56.2 (`efb5099`), pinned in `hyprpm.toml` `commit_pins` | Stable dispatcher names, config keys, snapshot/apply semantics; **contract freeze declared in M6-T1 (issue #50)**; plugin-side pin hash finalized at tag time (M6-T9) |
+| 1.0.0 | `v1.0.0` | M6 | v0.56.2 (`efb5099`), pinned in `hyprpm.toml` `commit_pins` | Stable dispatcher names, config keys, snapshot/apply semantics; **contract freeze declared in M6-T1 (issue #50)**; plugin-side pin hash finalized to release-prep main `320c4cb` (M6-T9 prep); **tag pending the explicit human release command** |
 
 ## Rules
 
