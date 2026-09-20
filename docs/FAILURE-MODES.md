@@ -14,7 +14,7 @@ For each mode: **trigger → session state → dispatcher result → UI → hist
 | FM-05 | Config reload mid-session | Active unchanged | n/a | n/a | Policy/config for **next** session only (REQ-CFG-002/003, REQ-S-009) | T-CFG-02 |
 | FM-06 | Plugin unload while Active | destroyed | n/a | best-effort end not guaranteed if process eject | cancel all SchedulerPort jobs; no UAF | T-H-04 |
 | FM-07 | Plugin fault/eject | process-dependent | n/a | n/a | PLUGIN_EXIT may not run; prefer registrations Hyprland tears down | manual / nest |
-| FM-08 | External socket dead/corrupt (M5) | unchanged | cycle/apply still work | fallback null semantics; no crash | ignore bad peer | M5 + T-UI-01 pattern |
+| FM-08 | External socket dead/corrupt (M5) | unchanged | cycle/apply still work | fallback null semantics; no crash | ignore bad peer | M5 + T-UI-01 pattern (narrative: [RISK-PROFILES.md](RISK-PROFILES.md) §1) |
 | FM-09 | UI backend throws/errors | unchanged | success if domain ok | REQ-UI-001 isolation | log once rate-limited | T-UI isolation |
 | FM-10 | FocusGateway fails (window vanished under us) | treat as invalid apply path | same as FM-01 | Cancelled or Applied per §2.8 | no second focus | T-F-03 |
 | FM-11 | Empty candidates on first cycle | Idle | fail `"no windows"` | no session_start | none | T-S-04 |

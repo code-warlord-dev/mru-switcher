@@ -41,7 +41,7 @@ Ends the session without applying selection (see `restore_focus_on_cancel`).
 mru:status
 ```
 
-Debug/status string. Payload format is **frozen in SPEC §3.4** since the M6-T1 contract freeze:
+Debug/status string. Payload format is **frozen in `docs/SPEC.md` §3.4** (stable for 1.x):
 `active=… index=… size=… scope=… session=… last_end=…`; additional keys may appear in minor releases
 (tolerate them). On Hyprland 0.56.x `hyprctl dispatch` shows only `ok` — see `docs/COMPAT.md`.
 
@@ -49,33 +49,34 @@ Debug/status string. Payload format is **frozen in SPEC §3.4** since the M6-T1 
 
 ## Configuration keys
 
-Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT` (ADR-008).
+Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT`.
 
 ### Existing (unchanged semantics)
 
 | Key | Type | Default | Notes |
 |-----|------|---------|-------|
-| `debounce_ms` | int | `400` | clamp per SPEC (REQ-CFG-004) |
+| `debounce_ms` | int | `400` | clamped to `[0, 5000]` ms per SPEC |
 | `default_scope` | enum | `global` | global \| monitor \| workspace \| visible \| app |
 | `start_offset` | enum | `second` | first \| second |
 | `wrap` | bool | `true` | |
-| `lock_history_on_session` | bool | `true` | **Reserved / ignored** (REQ-H-010, ADR-021): lock-in while a session is Active is mandatory. The key stays registered so 0.x configs keep parsing; a `false` value only triggers one warning notification per plugin lifetime. Removal is a 2.0 candidate |
+| `lock_history_on_session` | bool | `true` | **Reserved / ignored**: locking the window list while a session is active is mandatory. The key stays registered so 0.x configs keep parsing; a `false` value only triggers one warning notification per plugin lifetime. Removal is a 2.0 candidate |
 | `restore_focus_on_cancel` | bool | `false` | |
 | `ui` | enum | `null` | null \| border \| external |
-| `external_socket` | string | `""` | AF_UNIX path for `ui = external` (M5). Empty or unbindable → behaves as `null` + one warning (REQ-O-001) |
+| `external_socket` | string | `""` | AF_UNIX path for `ui = external`. Empty or unbindable → behaves as `null` + one warning |
 
-### Added in M4
+### Added for border highlight (`ui = border`)
 
 | Key | Type | Default | Notes |
 |-----|------|---------|-------|
-| `border_style` | string | `solid` | `solid` required; `pulse` / `dim` reserved → treated as `solid` until implemented; unknown → `solid` + one warning (REQ-UI-007) |
-| `border_color` | string | `0xffffd9a0` | Used when `ui = border`. Documented implementation default (verbatim `setprop` colour grammar: hex `0xAARRGGBB` / `rgb(...)` / `rgba(rrggbbbaa)`; intentionally registered as `String`, not `Color` — REQ-UI-008) |
+| `border_style` | string | `solid` | `solid` required; `pulse` / `dim` reserved → treated as `solid` until implemented; unknown → `solid` + one warning |
+| `border_color` | string | `0xffffd9a0` | Used when `ui = border`. Documented implementation default (verbatim `setprop` colour grammar: hex `0xAARRGGBB` / `rgb(...)` / `rgba(rrggbbbaa)`; intentionally registered as `String`, not `Color`) |
 | `border_size` | int | `-1` | `-1` = do not modify window border size; `≥ 0` may set the size for the highlighted window for the duration of the highlight |
 
-### Added in M5 — external overlay protocol
+### External overlay protocol (`ui = external`)
 
 `ui = external` makes the plugin bind an AF_UNIX stream socket at `external_socket` and speak a
-line-framed JSON protocol (SPEC §12 Appendix B, ADR-018/ADR-019). The plugin never blocks on the
+line-framed JSON protocol (normative wire format: `docs/SPEC.md`, Appendix B). The plugin never
+blocks on the
 peer: messages are best-effort and session/focus behaviour is identical to `ui = null` when no peer
 is attached. A reference peer is provided at `tools/overlay_stub.py`.
 
@@ -96,7 +97,7 @@ value as `hyprctl clients`).
 ### Reload
 
 - `debounce_ms` — affects subsequent history commits.
-- `ui`, `border_style`, `border_color`, `border_size`, and other session-policy keys — **next session only** (REQ-UI-009, REQ-CFG-002).
+- `ui`, `border_style`, `border_color`, `border_size`, and other session-policy keys — **next session only**.
 
 ### Non-API notes
 

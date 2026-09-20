@@ -118,8 +118,8 @@ plugin {
         default_scope           = global   # global | monitor | workspace | visible | app
         start_offset            = second   # first | second
         wrap                    = true
-        ui                      = null     # null | border | external (border from M4; unavailable backends fall back to null)
-        border_style            = solid    # border highlight style (M4: solid only; pulse/dim reserved -> solid + warn-once)
+        ui                      = null     # null | border | external (unavailable backends fall back to null)
+        border_style            = solid    # solid only for now; pulse/dim reserved -> solid + warn-once
         border_color            = 0xffffd9a0  # border highlight colour (bright accent; verbatim setprop grammar)
         border_size             = -1       # -1 = leave border size unchanged (colour only)
         restore_focus_on_cancel = false
@@ -146,7 +146,7 @@ and the plugin re-reads its settings (via the `config.reloaded` event):
   `restore_focus_on_cancel`, `ui`, `external_socket`, and the
   border-* keys) — applies to the **next** session you start. Note: switching `ui` away
   from `external` (or clearing `external_socket`) stops the socket listener at reload;
-  the already-running session continues with its frozen backend (REQ-UI-009).
+  the already-running session continues with its frozen backend.
 
 A session that is already running is never changed mid-flight: its frozen
 window list and selection policy stay exactly as they were when it started.
@@ -154,7 +154,7 @@ Finish or cancel it, then start a new session to use the updated settings.
 
 Runtime `hyprctl keyword` changes to `plugin:mru-switcher:*` keys are **not**
 observed by the plugin on Hyprland 0.56.2 — edit the config file and run
-`hyprctl reload` instead (see `docs/COMPAT.md`, M4 nest smoke 2026-09-18).
+`hyprctl reload` instead (see `docs/COMPAT.md`).
 
 ---
 
@@ -171,7 +171,7 @@ While a session is active, intermediate focus changes (mouse, other keybinds) do
 reorder the list — lock-in is always on and cannot be switched off (there is a reserved,
 ignored `lock_history_on_session` key for 0.x config compatibility: see [API.md](API.md)).
 A focus change made just before you open a session is committed immediately, so
-back-to-back switches rotate the list deterministically (ADR-021).
+back-to-back switches rotate the list deterministically.
 
 ---
 
@@ -217,8 +217,8 @@ hyprctl dispatch mru:cycle next
 hyprctl dispatch mru:apply
 ```
 
-The status payload is frozen for 1.x: `active= index= size= scope= session= last_end=` — SPEC §3.4,
-normative since the M6-T1 contract freeze; tolerate unknown additional keys. On Hyprland 0.56.x,
+The status payload is frozen for 1.x: `active= index= size= scope= session= last_end=` —
+additional keys may appear in minor releases; tolerate them. On Hyprland 0.56.x,
 `hyprctl dispatch mru:status` prints only `ok`: the plugin carries the status payload in a field
 `hyprctl` surfaces only on failure, so it is not visible through IPC on this version — read it with a
 libwayland dispatcher binding or from the plugin log. This is a documented host limitation
@@ -236,8 +236,8 @@ hyprctl activewindow -j
 | Value | Behaviour |
 |-------|-----------|
 | `null` | No visual feedback (logic only; useful for tests and minimal setups) |
-| `border` | Temporarily highlight the **selected** window's border while you hold Alt and cycle (**M4+**) |
-| `external` | Drive an external overlay via an AF_UNIX socket (**M5+**; see below). Empty/unbindable path → behaves as `null` with a one-time warning |
+| `border` | Temporarily highlight the **selected** window's border while you hold Alt and cycle |
+| `external` | Drive an external overlay via an AF_UNIX socket (see below). Empty/unbindable path → behaves as `null` with a one-time warning |
 
 Default is `null`. To enable border highlight:
 
@@ -245,7 +245,7 @@ Default is `null`. To enable border highlight:
 plugin {
     mru-switcher {
         ui           = border
-        border_style = solid          # only solid is active in M4; pulse/dim reserved
+        border_style = solid          # pulse/dim reserved → treated as solid + one-time warning
         border_color = rgba(33ccffee) # example — see below and API.md for accepted formats
         border_size  = -1             # -1 = do not change border width
     }
@@ -257,15 +257,15 @@ If you omit the border keys, the documented defaults are: `border_style = solid`
 ### Border behaviour (what you should see)
 
 1. First `Alt+Tab` — the selected window (usually the previous one) gets the highlight colour.
-2. Further `Tab` / `Shift+Tab` — highlight **moves** with the virtual selection; real focus stays put until release (REQ-UI-006).
+2. Further `Tab` / `Shift+Tab` — highlight **moves** with the virtual selection; real focus stays put until release.
 3. Release Alt (`mru:apply`) or Escape (`mru:cancel`) — highlight is **removed**.
-4. Plugin unload / Hyprland exit mid-session — highlight is cleared as part of teardown (REQ-UI-005).
+4. Plugin unload / Hyprland exit mid-session — highlight is cleared as part of teardown.
 
 If the border APIs are unavailable on your Hyprland build, the plugin keeps switching correctly and falls back to no highlight (same as `null`, one-time warning).
 
 ### UI settings reload
 
-`ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel (REQ-UI-009, REQ-CFG-002).
+`ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel.
 
 ### Updating the plugin (never overwrite the `.so` in place)
 
@@ -285,11 +285,53 @@ Equivalently: `rm` the old file before copying a new one in, or use `mv`/rename,
 updated binary in a fresh Hyprland session. A normal `plugin unload` / `plugin load` of an
 **unchanged** binary is safe.
 
-### External overlay (`ui = external`, M5+)
+### If the plugin fails to load after a Hyprland update
+
+**What you see.** The plugin is not loaded — `mru:*` binds do nothing and the dispatchers are
+unknown. The Hyprland log (`hyprctl rollinglog`, or your session journal) contains a line like:
+
+```
+[PluginSystem] mru-switcher: header hash mismatch, refusing to load
+```
+
+**What it means.** This is the plugin's protection, not a crash: the binary was built against a
+different Hyprland version than the one now running. Hyprland plugins have no stable ABI, so
+loading a mismatched binary could crash the compositor — the plugin refuses instead (fail-closed).
+
+**Recover (pick one):**
+
+* **hyprpm install** — rebuild from the pinned compatible source in one step, then reload:
+
+  ```bash
+  hyprpm update
+  hyprpm reload   # or log out and back in
+  ```
+
+* **Source install** — rebuild against the new headers, then swap binaries per the
+  ["Updating the plugin"](#updating-the-plugin-never-overwrite-the-so-in-place) section above
+  (never overwrite the `.so` in place):
+
+  ```bash
+  cd ~/.local/src/mru-switcher
+  git pull
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON
+  cmake --build build -j
+  hyprctl plugin unload "$HOME/.local/src/mru-switcher/build/mru-switcher.so"  # if loaded this session
+  hyprctl plugin load  "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
+  ```
+
+* **No time right now** — disable the plugin (`hyprpm disable mru-switcher`, or comment out its
+  load line) and move on; Hyprland runs normally without it.
+
+**Which Hyprland build is supported:** see the compatibility matrix in `docs/COMPAT.md` (it names
+the tested Hyprland commit); check yours with `hyprctl version`.
+
+### External overlay (`ui = external`)
 
 An out-of-process overlay (any language) can render previews/search and drive the selection. The
-plugin binds an AF_UNIX stream socket at `external_socket` and speaks the line-framed JSON protocol
-frozen in `docs/SPEC.md` §12 Appendix B (`docs/API.md` has the message table).
+plugin binds an AF_UNIX stream socket at `external_socket` and speaks a line-framed JSON protocol
+(documented in `docs/API.md`; the wire format itself is developer-facing and lives in
+`docs/SPEC.md`, Appendix B).
 
 ```conf
 plugin {
@@ -328,13 +370,26 @@ plugin {
 
 ---
 
+## How the plugin behaves when things go wrong
+
+Every failure path is designed to degrade, not to crash the compositor: a dead overlay behaves like
+`ui = null`, a bad config value falls back to its default with one warning, a storm of closing
+windows prunes the frozen session snapshot without focus glitches. The full narratives —
+["External overlay fails"](RISK-PROFILES.md#1-external-overlay-fails),
+["Malicious / broken configuration"](RISK-PROFILES.md#2-malicious--broken-configuration) and
+["Window-close storm during a session"](RISK-PROFILES.md#3-window-close-storm-during-a-session) —
+live in [RISK-PROFILES.md](RISK-PROFILES.md); developer-facing matrices:
+[FAILURE-MODES.md](FAILURE-MODES.md), [COMPAT.md](COMPAT.md).
+
+---
+
 ## FAQ
 
 **Why doesn’t focus move on every Tab?**  
 By design (Niri / classic Alt+Tab). Focus is applied only on release so intermediate workspaces and history stay clean.
 
 **Why doesn't history jump when I tab quickly?**  
-History is always frozen while a session is running: **lock-in is mandatory and there is no setting to turn it off**. Make sure you are not mixing other focus binds that bypass the plugin during the session. Quick consecutive `cycle`/`apply` pairs now rotate the history deterministically instead of landing on the same window (ADR-021), so a fast A↔B toggle behaves the same whether or not you wait for `debounce_ms`.
+History is always frozen while a session is running: **lock-in is mandatory and there is no setting to turn it off**. Make sure you are not mixing other focus binds that bypass the plugin during the session. Quick consecutive `cycle`/`apply` pairs now rotate the history deterministically instead of landing on the same window, so a fast A↔B toggle behaves the same whether or not you wait for `debounce_ms`.
 
 **Special workspaces / scratchpads.**  
 A scratchpad window is switchable only while it is **shown**; when hidden it is
