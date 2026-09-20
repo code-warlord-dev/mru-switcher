@@ -11,9 +11,9 @@
 // forward-declared lua_State* type and these C symbols are used — no linking
 // against a separate lua lib is needed (the .so loads in-process).
 extern "C" {
+#include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
-#include <lauxlib.h>
 }
 
 #include "border_highlight_ui.hpp"
@@ -480,9 +480,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
             // std::exception propagate; the compositor's own catch is that barrier.
             throw std::runtime_error("mru-switcher: failed to register config values");
         }
-        mru::plugin::build_state();          // constructs all members, seeds MRU (HIGH-5)
-        mru::plugin::subscribe_events();     // HIGH-5: listeners after state exists
-        mru::plugin::register_dispatchers(); // HIGH-5: dispatchers after state exists
+        mru::plugin::build_state();            // constructs all members, seeds MRU (HIGH-5)
+        mru::plugin::subscribe_events();       // HIGH-5: listeners after state exists
+        mru::plugin::register_dispatchers();   // HIGH-5: dispatchers after state exists
         mru::plugin::register_lua_functions(); // task_0001: hl.plugin.mru.* (silent no-op on hyprlang config)
     } catch (const std::exception &e) {
         mru::plugin::teardown_state();
