@@ -8,6 +8,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Source installer `scripts/install.sh` (M6 packaging, ADR-020 §4):** optional secondary helper for the source channel (ticket D2) — targets the canonical layout (SPEC REQ-DIST-007), detects Hyprland headers via `pkg-config --modversion hyprland` and verifies them against the pinned version (`docs/COMPAT.md` v0.56.2; override via `--hyprland-version` / `MRU_HYPRLAND_PIN`), and fails on toolchain gaps, missing headers, wrong arch, or pin skew; configures + builds with the exact `hyprpm.toml`/CI flags (`cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON` + `cmake --build build -j`); verifies `build/mru-switcher.so` is an ELF shared object; prints a success summary (source path, plugin path, detected Hyprland, recommended keybindings). `curl | bash` is not documented anywhere — the invocation is `git clone … ~/.local/src/mru-switcher && cd … && ./scripts/install.sh`; the script never edits `hyprland.conf` and only writes a fragment under `~/.config/hypr/conf.d/` when `--write-conf` is passed. No code/domain/plugin change; no README/USER/`examples/` edits (separate ticket D2a). Satisfies REQ-DIST-011..013 (T-DIST-01)
+
 - **Examples + user-facing packaging (M6, ADR-020 / ticket D2):** `examples/mru-switcher.conf`
   (complete, loadable `plugin { mru-switcher { … } }` block — every one of the 11 registered config
   keys documented inline with purpose, default, allowed values, and a recommendation; `ui = border`
