@@ -169,13 +169,44 @@ Run `./scripts/install.sh --help` for flags.
 ## First setup
 
 Copy the example configuration and keybindings into your Hyprland config
-directory, then `source` them from `hyprland.conf`:
+directory (`~/.config/hypr/conf.d/`), then `source` them from `hyprland.conf`.
+Where the examples come from depends on how you installed the plugin.
+
+### If you built from source
+
+The checkout keeps them at `~/.local/src/mru-switcher/examples`:
 
 ```bash
 mkdir -p ~/.config/hypr/conf.d
 cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
 cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
 ```
+
+### If you installed via hyprpm
+
+hyprpm builds the plugin inside its own cache, so a hyprpm install leaves no
+`~/.local/src/mru-switcher` tree to copy from. Download the two example files
+from the repository instead:
+
+```bash
+mkdir -p ~/.config/hypr/conf.d
+curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher.conf -o ~/.config/hypr/conf.d/mru-switcher.conf
+curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher-bindings.conf -o ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+> Installed a **pinned release** rather than `main`? Swap `main` for the tag in
+> those URLs (for example `.../v1.0.0/examples/mru-switcher.conf`, once the
+> `v1.0.0` tag is published) so the examples match the plugin you are running.
+
+If you do keep a local checkout of the repository (for example the canonical
+`~/.local/src/mru-switcher` for a source install), copy straight from it:
+
+```bash
+cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
+cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+### Then, for either channel
 
 Add these lines to `hyprland.conf`:
 
@@ -196,6 +227,11 @@ That is the whole classic workflow: `Alt+Tab` cycles the frozen list, releasing
 selection while you browse; see the comments in the file to switch it back to
 `null`.
 
+If you installed with the guided helper script, it can do this copy for you
+instead: `./scripts/install.sh --write-conf` writes both files verbatim into
+`~/.config/hypr/conf.d/` (and only there — your `hyprland.conf` is never
+edited, so the two `source` lines above are still yours to add).
+
 ---
 
 ## Configuration overview
@@ -204,15 +240,16 @@ The files under `examples/` are your starting point, not a minimal inline
 snippet:
 
 * `examples/mru-switcher.conf` — the complete `plugin { mru-switcher { … } }`
-  block, every key documented inline: purpose, default, allowed values, and a
-  short recommendation.
+  block, every user-facing key documented inline: purpose, default, allowed
+  values, and a short recommendation.
 * `examples/mru-switcher-bindings.conf` — the four recommended keybindings.
 
 The plugin reads its settings when it loads; after editing the config, run
 `hyprctl reload` and changes apply to your **next** Alt+Tab session (an open
 session keeps the policy it started with). Quick reference of the options:
 behaviour (`debounce_ms`, `start_offset`, `wrap`), default scope, history
-behaviour (`lock_history_on_session`, `restore_focus_on_cancel`), and the UI
+behaviour (`restore_focus_on_cancel` — history lock-in while a session is open
+is mandatory and has no setting), and the UI
 backend (`ui`, plus `border_style` / `border_color` / `border_size` for the
 border backend and `external_socket` for the external one).
 
@@ -268,8 +305,11 @@ mru:status
 * **`unknown key` / `unknown value` warnings** — the example files match the
   currently released keys; make sure you are not mixing an older example with
   a newer plugin or vice versa.
-* **List order jumps while tabbing** — keep `lock_history_on_session = true`
-  and avoid other focus binds that bypass the plugin mid-session.
+* **List order jumps while tabbing** — the history is always frozen while a
+  session is running (lock-in is mandatory, not a setting), so exit the session
+  cleanly with `mru:apply` / `mru:cancel` and avoid other focus binds that
+  bypass the plugin mid-session. Back-to-back `cycle`/`apply` pairs rotate the
+  list deterministically (ADR-021).
 * **Config changes not applying** — edit the file and run
   `hyprctl reload`; an already-open session keeps its original settings until
   apply/cancel.

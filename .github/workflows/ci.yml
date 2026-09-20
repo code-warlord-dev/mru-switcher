@@ -218,3 +218,59 @@ jobs:
       - name: hyprpm.toml parses and commit_pins is populated (REQ-H-004)
         run: |
           python3 -c "import tomllib; d=tomllib.load(open('hyprpm.toml','rb')); pins=d.get('repository',{}).get('commit_pins',[]); assert pins, 'commit_pins empty'; print('commit_pins:', pins)"
+
+  installer:
+    # M6 packaging (ADR-020 §4; SPEC REQ-DIST-027 / T-DIST-05): static + dry-run
+    # guard for the optional source helper. A stock runner has no Hyprland
+    # headers, so this job deliberately never performs a real build - `bash -n`,
+    # shellcheck and `--dry-run` (which needs no headers) only. Cheap and fast.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n (syntax)
+        run: bash -n scripts/install.sh
+      - name: shellcheck (fallback to bash -n with a clear message)
+        run: |
+          sudo apt-get update -qq || true
+          sudo apt-get install -y --no-install-recommends shellcheck || true
+          if command -v shellcheck >/dev/null 2>&1; then
+            shellcheck --version
+            shellcheck scripts/install.sh
+            echo "OK: shellcheck clean"
+          else
+            echo "::warning::shellcheck is unavailable on this runner - falling back to bash -n only (T-DIST-05 partial)"
+            bash -n scripts/install.sh
+          fi
+      - name: --help and --version exit 0
+        run: |
+          ./scripts/install.sh --help > /dev/null
+          ./scripts/install.sh --version
+      - name: --dry-run in a clean temp dir exits 0 and writes nothing
+        run: |
+          tmp="$(mktemp -d)"
+          cp -a examples scripts CMakeLists.txt hyprpm.toml "$tmp/"
+          before="$(cd "$tmp" && find . -type f -printf '%P %s\n' | sort | md5sum)"
+          (cd "$tmp" && ./scripts/install.sh --dry-run --dir "$tmp" --allow-non-canonical)
+          after="$(cd "$tmp" && find . -type f -printf '%P %s\n' | sort | md5sum)"
+          [ "$before" = "$after" ] || { echo "::error::--dry-run modified the tree"; exit 1; }
+          [ ! -e "$tmp/build" ] || { echo "::error::--dry-run created build/"; exit 1; }
+          echo "OK: dry-run wrote nothing"
+      - name: negative cases exit non-zero (unknown option, stray arg, non-canonical refusal)
+        run: |
+          check() { # expected_code, description, args...
+            local want="$1" desc="$2"
+            shift 2
+            set +e
+            ./scripts/install.sh "$@" > /tmp/out.log 2>&1
+            local code=$?
+            set -e
+            echo "${desc}: exit ${code}"
+            [ "${code}" -eq "${want}" ] || { echo "::error::${desc}: expected exit ${want}, got ${code}"; cat /tmp/out.log; exit 1; }
+            grep -q -e '--help' /tmp/out.log || [ "${code}" -eq 3 ] || { echo "::error::${desc}: message lacks a --help hint"; exit 1; }
+          }
+          check 2 "unknown option" --definitely-not-an-option
+          check 2 "stray argument" some-stray-argument
+          check 2 "invalid --jobs" --jobs 0
+          check 3 "non-canonical layout without opt-in"
+          echo "OK: negative cases behaved as documented"
+

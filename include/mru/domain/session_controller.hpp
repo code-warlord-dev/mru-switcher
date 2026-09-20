@@ -32,6 +32,9 @@ enum class SessionEndReason {
 // apply issues at most one *successful* focus (REQ-F-006) and exactly one UI end
 // (REQ-F-007). On FocusGateway::InvalidTarget a single bounded re-attempt runs
 // apply-after-invalidation once more (REQ-F-008, §2.8 symmetry).
+// History lock-in while Active is mandatory and unconditional (REQ-H-001/010,
+// ADR-021); at session start a still-pending debounced promotion is flushed
+// before the snapshot is built (REQ-H-011).
 class SessionController {
   public:
     struct CommandResult {
@@ -59,13 +62,15 @@ class SessionController {
     // controller and its ports are alive. Never focuses (REQ-F-006). No-op Idle.
     void plugin_shutdown();
 
-    // Focus events from the facade: ignored while Active (lock-in, REQ-H-001,
-    // REQ-RE-003); forwarded to HistoryTracker when Idle.
+    // Focus events from the facade: ignored while Active (mandatory lock-in,
+    // REQ-H-001/010, REQ-RE-003); forwarded to HistoryTracker when Idle.
     void on_focus(const WindowRef &ref);
     // Prune the active snapshot when a window closes (FM-04); empty ends session.
     void on_window_invalid(const WindowRef &ref);
-    // REQ-CFG-002 / REQ-S-009: refresh the live policy applied to *new* sessions.
-    // The active session keeps the snapshot policy frozen at session start.
+    // REQ-CFG-002 / REQ-S-009: refresh the live policy applied to *new* sessions
+    // (scope, start_offset, wrap, restore_focus_on_cancel). The active session
+    // keeps the snapshot policy frozen at session start. There is no lock-in flag:
+    // lock-in is mandatory (REQ-H-001/010, ADR-021).
     void set_policy(SessionPolicy policy);
 
     bool is_active() const { return active_; }
@@ -83,7 +88,9 @@ class SessionController {
     // Promote the applied window to the MRU head after the session ends.
     // The FocusGateway emits a synchronous window.active during the focus call,
     // but lock-in (REQ-H-001) swallows it while Active, so without this the
-    // applied window would never reach the head (BLOCKER-2, REQ-RE-003).
+    // applied window would never reach the head (BLOCKER-2, REQ-RE-003). The
+    // promotion stays debounced; a session started before the timer fires commits
+    // it through HistoryTracker::flush_pending() (REQ-H-011, ADR-021).
     CommandResult complete_apply();
     void prune_active();
     // Apply-after-invalidation (§2.8): prune, defensive re-prune + clamp, then a

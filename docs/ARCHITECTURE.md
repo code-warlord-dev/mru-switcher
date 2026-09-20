@@ -170,6 +170,10 @@ window.active (Event::bus)
 - Preferred ordering source when available: `Desktop::History::windowTracker()->fullHistory()`.
 - Fallback: maintain our own list from `window.active` events.
 - Debounce avoids polluting MRU with transient focuses (Niri `debounce-ms` analogue).
+- At session start a still-pending debounce job is **flushed**: cancelled and committed
+  immediately through the same validity guard (REQ-H-009), before the candidate list is
+  built — so back-to-back `cycle → apply` taps rotate deterministically and nothing is
+  ever pending once lock-in engages (REQ-H-011, ADR-021).
 
 ---
 
@@ -325,7 +329,6 @@ plugin {
         border_style            = solid    # solid in M4; pulse/dim reserved -> solid + warn-once
         border_color            = 0xffffd9a0   # highlight colour; format per pin (see USER/API)
         border_size             = -1       # -1 = do not touch size (colour only)
-        lock_history_on_session = true
         restore_focus_on_cancel = false
         external_socket         =        # AF_UNIX path for ui=external (REQ-O-001; empty = degrade to null)
     }
@@ -336,7 +339,8 @@ All keys registered only in `PLUGIN_INIT`.
 
 Effective UI backend is frozen for the Active session: `SessionUIBackendProxy` rebuilds the
 backend from live config at `on_session_start` and keeps it for the session lifetime
-(REQ-UI-009); `SessionPolicy` itself carries only scope/wrap/start_offset/lock/restore.
+(REQ-UI-009); `SessionPolicy` itself carries only scope/wrap/start_offset/restore —
+history lock-in is not a policy option but a mandatory invariant (REQ-H-001/010, ADR-021).
 A config reload updates only the values used for the **next** Idle → Active transition
 (REQ-UI-009, REQ-CFG-002). Backend factory (plugin state build / policy refresh):
 
