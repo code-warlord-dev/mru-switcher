@@ -267,6 +267,24 @@ If the border APIs are unavailable on your Hyprland build, the plugin keeps swit
 
 `ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel (REQ-UI-009, REQ-CFG-002).
 
+### Updating the plugin (never overwrite the `.so` in place)
+
+If Hyprland has already loaded `mru-switcher.so` once in this session, **do not overwrite that file
+in place** (e.g. `cp rebuilt.so build/mru-switcher.so`). On the pinned Hyprland, re-loading a path
+whose file was replaced with the same inode crashes the compositor (details and evidence:
+`docs/COMPAT.md`; issue #55). A rebuild by `cmake` **relinks** and produces a fresh inode, and a
+fresh-inode file at the same path loads cleanly — so the safe update flow is:
+
+```bash
+cmake --build ~/.local/src/mru-switcher/build -j     # relink = fresh inode at the same path
+hyprctl plugin unload "$HOME/.local/src/mru-switcher/build/mru-switcher.so"  # if loaded in this session
+hyprctl plugin load  "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
+```
+
+Equivalently: `rm` the old file before copying a new one in, or use `mv`/rename, or load the
+updated binary in a fresh Hyprland session. A normal `plugin unload` / `plugin load` of an
+**unchanged** binary is safe.
+
 ### External overlay (`ui = external`, M5+)
 
 An out-of-process overlay (any language) can render previews/search and drive the selection. The
