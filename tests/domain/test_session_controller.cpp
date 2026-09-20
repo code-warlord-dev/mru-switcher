@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <optional>
@@ -405,7 +406,7 @@ TEST(t_f_05_focus_failed_ends_cancelled) {
 // --- T-RE-01: after apply, a synthetic window.active must not reopen the session
 // and HistoryTracker resumes committing (lock released, REQ-RE-003).
 TEST(t_re_01_apply_then_active_does_not_reopen) {
-    Fixture f; // lock_history_on_session = true (default)
+    Fixture f; // lock-in is mandatory while Active (REQ-H-001, ADR-021)
     f.candidates({ref(10), ref(20)});
     (void)f.sc.cycle(Direction::Next);
     (void)f.sc.apply();
@@ -426,7 +427,7 @@ TEST(t_re_01_apply_then_active_does_not_reopen) {
 // (REQ-H-001) while Active, so complete_apply() promotes it explicitly once the
 // session ends. Without the fix the applied window is absent from order_.
 TEST(t_re_04_apply_promotes_applied_to_mru_head) {
-    Fixture f; // lock_history_on_session = true (default)
+    Fixture f; // lock-in is mandatory while Active (REQ-H-001, ADR-021)
     f.candidates({ref(10), ref(20)});
     (void)f.sc.cycle(Direction::Next); // start_offset=Second -> index 1 -> ref(20)
     const WindowRef applied = f.sc.active_snapshot()->at(f.sc.index());
@@ -472,7 +473,7 @@ TEST(t_re_06_reentrant_active_inside_focus_is_safe) {
     source.validity.emplace_back(ref(10), true);
     source.validity.emplace_back(ref(20), true);
 
-    SessionController scl(source, fg, ui, tracker, {}); // lock_history_on_session = true
+    SessionController scl(source, fg, ui, tracker, {}); // lock-in mandatory (REQ-H-001/010, ADR-021)
     ui.ends.clear();
 
     (void)scl.cycle(Direction::Next); // index 1 -> ref(20)
@@ -501,7 +502,7 @@ TEST(t_re_06_reentrant_active_inside_focus_is_safe) {
 
 // --- Bonus: lock-in ignores focus events while a session is Active.
 TEST(bonus_focus_during_active_session_is_ignored) {
-    Fixture f; // lock_history_on_session = true
+    Fixture f; // lock-in mandatory (REQ-H-001/010, ADR-021)
     f.candidates({ref(10), ref(20)});
     (void)f.sc.cycle(Direction::Next);
 
@@ -543,7 +544,7 @@ TEST(bonus_on_window_invalid_empties_session_cancelled) {
 // --- L-11: plugin_shutdown ends an active session before teardown: UI gets the
 // end event, state clears, history unlocks, and no focus is applied (REQ-F-006).
 TEST(bonus_plugin_shutdown_ends_active_session) {
-    Fixture f; // lock_history_on_session = true (default)
+    Fixture f; // lock-in is mandatory while Active (REQ-H-001, ADR-021)
     f.candidates({ref(10), ref(20)});
     CHECK(f.sc.cycle(Direction::Next).ok);
     CHECK(f.sc.is_active());
@@ -873,6 +874,167 @@ TEST(t_h_08_rapid_tab_hammer_wrap_false_clamps) {
     CHECK(f.sc.is_active());
     CHECK(f.fg.focused.empty());
     CHECK(f.ui.ends.empty());
+}
+
+// =====================================================================
+// REQ-H-011 / ADR-021: pending promotion flushed at session start (#65)
+// =====================================================================
+
+// Emulates the real adapter's candidate enumeration (REQ-SNAP-001a): the
+// plugin-owned MRU order first, then the remaining in-scope valid windows. The
+// domain MockWindowSource returns a fixed list, which would hide the ordering
+// effect of the flush under test here.
+struct TrackerOrderSource : WindowSource {
+    mru::test::MockWindowSource base;
+    const HistoryTracker *tracker = nullptr;
+    mutable std::size_t candidates_calls = 0;
+
+    std::vector<WindowRef> candidates(Scope) const override {
+        ++candidates_calls;
+        std::vector<WindowRef> out;
+        if (tracker) {
+            for (const WindowRef &r : tracker->order()) {
+                if (base.is_valid(r) && std::find(out.begin(), out.end(), r) == out.end())
+                    out.push_back(r);
+            }
+        }
+        for (const WindowRef &r : base.candidates_result) {
+            if (base.is_valid(r) && std::find(out.begin(), out.end(), r) == out.end())
+                out.push_back(r);
+        }
+        return out;
+    }
+
+    bool is_valid(const WindowRef &r) const override { return base.is_valid(r); }
+    std::optional<WindowRef> focused() const override { return base.focused(); }
+};
+
+bool contains(const std::vector<WindowRef> &v, const WindowRef &r) {
+    return std::find(v.begin(), v.end(), r) != v.end();
+}
+
+// --- T-H-10 (a): REQ-H-011 — an Idle focus with a pending debounce job is
+// committed immediately when the session starts (no clock advance): the tracker
+// head is the pending window and nothing stays pending at lock-in.
+TEST(t_h_10_start_flushes_pending_promotion_immediately) {
+    Fixture f;
+    f.candidates({ref(10), ref(20), ref(30)});
+    f.tracker.seed({ref(20), ref(30)}); // ref(10) focused but not committed yet
+
+    f.sc.on_focus(ref(10)); // Idle -> debounce job scheduled (REQ-H-002)
+    CHECK(!f.sc.is_active());
+    CHECK(f.tracker.pending_job() != mru::domain::kInvalidJobId);
+    CHECK(f.tracker.order().front() == ref(20));
+
+    CHECK(f.sc.cycle(Direction::Next).ok); // no clock.advance() here
+    CHECK(f.sc.is_active());
+    CHECK(f.tracker.order().front() == ref(10));                  // flushed immediately
+    CHECK(f.tracker.pending_job() == mru::domain::kInvalidJobId); // nothing pending at lock-in
+    CHECK(f.clock.pending_count() == 0);                          // scheduled job really cancelled
+
+    // Lock-in still holds: focus events during the session change nothing
+    // (REQ-H-001) and the clock cannot resurrect the cancelled job (REQ-H-006/008).
+    f.sc.on_focus(ref(30));
+    CHECK(f.tracker.pending_job() == mru::domain::kInvalidJobId);
+    f.clock.advance(500);
+    CHECK(f.tracker.order() == std::vector<WindowRef>({ref(10), ref(20), ref(30)}));
+    CHECK(f.sc.is_active());
+}
+
+// --- T-H-10 (b): REQ-H-011 + REQ-H-009 — the flush is not a bypass of the
+// validity guard: a pending window that died before session start is not
+// committed, the tracker stays clean and no exception escapes.
+TEST(t_h_10_flush_does_not_commit_invalid_pending_window) {
+    Fixture f;
+    f.candidates({ref(10), ref(20)});
+    f.set_valid(ref(99), true);
+
+    f.sc.on_focus(ref(99)); // pending job for ref(99)
+    CHECK(f.tracker.pending_job() != mru::domain::kInvalidJobId);
+    f.set_valid(ref(99), false); // dies before the session starts (REQ-H-009)
+
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    CHECK(f.sc.is_active());
+    CHECK(!contains(f.tracker.order(), ref(99)));                 // never committed
+    CHECK(f.tracker.pending_job() == mru::domain::kInvalidJobId); // job consumed, not left dangling
+
+    f.clock.advance(500); // nothing left to fire
+    CHECK(f.tracker.order().empty());
+    CHECK(f.sc.is_active());
+}
+
+// --- T-H-10 (c): REQ-H-011 — with nothing pending the flush is a no-op: the MRU
+// order is untouched by the session start (Idle debounce semantics preserved).
+TEST(t_h_10_flush_without_pending_is_a_noop) {
+    Fixture f;
+    f.candidates({ref(10), ref(20)});
+    f.tracker.seed({ref(10), ref(20)});
+    const std::vector<WindowRef> before = f.tracker.order();
+
+    CHECK(f.tracker.pending_job() == mru::domain::kInvalidJobId);
+    f.tracker.flush_pending(); // direct domain call: no pending -> no-op
+
+    CHECK(f.sc.cycle(Direction::Next).ok);
+    CHECK(f.tracker.order() == before);
+    CHECK(f.tracker.pending_job() == mru::domain::kInvalidJobId);
+    f.clock.advance(500);
+    CHECK(f.tracker.order() == before);
+    CHECK(f.ui.starts.size() == 1);
+}
+
+// --- T-H-11 (#65 regression): back-to-back sessions WITHOUT any clock advance
+// rotate deterministically. Session 1 applies X (=B, the second MRU entry), which
+// schedules the promotion through the debounce; session 2 starts inside that
+// debounce window, so the promotion must be flushed before the snapshot is built
+// — X is then at the MRU head and the toggle lands on A, not back on X (which is
+// what chained taps did before ADR-021). Exactly one focus per session (REQ-F-006).
+TEST(t_h_11_chained_applies_rotate_without_clock_advance) {
+    FakeClock clock;
+    TrackerOrderSource source;
+    mru::test::MockFocusGateway fg;
+    mru::test::MockUIPort ui;
+    HistoryTracker tracker(clock, [&source](const WindowRef &r) { return source.is_valid(r); }, 50);
+    source.tracker = &tracker;
+
+    const WindowRef a = ref(1);
+    const WindowRef b = ref(2);
+    const WindowRef c = ref(3);
+    source.base.validity = {{a, true}, {b, true}, {c, true}};
+    source.base.candidates_result = {a, b, c};
+    tracker.seed({a, b, c}); // MRU: A, B, C
+
+    SessionController sc(source, fg, ui, tracker, {});
+
+    // Session 1: start_offset=Second -> index 1 -> B; apply focuses B and leaves
+    // its promotion pending on the debounce timer.
+    CHECK(sc.cycle(Direction::Next).ok);
+    CHECK(sc.active_snapshot()->at(sc.index()) == b);
+    CHECK(sc.apply().ok);
+    CHECK(!sc.is_active());
+    CHECK(fg.focused.size() == 1);
+    CHECK(fg.focused[0] == b);
+    CHECK(tracker.pending_job() != mru::domain::kInvalidJobId); // promotion still debounced
+    CHECK(tracker.order().front() == a);                        // not landed yet
+
+    // Session 2 immediately (no clock advance): the flush runs before candidates()
+    // are enumerated, so B leads the snapshot and the toggle targets A.
+    CHECK(sc.cycle(Direction::Next).ok);
+    CHECK(sc.active_snapshot()->at(0) == b); // flushed head == previously applied window
+    CHECK(sc.active_snapshot()->at(sc.index()) == a);
+    CHECK(tracker.order().front() == b);
+    CHECK(tracker.pending_job() == mru::domain::kInvalidJobId);
+
+    CHECK(sc.apply().ok);
+    CHECK(fg.focused.size() == 2);
+    CHECK(fg.focused[1] == a);
+    CHECK(fg.focused[1] != fg.focused[0]); // A<->X rotation, not a re-land on B (issue #65)
+
+    // REQ-F-006 / REQ-F-007: one focus and one UI end per session.
+    CHECK(ui.starts.size() == 2);
+    CHECK(ui.ends.size() == 2);
+    CHECK(ui.ends[0] == UIEndReason::Applied);
+    CHECK(ui.ends[1] == UIEndReason::Applied);
+    CHECK(sc.session_id() == 2);
 }
 
 } // namespace

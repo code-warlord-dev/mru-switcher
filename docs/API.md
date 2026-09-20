@@ -59,7 +59,7 @@ Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT` (ADR-00
 | `default_scope` | enum | `global` | global \| monitor \| workspace \| visible \| app |
 | `start_offset` | enum | `second` | first \| second |
 | `wrap` | bool | `true` | |
-| `lock_history_on_session` | bool | `true` | |
+| `lock_history_on_session` | bool | `true` | **Reserved / ignored** (REQ-H-010, ADR-021): lock-in while a session is Active is mandatory. The key stays registered so 0.x configs keep parsing; a `false` value only triggers one warning notification per plugin lifetime. Removal is a 2.0 candidate |
 | `restore_focus_on_cancel` | bool | `false` | |
 | `ui` | enum | `null` | null \| border \| external |
 | `external_socket` | string | `""` | AF_UNIX path for `ui = external` (M5). Empty or unbindable → behaves as `null` + one warning (REQ-O-001) |

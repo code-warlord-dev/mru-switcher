@@ -18,6 +18,10 @@ struct PluginConfig {
     mru::domain::Scope default_scope = mru::domain::Scope::Global;
     mru::domain::StartOffset start_offset = mru::domain::StartOffset::Second;
     bool wrap = true;
+    // REQ-H-010 / ADR-021: RESERVED, value ignored. Lock-in while a session is Active
+    // is mandatory (REQ-H-001). The key stays registered under plugin:mru-switcher: so
+    // existing 0.x configs keep parsing; a `false` value only triggers one warning
+    // notification at reload. Read here so read_config() can emit that warn-once.
     bool lock_history_on_session = true;
     bool restore_focus_on_cancel = false;
     bool ui_null = true;      // explicit ui=null
