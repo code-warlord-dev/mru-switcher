@@ -48,6 +48,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 - **Stress coverage (M6-T6/T7/T8, issues #52/#53/#51):** domain binaries `t_h_08_*` (rapid Tab hammer: 1000-cycle wrap, interleave burst, wrap=false clamp), `T-H-06` (window-close stress: prune/clamp, NoWindows drain, dead origin, 300-step LCG), `T-H-07` (§2.8 bounds: InvalidTarget×2 → InvalidSelection, Failed-definitive, 500-apply storm, monitor drain) — ctest 17/17 + ASan/UBSan green; live nest smokes on pin v0.56.2 all pass (T-H-08: 200 cycles in 0.89s, exact-once-apply; T-H-06: close-storm matrix; T-H-07: 2-monitor disconnect; `docs/agent-state/reports/2026-09-19-m6-*.md`)
 
+- **Local build with system clang 22.x (issue #58):** clang's `-Wreturn-type-c-linkage` (promoted to error by `-Werror`) rejected the `extern "C"` PluginAPI facade in `mru_plugin.cpp` — `PLUGIN_API_VERSION()` returns `std::string` and `PLUGIN_INIT` returns `PLUGIN_DESCRIPTION_INFO`, which is required by the Hyprland PluginAPI contract. gcc and CI were unaffected. The diagnostic now is silenced per-target (clang only) on the `mru-switcher` plugin: no behavior/ABI change, domain and tests untouched (CMakeLists.txt)
+
 ### Tests
 
 - **Strict `mru:status` format test (M6-T2, issue #46):** `tests/plugin/test_status_format.cpp` now asserts exact full-string payload (`active= index= size= scope= session= last_end=` in order) for active + idle cases, plus additive-suffix tolerance per SPEC §3.4
