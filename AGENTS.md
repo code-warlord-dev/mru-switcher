@@ -371,6 +371,26 @@ Deliverable format: patch | memo | checklist | PR text
 - Never add network exfiltration, blind `system()`, or untrusted overlay peer command execution  
 - External UI protocol (M5) validates input; session logic works if peer is absent  
 
+### 9.1 Privilege escalation (sudo / hyprpm)
+
+- The agent sandbox has **no interactive terminal**: `sudo -S` password-over-stdin
+  and raw password handling are forbidden — never ask for or store the human's
+  sudo password in chat, files, or logs.
+- For privileged host operations (`hyprpm update/enable/reload`, header installs,
+  cache inspection under `/var/cache/hyprpm`):
+  1. Prefer **non-privileged verification first** — direct CMake build
+     (`-DMRU_BUILD_PLUGIN=ON`), `ctest`, and `hyprctl plugin load/unload`
+     of the built `.so` prove the same build hyprpm would run.
+  2. If real privilege elevation is required, use **`pkexec`** (polkit):
+     the desktop polkit agent (`hyprpolkitagent` or equivalent) prompts the
+     human graphically; the agent never touches the password itself.
+  3. `hyprpolkitagent` is NOT installed by default on this host (checked
+     2026-09-20: `polkitd` runs, no user agent, package `hyprpolkitagent`
+     absent) — if `pkexec` cannot find an authentication agent, stop and hand
+     the exact command to the human instead of improvising.
+- Never `chmod`/`chown` system paths, never write to `/etc/polkit-1` without
+  explicit human approval per command.
+
 ---
 
 ## 10. Quick reference card
