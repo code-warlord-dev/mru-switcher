@@ -100,5 +100,10 @@ Updated: 2026-09-19 (v0.5.0 released — M5 external overlay: PR #40 squash f390
 - [x] M6-T7 window-close stress (domain) — PR #62 (8cecb60): `domain_stress_window_close` 16→17 tests, ctest + ASan green; nest close-storm pending
 - [x] M6-T8 focus-invalidation stress (domain) — PR #63 (56a0fcf): `domain_stress_focus_invalidation`, §2.8 bounds, 500-apply storm, 17/17 green
 - [x] M6-T6 rapid Tab (domain) — PR #61 (d7363c4): `t_h_08_*` 3 tests, review metadata resolved, 17/17 green; nest 200-cycle smoke pending (blocked on nest-env infra)
-- [ ] M6-T3 CI guard + M6-T2 docs==impl audit (partially covered by staged compliance reviews)
-- [ ] Tag v1.0.0 / contract freeze (M6-T9, human gate)
+- [x] M6-T3 CI depth — PR #69 (b0524e3): `release-guard` job (grep+python3, ~3s) asserting ≥17 add_test, T-H-06/07/08 in REQ-TRACE, [Unreleased] non-empty, commit_pins parse; manual pre-tag nest gate checklist `reports/2026-09-19-m6-manual-nest-gate.md`; SUPPORT-AND-RELEASE release checklist points to it
+- [x] M6-T2 docs==implementation audit — PR #68 (4b34952): F-1..F-12 fixes, strict mru:status full-string asserts; behaviour question split to #67 (untouched, needs ADR)
+- [x] ADS-020 design gate — ADR-020 Accepted + SPEC §14 REQ-DIST-001..024 + REQ-TRACE rows + T-DIST-01..04 (PR #70, bec0bac) — human-approved input merged
+- [x] DIST examples — PR #71 (ba7de47): `examples/mru-switcher.conf` (all 11 keys, inline docs, `ui=border` marked demo override) + `examples/mru-switcher-bindings.conf` (SPEC §11 binds); README rewritten as end-user document per REQ-DIST-018; USER.md Quick start hyprpm-first; T-DIST-04/REQ-DIST-019 greps PASS
+- [x] DIST installer — PR #72 (c70e6b9): `scripts/install.sh` (canonical `~/.local/src` layout, pin check, ELF verify, `--write-conf` opt-in, no curl|bash); shellcheck clean; build paths CWD-independent
+- [ ] M6-T9 release close-out — v1.0.0 tag (human gate): finalize `commit_pins`, run manual nest gate (T-DIST-01/02/03 live legs), CHANGELOG/VERSION-MAP per §16
+- [ ] Pre-release triage (post-review): #67 lock_history_on_session=false no-op (ADR-driven), #65 chained sessions, #58 clang 22 -Werror, #59 socket perms + fuzz parser, #55 M6-B1 reload
