@@ -39,7 +39,11 @@ Run `./scripts/install.sh --help` for flags.
 
 ### 2. Start from the shipped examples
 
-The files under `examples/` are the starting point for configuration.
+The files under `examples/` are the starting point for configuration. The
+keybinding file comes in two flavours — pick the one for your config backend:
+
+* **hyprlang** (default `hyprland.conf`): `examples/mru-switcher-bindings.conf`
+* **Lua / Omarchy** (`hyprland.lua`): `examples/mru-switcher-bindings.lua`
 
 **Source install** — the checkout keeps them at
 `~/.local/src/mru-switcher/examples`:
@@ -51,7 +55,7 @@ cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/
 ```
 
 **hyprpm install** — hyprpm builds inside its own cache, so no source tree is
-left on disk. Download the same two files instead:
+left on disk. Download the same files instead:
 
 ```bash
 mkdir -p ~/.config/hypr/conf.d
@@ -62,11 +66,22 @@ curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/
 For a pinned release (the `v1.0.0` pin, once published), replace `main` with the
 tag so the examples match the plugin you are running.
 
-With the guided helper (`scripts/install.sh --write-conf`) both files are copied
-verbatim into `~/.config/hypr/conf.d/` for you; an existing file is only
-replaced with `--force`, which saves a `.bak` backup first.
+**Lua / Omarchy** — install the Lua fragment to your hyprland config directory
+(not `conf.d`; it is loaded by `dofile`, not `source`):
 
-Then `source` them from `hyprland.conf`:
+```bash
+cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.lua ~/.config/hypr/mru-switcher-bindings.lua
+# or: curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher-bindings.lua -o ~/.config/hypr/mru-switcher-bindings.lua
+```
+
+The guided helper `scripts/setup-bindings.sh` does this for you: it autodetects
+the backend (Lua config present → Lua fragment, otherwise hyprlang), refuses to
+overwrite without `--force` (which saves a `.bak.<timestamp>` first), warns about
+conflicting keybinds found via `hyprctl binds -j`, and writes nothing with
+`--dry-run`. The plugin config helper (`install.sh --write-conf`) still only
+handles the hyprlang `.conf` files.
+
+Then, on **hyprlang**, `source` the two files from `hyprland.conf`:
 
 ```conf
 # hyprland.conf
@@ -74,7 +89,14 @@ source = ~/.config/hypr/conf.d/mru-switcher.conf
 source = ~/.config/hypr/conf.d/mru-switcher-bindings.conf
 ```
 
-Then reload:
+On **Lua**, make sure the fragment runs *before* the plugin adds its binds (the
+example `hl.unbind("ALT + TAB")` must win). In an already-loaded `bindings.lua`:
+
+```lua
+dofile(os.getenv("HOME") .. "/.config/hypr/mru-switcher-bindings.lua")
+```
+
+Then reload (either backend):
 
 ```bash
 hyprctl reload
@@ -100,14 +122,27 @@ bindrt = ALT, ALT_L,     mru:apply
 bind   = ALT, Escape,    mru:cancel
 ```
 
-Lua equivalent (Hyprland Lua config):
+Lua equivalent (Hyprland Lua config / Omarchy):
 
 ```lua
-hl.bind("ALT + TAB",        function() hl.dispatch("mru:cycle next") end)
-hl.bind("ALT + SHIFT + TAB", function() hl.dispatch("mru:cycle prev") end)
-hl.bind("ALT_L",            function() hl.dispatch("mru:apply") end, { release = true })
-hl.bind("ALT + Escape",     function() hl.dispatch("mru:cancel") end)
+-- install examples/mru-switcher-bindings.lua and dofile it before the plugin binds;
+-- equivalent inline recipe:
+hl.unbind("ALT + TAB")
+hl.unbind("ALT + SHIFT + TAB")
+hl.bind("ALT + TAB",         function() hl.plugin.mru.cycle("next") end)
+hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.cycle("prev") end)
+hl.bind("ALT + TAB",         function() hl.plugin.mru.apply() end, { release = true })
+hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.apply() end, { release = true })
+hl.bind("ALT + Escape",      function() hl.plugin.mru.cancel() end)
 ```
+
+> **Lua caveat (ADR-022):** on the Lua keybind path, release binds on a
+> *modifier* key (`hl.bind("ALT + ALT_L", …, { release = true })`, the Lua
+> equivalent of `bindrt`) never fire in the pinned build (Hyprland
+> v0.56.2 / efb5099). The Lua recipe therefore commits on the release of
+> **Tab** — an ordinary key, which fires reliably. The `hl.unbind` lines are
+> needed on Omarchy, whose default `Alt+Tab` (Focus on next window) would
+> otherwise fire together with the MRU bind.
 
 ### 4. Optional config
 
@@ -164,7 +199,7 @@ observed by the plugin on Hyprland 0.56.2 — edit the config file and run
 |--------|--------|
 | First `Alt+Tab` | Opens a session, builds a **snapshot** of windows in MRU order, selects the second entry (previous window) by default |
 | Further `Tab` / `Shift+Tab` | Moves selection inside the frozen snapshot only |
-| Release `Alt` | Focuses the selected window and ends the session |
+| Release (`mru:apply`; Alt on hyprlang, **Tab** with the Lua recipe) | Focuses the selected window and ends the session |
 | `Escape` | Cancels the session without changing focus (unless `restore_focus_on_cancel` is set) |
 
 While a session is active, intermediate focus changes (mouse, other keybinds) do **not**
@@ -398,6 +433,20 @@ like normal windows and follow the selected scope.
 
 **Multi-monitor.**  
 Use `scope = monitor` for per-monitor switching, or `global` for a single list across all outputs.
+
+**Alt+Tab does nothing.**  
+The plugin does not bind its own keys — without the keybinding install step it
+loads silently and nothing fires. Check `hyprctl binds -j` lists the `mru:*`
+binds (hyprlang), or that the Lua fragment is actually loaded (Lua/Omarchy).
+On Omarchy you must also out-bind the default `Alt+Tab` ("Focus on next
+window"): the Lua recipe does this with `hl.unbind("ALT + TAB")`; on hyprlang
+use `unbind = ALT, TAB`.
+
+**Selection does not apply when I release Alt (Lua/Omarchy).**  
+Known host limitation (ADR-022): release binds on a *modifier* key never fire
+on the Lua keybind path in the pinned build. Use the Lua recipe, which commits
+on **Tab** release — an ordinary key that fires reliably — while keeping the
+Niri-style workflow.
 
 **Plugin fails to load after Hyprland update.**  
 Recompile against the new headers. The plugin aborts on hash mismatch to avoid crashes.
