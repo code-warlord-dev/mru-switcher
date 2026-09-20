@@ -122,6 +122,33 @@ hyprctl dispatch mru:apply
 
 ---
 
+## Lua bridge (`hl.plugin.mru.*`)
+
+Thin wrappers over the same paths as the dispatchers above — same grammar and
+semantics (direction defaults to `next`, `cycle` never focuses). Registered in
+`PLUGIN_INIT` via `HyprlandAPI::addLuaFunction`; removal is automatic on unload.
+On a non-Lua (hyprlang) config the registration silently no-ops and the
+dispatchers remain the primary path.
+
+```lua
+hl.plugin.mru.cycle("next")            -- or ("prev"), ("next", "global"), ("workspace"), ()
+hl.plugin.mru.apply()
+hl.plugin.mru.cancel()
+local s = hl.plugin.mru.status()       -- same payload as mru:status (§3.4)
+```
+
+Errors raise a Lua error (e.g. unknown scope token); `status` returns the
+`active=… index=… size=… scope=… session=… last_end=…` string. Omarchy-style:
+
+```lua
+hl.bind("ALT + TAB",         function() hl.plugin.mru.cycle("next") end)
+hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.cycle("prev") end)
+hl.bind("ALT_L",             function() hl.plugin.mru.apply() end, { release = true })
+hl.bind("ALT + Escape",      function() hl.plugin.mru.cancel() end)
+```
+
+---
+
 ## Compatibility
 
 - Requires rebuild for each Hyprland ABI/header hash.
