@@ -8,6 +8,14 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Lua dispatcher bridge `hl.plugin.mru.*` (task_0001, Omarchy UX):** `cycle` / `apply` /
+  `cancel` / `status` registered in `PLUGIN_INIT` via `HyprlandAPI::addLuaFunction`
+  (namespace `mru`) as thin wrappers over the existing `dispatch_*` paths — dispatcher
+  grammar and semantics unchanged (SPEC §3, REQ-DISP-001/002/003, REQ-F-003: cycle never
+  focuses). Failed results raise a Lua error; `status` returns the frozen §3.4 payload
+  string. Silent no-op on non-Lua (hyprlang) configs; removal automatic on unload.
+  Documented in `docs/API.md` (Lua bridge section).
+
 - **External docs review integrated (user/dev split + risk narratives):** README / USER.md / API.md
   scrubbed of internal requirement IDs (`REQ-*`), ADR references and milestone markers (M4/M5/M6) —
   user-facing docs now describe outcomes and syntax; all traceability remains authoritative in
