@@ -18,9 +18,12 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
   positioning claims (REQ-DIST-022), hyprpm-first installation phrased per REQ-DIST-003, canonical
   `~/.local/src/mru-switcher` source layout (REQ-DIST-007/008/010), and examples-based first setup
   (REQ-DIST-017/023/024); USER.md Quick start switched to hyprpm-first with the canonical source
-  path and `examples/` pointer, placeholder paths removed (REQ-DIST-014..024, T-DIST-03/04).
-  Docs/config-only — no dispatcher, config-key, or code change; `scripts/install.sh` is a separate
-  ticket (D2b)
+  path and `examples/` pointer, placeholder paths removed (REQ-DIST-014..024, T-DIST-03/04);
+  README/USER also document the optional guided installer per REQ-DIST-012 (exact preferred
+  invocation `clone → cd → ./scripts/install.sh`; no `curl | bash`) and the pre-tag nest gate gains
+  a T-DIST-03 examples-load step.
+  Docs/config-only — no dispatcher, config-key, or code change; `scripts/install.sh` itself is a
+  separate ticket (D2b)
 
 - **CI release guard (M6-T3, issue #49):** new `release-guard` job (ubuntu-24.04, grep+python3 only, ~30s) asserting the ctest matrix still holds ≥17 binaries, REQ-TRACE covers T-H-06/07/08, `CHANGELOG [Unreleased]` is non-empty, and `hyprpm.toml commit_pins` parses non-empty; nested smoke stays a manual pre-tag gate (`docs/agent-state/reports/2026-09-19-m6-manual-nest-gate.md`)
 

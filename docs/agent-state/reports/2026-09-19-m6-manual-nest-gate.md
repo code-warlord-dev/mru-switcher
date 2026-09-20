@@ -65,6 +65,10 @@ or `hyprctl -i <nest>`):
 - [ ] **Monitor-disconnect (T-H-07):** `hyprctl output create headless` for a 2nd monitor
       (`monitor=` lines in config do NOT raise it on this pin); `mru:cycle next monitor`,
       then `output remove HEADLESS-1` mid-session → `mru:apply` ends cleanly, no crash.
+- [ ] **Examples load (T-DIST-03):** copy `examples/mru-switcher.conf` +
+      `examples/mru-switcher-bindings.conf` into the nest config dir, add `source =` for both to
+      `$SANDBOX/hypr-nest.conf`, `hyprctl reload`; expect NO "unknown config value" / parse error
+      in `$SANDBOX/nest.log`.
 - [ ] Unload leaves nothing stuck: `mru:cancel`, `plugin unload`, nest `plugin list` empty.
 
 ## 4. Teardown hygiene

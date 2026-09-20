@@ -28,6 +28,15 @@ cmake --build ~/.local/src/mru-switcher/build -j
 hyprctl plugin load "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
 ```
 
+Alternative: the guided install helper does the same build into the canonical
+path and verifies your Hyprland headers against the pin:
+
+```bash
+git clone https://github.com/code-warlord-dev/mru-switcher.git ~/.local/src/mru-switcher && cd ~/.local/src/mru-switcher && ./scripts/install.sh
+```
+
+Run `./scripts/install.sh --help` for flags.
+
 ### 2. Start from the shipped examples
 
 The files under `examples/` are the starting point for configuration. Copy

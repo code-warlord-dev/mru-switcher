@@ -154,6 +154,16 @@ hyprctl plugin load "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
 (Or point the equivalent `plugin =` line in `hyprland.conf` at the same
 path — either way, no root and no system directories involved.)
 
+**Optional — guided install.** Prefer a guided install? The helper script
+builds into the canonical path and verifies your Hyprland headers against the
+pin:
+
+```bash
+git clone https://github.com/code-warlord-dev/mru-switcher.git ~/.local/src/mru-switcher && cd ~/.local/src/mru-switcher && ./scripts/install.sh
+```
+
+Run `./scripts/install.sh --help` for flags.
+
 ---
 
 ## First setup
