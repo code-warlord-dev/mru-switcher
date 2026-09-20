@@ -284,6 +284,7 @@ jobs:
           mkdir -p "$sb/examples"
           cp examples/mru-switcher-bindings.lua examples/mru-switcher-bindings.conf "$sb/examples/"
           export XDG_CONFIG_HOME="$sb/hypr-config"
+          mkdir -p "$XDG_CONFIG_HOME/hypr"
           # auto -> lua when hyprland.lua exists; dry-run writes nothing
           touch "$XDG_CONFIG_HOME/hypr/hyprland.lua"
           before="$(find "$XDG_CONFIG_HOME" -type f | sort)"
