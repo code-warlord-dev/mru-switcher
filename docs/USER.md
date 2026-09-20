@@ -6,16 +6,57 @@ Niri-style Alt+Tab for Hyprland: most-recently-used order, frozen list while tab
 
 ## Quick start
 
-### 1. Load the plugin
+### 1. Install the plugin
 
-```conf
-# hyprland.conf (or via hyprpm)
-plugin = /path/to/mru-switcher.so
-# or
-exec-once = hyprpm reload -n
+**Recommended: hyprpm** — the intended workflow when you already manage
+Hyprland plugins via hyprpm. Once the pinned `v1.0.0` release is published:
+
+```bash
+hyprpm add https://github.com/code-warlord-dev/mru-switcher
+hyprpm enable mru-switcher
+hyprpm reload
 ```
 
-### 2. Recommended binds
+Until that pin exists, **build from source** into the canonical layout (no
+`sudo`, everything under your home directory):
+
+```bash
+mkdir -p ~/.local/src
+git clone https://github.com/code-warlord-dev/mru-switcher.git ~/.local/src/mru-switcher
+cmake -S ~/.local/src/mru-switcher -B ~/.local/src/mru-switcher/build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON
+cmake --build ~/.local/src/mru-switcher/build -j
+hyprctl plugin load "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
+```
+
+### 2. Start from the shipped examples
+
+The files under `examples/` are the starting point for configuration. Copy
+them, then `source` them from `hyprland.conf`:
+
+```bash
+mkdir -p ~/.config/hypr/conf.d
+cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
+cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+```conf
+# hyprland.conf
+source = ~/.config/hypr/conf.d/mru-switcher.conf
+source = ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+Then reload:
+
+```bash
+hyprctl reload
+```
+
+`examples/mru-switcher.conf` documents every config key inline (purpose,
+default, allowed values) and sets `ui = border` — a first-run demo override of
+the plugin default `null` — so you can see the selection; set it back to
+`null` if you prefer no visual feedback.
+
+### 3. Recommended binds, inline
 
 ```conf
 # Cycle forward / backward
@@ -39,7 +80,7 @@ hl.bind("ALT_L",            function() hl.dispatch("mru:apply") end, { release =
 hl.bind("ALT + Escape",     function() hl.dispatch("mru:cancel") end)
 ```
 
-### 3. Optional config
+### 4. Optional config
 
 ```conf
 plugin {
@@ -210,8 +251,9 @@ plugin {
 ```
 
 - The socket is bound at load (after the initial config reload) so an overlay can connect **before**
-  the first Alt+Tab. Start the overlay like any other Hyprland autostart process, e.g.
-  `exec-once = /path/to/overlay` (with the socket path matching `external_socket`), or let it reconnect.
+  the first Alt+Tab. Start the overlay like any other Hyprland autostart process (e.g.
+  `exec-once = ~/.local/bin/my-overlay`, with the socket path matching `external_socket`), or let it
+  reconnect.
 - If the overlay is absent or dies mid-session, switching still works exactly as with `ui = null`;
   outgoing messages are dropped (best-effort). The plugin never blocks on the peer.
 - Clearing `external_socket` or changing `ui` away from `external` and reloading stops the listener.
