@@ -671,3 +671,258 @@ This ADR records the refinement. ADR-018 itself remains immutable (Accepted); on
 - `docs/agent-state/research/2026-09-19-m5-overlay-socket-api.md` — R0 memo
 - Implementation: `src/plugin/hypr/hyprland_overlay_socket.{hpp,cpp}` (M5)
 - Wayland server API: `wl_event_loop_add_fd`, `wl_event_source_remove` (`wayland-server.h`)
+
+---
+
+## ADR-020: Installation channels, distribution paths, and user-facing packaging
+
+**Status:** Accepted (human acceptance 2026-09-20)
+
+**Related:** ADR-008 (config namespace), ADR-016 (config v2 / `external_socket`), ROADMAP M6, VERSION-MAP 1.0.0, `hyprpm.toml`, docs/USER.md, README.md, AGENTS §16
+
+**Date:** 2026-09-19 (authored); accepted 2026-09-20
+
+> **Accepted by the human on 2026-09-20** as a docs-only change (SPEC §14, REQ-TRACE, CHANGELOG; no code/config/dispatcher change). The checklist at the bottom is preserved as **outstanding-implementation tracking**, not ADR status: `examples/`, `scripts/install.sh`, and the README/USER rewrite are follow-up ticket D2.
+
+---
+
+### Context
+
+Through M5 the project optimised for **correctness and architecture**: domain isolation, ADRs, live nest evidence, mutation-checked tests, contract freeze (M6-T1). The engineering bar is high.
+
+The remaining gap before a credible 1.0 is **user packaging**:
+
+1. Installation still assumes the reader understands absolute paths, `hyprctl plugin load`, and where a `.so` should live.
+2. `hyprpm.toml` now has `commit_pins` (M6-T5) but README still mixes developer and end-user instructions.
+3. There is no canonical, copy-pasteable config fragment and no bindings fragment under `examples/`.
+4. There is no first-class source-install layout that avoids `/absolute/path/to/...`.
+5. Positioning (Omarchy as first-class target, Niri as interaction inspiration) is present in spirit but not structured at the top of README.
+
+Hyprland’s own documentation recommends **hyprpm** as the primary plugin installation path. Manual `hyprctl plugin load <absolute-path>` remains a supported escape hatch, not the default story.
+
+This ADR freezes the **distribution and installation contracts** that README, USER.md, installer scripts, and `examples/` must implement before the 1.0 tag is considered complete from a packaging standpoint.
+
+---
+
+### Decision
+
+### 1. Two installation channels (ordered)
+
+| Priority | Channel | Audience | Status at 1.0 |
+|----------|---------|----------|---------------|
+| **Primary** | **hyprpm** | End users, Omarchy, daily drivers | Recommended; must work from a tagged release |
+| **Secondary** | **Source build** under `~/.local/src/mru-switcher` | Developers, pin hunters, CI, people who refuse package managers | Fully documented; copy-pasteable; no placeholder paths |
+
+No other channel (curl|bash as primary, system-wide `/usr`, Flatpak, etc.) is first-class for 1.0.
+
+### 2. hyprpm is the recommended one-command path
+
+After a release tag that finalises `commit_pins`:
+
+```bash
+hyprpm add https://github.com/code-warlord-dev/mru-switcher
+hyprpm enable mru-switcher
+hyprpm reload
+```
+
+(or the equivalent chained form once verified on the pin).
+
+Requirements:
+
+- `hyprpm.toml` **SHALL** contain a correct `[repository]` block, `commit_pins` for the tested Hyprland revision, and a working `build` stanza that produces `build/mru-switcher.so`.
+- README **SHALL** present this path first, under a clear “Recommended” heading.
+- Omarchy users **SHALL** be told explicitly that this is the intended workflow when they already use hyprpm for other plugins.
+- Until `commit_pins` are finalised at the 1.0 tag, README **MUST NOT** claim that hyprpm install is production-complete; it may say “supported / preferred once the 1.0 pin is published”.
+
+### 3. Canonical source layout
+
+Source installs **SHALL** use:
+
+```text
+~/.local/src/mru-switcher/          # git clone target
+~/.local/src/mru-switcher/build/mru-switcher.so
+```
+
+Rationale:
+
+- No `sudo`, no pollution of `$HOME` root, no `/opt` or `/usr/local`.
+- Deterministic path → documentation can use real commands, not `/absolute/path/to/...`.
+- Separates source from runtime config (`~/.config/hypr/`).
+
+Clone + build example that documentation may use verbatim:
+
+```bash
+mkdir -p ~/.local/src
+git clone https://github.com/code-warlord-dev/mru-switcher.git ~/.local/src/mru-switcher
+cd ~/.local/src/mru-switcher
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON
+cmake --build build -j
+```
+
+Load (manual path):
+
+```bash
+hyprctl plugin load "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
+```
+
+### 4. Optional installer script (secondary helper, not primary)
+
+A script `scripts/install.sh` **MAY** exist to:
+
+- detect Hyprland version / headers,
+- configure and build into `~/.local/src/mru-switcher/build`,
+- verify the `.so` exists and is loadable,
+- print a clear success summary (paths, Hyprland version, next steps for binds),
+- refuse or warn on obvious mismatches (wrong arch, missing compiler, pin skew).
+
+Rules:
+
+- `curl | bash` is **never** the recommended primary path.
+- Preferred invocation:
+
+  ```bash
+  git clone … ~/.local/src/mru-switcher && cd ~/.local/src/mru-switcher && ./scripts/install.sh
+  ```
+
+- The script **MUST NOT** silently edit the user’s `hyprland.conf` without an explicit flag; it may offer to print or write a fragment under `~/.config/hypr/conf.d/` when asked.
+- Failures **MUST** be human-readable (missing `cmake`, headers not found, hash mismatch, etc.).
+
+### 5. Examples are first-class user assets
+
+Repository layout **SHALL** include:
+
+```text
+examples/
+├── mru-switcher.conf           # full plugin { mru-switcher { … } } with exhaustive comments
+└── mru-switcher-bindings.conf  # recommended binds only
+```
+
+Requirements on `mru-switcher.conf`:
+
+- Copy-paste ready for `~/.config/hypr/conf.d/mru-switcher.conf`.
+- Every key documented inline (purpose, default, allowed values, recommendation).
+- No internal REQ-IDs or adapter jargon in the comments users see.
+- Sensible demo defaults may differ from code defaults only where clearly marked (e.g. `ui = border` for first-run visibility).
+
+`mru-switcher-bindings.conf` contains only the four recommended binds (`cycle next/prev`, `bindrt` apply, cancel).
+
+USER.md and README **SHALL** point to these files as the starting point for configuration, not to a minimal inline snippet alone.
+
+### 6. README is a user document
+
+README structure (normative intent):
+
+```text
+Banner / title
+Badges (bounded set)
+Omarchy + Hyprland positioning
+What it is (one screen)
+GIF / short demo
+Why it exists
+Features (user language)
+Installation
+  1. Recommended — hyprpm
+  2. Build from source (~/.local/src/…)
+First setup (copy examples + source lines)
+Configuration (pointer to examples/ + short table)
+Scopes / UI (short)
+Troubleshooting (common failures)
+Compatibility / pin
+For developers → link to docs/
+```
+
+Rules:
+
+- No `/absolute/path/to/...` in user-facing commands.
+- No mixing of SPEC requirement IDs, ADR numbers, or adapter layer names in the main body.
+- Deep architecture, REQ-TRACE, threat model, and plugin ABI details live under `docs/`.
+- Omarchy is called out **early** as a first-class target environment; Niri is cited as the **source of the interaction pattern**, not as the target platform.
+
+### 7. Badges (bounded)
+
+Maximum useful set for the header:
+
+- CI
+- Release (version)
+- License (MIT)
+- Linux
+- Hyprland (pin / compatibility)
+- Omarchy (positioning)
+- hyprpm (install method)
+- C++23 (stack)
+
+Excluded as noise for this project stage: stars, forks, downloads, codecov, CMake, clang, Wayland-as-badge, Niri-as-badge.
+
+`hyprpm` and `Omarchy` badges should link to the respective official documentation / site when rendered.
+
+### 8. What this ADR does **not** change
+
+- Dispatcher names, config key names, session semantics (already under 1.x freeze via M6-T1).
+- Default `ui = null` (ADR-011); examples may recommend `border` for first run.
+- Domain / plugin split (ADR-007).
+- hyprpm remaining the *distribution* mechanism; this ADR only fixes how we present and complete it.
+
+---
+
+### Consequences
+
+#### Positive
+
+- One obvious path for 95% of users (hyprpm).
+- Source path is deterministic and documentation-friendly.
+- Examples remove the largest class of config mistakes.
+- README becomes a product page, not a developer notebook.
+- Aligns with Hyprland’s own recommendation (hyprpm first).
+- Omarchy positioning is explicit without overselling.
+
+#### Negative / risks
+
+- hyprpm `commit_pins` must be correct at tag time; a wrong pin breaks the “one command” story.
+- Maintaining `examples/` in sync with SPEC defaults requires discipline (CHANGELOG + review checklist).
+- Installer script, if added, becomes another surface that can bit-rot; keep it thin and tested.
+- Users on exotic Hyprland builds still need the source path; that path must stay documented.
+
+#### Follow-ups (implementation tickets, not this ADR)
+
+1. Finalise `commit_pins` at v1.0.0 tag (already planned M6-T9).
+2. Add `examples/mru-switcher.conf` and `examples/mru-switcher-bindings.conf`.
+3. Optionally add `scripts/install.sh` with the checks listed above.
+4. Rewrite README and the Quick start of USER.md to match §6.
+5. Verify hyprpm add/enable/reload on a clean nest against the release tag before calling packaging “done”.
+
+---
+
+### Compliance mapping
+
+| Topic | Artefact |
+|-------|----------|
+| Primary install = hyprpm | README, USER.md, this ADR |
+| Source layout `~/.local/src/mru-switcher` | README, USER.md, install script |
+| No placeholder absolute paths | README, USER.md |
+| Examples as copy-paste config | `examples/`, USER.md |
+| README = user doc; deep docs in `docs/` | README structure §6 |
+| Omarchy first-class; Niri = inspiration | README positioning |
+| Bounded badges | README header |
+| `commit_pins` final at 1.0 tag | `hyprpm.toml`, VERSION-MAP, M6-T9 |
+
+---
+
+### References
+
+- Hyprland plugin / hyprpm documentation (upstream)
+- `hyprpm.toml` (repository root)
+- `docs/USER.md`, `docs/COMPAT.md`, `docs/VERSION-MAP.md`
+- `docs/ROADMAP.md` — M6 Hardening & v1.0
+- AGENTS.md §16 — release rules
+- Prior ADRs: 011 (UI default), 016 (config surface), 017–019 (UI backends)
+
+---
+
+### Outstanding implementation tracking (not ADR status)
+
+- [ ] Text merged into `docs/DECISIONS.md` — **done in this change set**
+- [ ] `examples/mru-switcher.conf` and `examples/mru-switcher-bindings.conf` exist and match SPEC defaults (or clearly document intentional demo overrides) — follow-up ticket D2
+- [ ] README Installation section leads with hyprpm and uses only real paths for source builds — follow-up ticket D2
+- [ ] USER.md Quick start no longer shows `/path/to/mru-switcher.so` as the primary example — follow-up ticket D2
+- [ ] `hyprpm.toml` `commit_pins` finalised on the v1.0.0 tag commit — M6-T9
+- [ ] Optional `scripts/install.sh` (if shipped) passes the success/failure criteria in §4 on a clean environment — follow-up ticket D2

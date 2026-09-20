@@ -646,3 +646,180 @@ Version `1` is normative for M5 and stays stable for the 0.x line; a future `v=2
 | Domain purity | ADR-007 |
 | Config namespace | ADR-008 |
 | Dispatcher names | ADR-009 |
+
+---
+
+## 14. Distribution and installation (ADR-020)
+
+**Related:** ADR-020, ROADMAP M6, VERSION-MAP 1.0.0, `hyprpm.toml`, `docs/USER.md`, README.md
+
+This section freezes the **user-facing installation and packaging contracts** for the 1.0 release line (ADR-020).  
+It does not change dispatcher names, config keys, or session semantics (those are under the M6-T1 contract freeze).  
+It defines what "installable product" means for end users and for Omarchy/Hyprland daily drivers.
+
+### 14.1 Installation channels
+
+**REQ-DIST-001** The project SHALL support exactly two first-class installation channels for 1.0:
+
+1. **hyprpm** (recommended)
+2. **Source build** under the canonical path defined in REQ-DIST-007
+
+**REQ-DIST-002** hyprpm SHALL be presented as the primary/recommended path in README and USER.md.  
+Manual `hyprctl plugin load` remains supported and documented, but is not the primary story.
+
+**REQ-DIST-003** Until the v1.0.0 tag finalises `commit_pins` in `hyprpm.toml`, documentation MUST NOT claim that hyprpm installation is production-complete. It MAY describe the commands as the preferred path once the 1.0 pin is published.
+
+### 14.2 hyprpm contract
+
+**REQ-DIST-004** `hyprpm.toml` SHALL contain:
+
+- a valid `[repository]` block (name, authors),
+- `commit_pins` mapping the tested Hyprland revision to the plugin commit of the release tag,
+- a `[mru-switcher]` (or equivalent) block with `description`, `authors`, `output`, and a `build` stanza that produces `build/mru-switcher.so`.
+
+**REQ-DIST-005** The recommended user commands for hyprpm (once pins are final) SHALL be documented as:
+
+```bash
+hyprpm add https://github.com/code-warlord-dev/mru-switcher
+hyprpm enable mru-switcher
+hyprpm reload
+```
+
+(or a verified chained equivalent). Documentation MUST state any extra step (`hyprpm update`, etc.) that is required on the pinned Hyprland version.
+
+**REQ-DIST-006** Omarchy users SHALL be told, near the top of the installation section, that hyprpm is the intended workflow when they already manage Hyprland plugins via hyprpm.
+
+### 14.3 Canonical source layout
+
+**REQ-DIST-007** Source installations SHALL use the following layout:
+
+```text
+~/.local/src/mru-switcher/                 # git working tree
+~/.local/src/mru-switcher/build/mru-switcher.so
+```
+
+**REQ-DIST-008** User-facing documentation SHALL NOT use placeholder paths such as `/absolute/path/to/...` or `/path/to/mru-switcher.so`. All examples MUST use the canonical layout or `$HOME`-based expansion.
+
+**REQ-DIST-009** The documented source build sequence SHALL be copy-pasteable and free of `sudo` for a normal user install into `~/.local/src`.
+
+**REQ-DIST-010** Manual load after a source build SHALL be documented as:
+
+```bash
+hyprctl plugin load "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
+```
+
+(or the equivalent `plugin =` line using the same absolute path).
+
+### 14.4 Installer script (optional)
+
+**REQ-DIST-011** If `scripts/install.sh` is shipped, it SHALL:
+
+- target the canonical layout of REQ-DIST-007,
+- detect or accept the Hyprland version / headers,
+- configure and build with the same flags used in `hyprpm.toml` / CI,
+- verify that `build/mru-switcher.so` exists after the build,
+- print a human-readable summary (source path, plugin path, detected Hyprland version, next steps for keybindings),
+- fail with actionable messages on missing toolchain, missing headers, or obvious pin mismatch.
+
+**REQ-DIST-012** `curl | bash` SHALL NOT be documented as the primary installation method.  
+Preferred documented invocation for the script (if present):
+
+```bash
+git clone https://github.com/code-warlord-dev/mru-switcher.git ~/.local/src/mru-switcher
+cd ~/.local/src/mru-switcher
+./scripts/install.sh
+```
+
+**REQ-DIST-013** The installer SHALL NOT silently modify the user’s `hyprland.conf` unless the user passes an explicit opt-in flag. It MAY write or print a fragment under `~/.config/hypr/conf.d/` when requested.
+
+### 14.5 Examples
+
+**REQ-DIST-014** The repository SHALL ship:
+
+```text
+examples/mru-switcher.conf
+examples/mru-switcher-bindings.conf
+```
+
+**REQ-DIST-015** `examples/mru-switcher.conf` SHALL:
+
+- be a complete, loadable `plugin { mru-switcher { … } }` block,
+- document every public config key inline (purpose, default, allowed values, short recommendation),
+- avoid internal requirement IDs and adapter/implementation jargon,
+- be intended for copy into `~/.config/hypr/conf.d/mru-switcher.conf` (or equivalent include path).
+
+**REQ-DIST-016** `examples/mru-switcher-bindings.conf` SHALL contain only the recommended keybindings:
+
+- `mru:cycle next` / `prev`
+- `bindrt` apply on Alt release
+- cancel (`mru:cancel`)
+
+**REQ-DIST-017** README and USER.md SHALL direct new users to the files under `examples/` as the starting point for configuration, not only to a minimal inline snippet.
+
+### 14.6 README as user documentation
+
+**REQ-DIST-018** README SHALL be structured primarily for end users. Required high-level order:
+
+1. Title / banner  
+2. Badges (see REQ-DIST-021)  
+3. Positioning (Hyprland + Omarchy; Niri as interaction inspiration)  
+4. What it is (one screen)  
+5. Short demo (GIF)  
+6. Why it exists  
+7. Features (user language)  
+8. Installation (hyprpm first, then source)  
+9. First setup (examples + source lines)  
+10. Configuration overview  
+11. Scopes / UI (short)  
+12. Troubleshooting  
+13. Compatibility / pin  
+14. “For developers” → links into `docs/`
+
+**REQ-DIST-019** README body SHALL NOT mix SPEC requirement identifiers, ADR numbers, or internal adapter layer names into the main user narrative. Those belong under `docs/`.
+
+**REQ-DIST-020** Deep architecture, threat model, REQ-TRACE, plugin ABI, and design history remain under `docs/` and are linked, not duplicated, from README.
+
+### 14.7 Positioning and badges
+
+**REQ-DIST-021** README header badges SHOULD be limited to a small set that answers “what is it, for what, how ready”:
+
+- CI  
+- Release (version)  
+- License  
+- Linux  
+- Hyprland  
+- Omarchy  
+- hyprpm  
+- C++23  
+
+Stars, forks, downloads, codecov, CMake, clang, and “Wayland” as a standalone badge are out of scope for the default header.
+
+**REQ-DIST-022** README SHALL state early that the project is built for Hyprland and especially for Omarchy, and that the interaction model is inspired by Niri’s recent-windows workflow. These are two different claims and MUST NOT be collapsed into one.
+
+### 14.8 Configuration fragments and includes
+
+**REQ-DIST-023** Documentation SHALL show a concrete include pattern, for example:
+
+```conf
+source = ~/.config/hypr/conf.d/mru-switcher.conf
+source = ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+after the user has copied the example files.
+
+**REQ-DIST-024** The project MUST NOT require the user to hand-edit a `plugin = /some/path.so` line as the primary documented path when hyprpm is available and pins are final.
+
+### 14.9 Non-unit checks (M6 packaging)
+
+- **T-DIST-01** — Fresh clone → documented source build → `hyprctl plugin load` succeeds on the pinned Hyprland (nest or host).  
+- **T-DIST-02** — `hyprpm add` + enable + reload loads the plugin on the pinned revision after the 1.0 tag.  
+- **T-DIST-03** — `examples/mru-switcher.conf` is accepted by hyprlang (no unknown keys, defaults load).  
+- **T-DIST-04** — README and USER.md contain zero occurrences of the substring `/path/to/` or `/absolute/path` in user commands.
+
+### 14.10 Out of scope for this section
+
+- Changing default `ui` from `null` (ADR-011).  
+- Adding new dispatchers or config keys.  
+- Guaranteeing hyprpm behaviour on untested Hyprland commits.  
+- Windows / non-Linux packaging.  
+- Automated GUI installer.
