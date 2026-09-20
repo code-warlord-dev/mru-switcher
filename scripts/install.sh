@@ -116,13 +116,23 @@ check_toolchain() {
 }
 
 check_headers() {
-  if ! command -v pkg-config >/dev/null 2>&1; then
-    die "pkg-config not found - Hyprland headers are discovered via pkg-config (cmake/Hyprland.cmake); install pkg-config/pkgconf and re-run."
+  local version="" vh
+  if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists hyprland; then
+    version="$(pkg-config --modversion hyprland)"
+  elif [[ -d /usr/include/hyprland ]]; then
+    info "pkg-config did not report a 'hyprland' module (or pkg-config is absent) - falling back to headers at /usr/include/hyprland ..." >&2
+    vh="/usr/include/hyprland/src/version.h"
+    if [[ -r "$vh" ]]; then
+      version="$(sed -n 's/^#define GIT_TAG[[:space:]]*"v\(.*\)"$/\1/p' "$vh")"
+    fi
+    if [[ -z "$version" ]]; then
+      info "WARNING: found /usr/include/hyprland but could not read its version from $vh; the pinned-version check is skipped (Hyprland's fail-closed load-time hash check remains the authority)." >&2
+      version="unknown"
+    fi
+  else
+    die "Hyprland headers not found - neither the 'hyprland' pkg-config module nor /usr/include/hyprland is present. Install the headers for Hyprland v$PIN_VERSION (Arch: 'sudo pacman -S hyprland'; other distros: install or extract the matching headers), then re-run. See $PIN_DOC."
   fi
-  if ! pkg-config --exists hyprland; then
-    die "Hyprland headers not found (pkg-config knows no 'hyprland' package). Install the headers for Hyprland v$PIN_VERSION (Arch: 'sudo pacman -S hyprland'; other distros: install or extract the matching headers), then re-run. See $PIN_DOC."
-  fi
-  printf '%s\n' "$(pkg-config --modversion hyprland)"
+  printf '%s\n' "$version"
 }
 
 verify_version() {
@@ -230,16 +240,20 @@ main() {
 
   check_arch
   check_toolchain
-  info "Detecting Hyprland headers (pkg-config) ..."
+  info "Detecting Hyprland headers ..."
   DETECTED_VERSION="$(check_headers)"
-  verify_version "$DETECTED_VERSION" "$expected_version"
+  if [[ "$DETECTED_VERSION" == "unknown" ]]; then
+    info "Skipping pinned-version verification (headers version unknown)."
+  else
+    verify_version "$DETECTED_VERSION" "$expected_version"
+  fi
 
   PLUGIN_PATH="$ROOT/build/mru-switcher.so"
 
   info "Configuring (Release, plugin only; same flags as hyprpm.toml / CI): $MODELINE"
-  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON
+  cmake -S "$ROOT" -B "$ROOT/build" -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON
   info "Building ..."
-  cmake --build build -j
+  cmake --build "$ROOT/build" -j
 
   if [[ ! -f "$PLUGIN_PATH" || ! -s "$PLUGIN_PATH" ]]; then
     die "the build did not produce $PLUGIN_PATH."
