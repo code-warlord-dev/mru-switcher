@@ -29,8 +29,8 @@ struct Values {
     SP<Config::Values::Bool> wrap;
     SP<Config::Values::Bool> lock_history_on_session;
     SP<Config::Values::Bool> restore_focus_on_cancel;
-    // Registered but not yet consumed: reserved for the M5 external UI protocol
-    // (ADR-016 __5__). read_config() deliberately ignores it (no PluginConfig member).
+    // REQ-O-001 / ADR-018: `external_socket` consumed by read_config() (M5);
+    // empty path means `ui=external` degrades to null.
     SP<Config::Values::String> external_socket;
 };
 
