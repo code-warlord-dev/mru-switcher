@@ -58,6 +58,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 - **Local build with system clang 22.x (issue #58):** clang's `-Wreturn-type-c-linkage` (promoted to error by `-Werror`) rejected the `extern "C"` PluginAPI facade in `mru_plugin.cpp` — `PLUGIN_API_VERSION()` returns `std::string` and `PLUGIN_INIT` returns `PLUGIN_DESCRIPTION_INFO`, which is required by the Hyprland PluginAPI contract. gcc and CI were unaffected. The diagnostic now is silenced per-target (clang only) on the `mru-switcher` plugin: no behavior/ABI change, domain and tests untouched (CMakeLists.txt)
 
+- **Same-path `.so` reload crash pinned down (M6-B1, issue #55):** nested repro (6 runs on pin v0.56.2) — overwriting the already-loaded plugin path **in place** (same inode) between `plugin unload` and `plugin load` crashes Hyprland **deterministically** (3/3 SEGV inside `dlsym`/`loadPluginInternal`; byte content irrelevant — a same-bytes overwrite crashed too), while replacement via a **new inode** (`rm`+`cp`, `mv`/rename; `cmake` relink also produces a fresh inode) reloads cleanly (3/3); unchanged-binary load/unload stays clean (M5 control, 13/13). Plugin-side code is not implicated — no speculative mitigation was attempted. Evidence: `docs/agent-state/reports/2026-09-20-m6-b1-reload-repro.md`; `docs/COMPAT.md` Known limitations sharpened with the trigger + operator guidance; `docs/USER.md` "Updating the plugin" section documents the safe update flow
+
 ### Tests
 
 - **Strict `mru:status` format test (M6-T2, issue #46):** `tests/plugin/test_status_format.cpp` now asserts exact full-string payload (`active= index= size= scope= session= last_end=` in order) for active + idle cases, plus additive-suffix tolerance per SPEC §3.4

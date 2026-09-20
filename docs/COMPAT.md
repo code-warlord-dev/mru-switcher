@@ -202,12 +202,19 @@ Full report: `docs/agent-state/reports/2026-09-19-m5-s3-nest-smoke.md`; raw evid
 
 ### Known limitations (0.5.0)
 
-- **Reloading a changed `.so` from the same path in the same Hyprland process is unreliable.** On
-  this pin, loading a rebuilt `mru-switcher.so` over a path the process already `load`/`unload`ed
-  can crash during init (observed once, `hyprlandCrashReport75967`; not reproducible on a fresh
-  process). Operator guidance: when the binary changes, load it in a fresh nested session or from a
-  new path. This is tracked for M6 hardening; it does not affect a normal `load`/`unload` cycle of an
-  unchanged binary.
+- **Reloading a changed `.so` from the same path in the same Hyprland process crashes the
+  compositor when the file is overwritten **in place** (same inode) — M6-B1 repro (issue #55).**
+  Sharpened trigger: the M5-era "intermittent" crash is **deterministic (3/3)** when the `.so` at the
+  already-used path is replaced by `cp` in place (same inode) between `plugin unload` and
+  `plugin load` — byte content is irrelevant (a same-bytes overwrite crashed too). Replacing the file
+  via a **new inode** (`rm` + `cp`, atomic rename) reloads cleanly (3/3). Crash site: `dlsym` inside
+  `CPluginSystem::loadPluginInternal` on `dlopen` of the same-inode-rewritten file (glibc keeps the
+  unloaded object keyed by path/(dev,ino) and revisits stale symbol-table state). Repro evidence:
+  `docs/agent-state/reports/2026-09-20-m6-b1-reload-repro.md` (6 runs, 3 specified changed-binary
+  cycles + 3 controls, crash reports preserved). **Operator guidance:** never overwrite
+  `mru-switcher.so` in place — install updates via `mv`/rename (new inode) or a new path, and prefer
+  a fresh compositor (or full `hyprctl`-level restart of the session) for upgrades. A normal
+  `load`/`unload` cycle of an **unchanged** binary stays clean (M5 control, 13/13).
 - **Non-cancel session end is unit-only live.** Discriminating "a session ended for any other reason
   never moves focus" live requires a second monitor / out-of-scope origin, which the single-monitor
   nest cannot stage honestly; covered by `t_s_10_*` (see the M4 boundary note above).
