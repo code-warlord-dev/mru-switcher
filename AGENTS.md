@@ -384,9 +384,11 @@ Deliverable format: patch | memo | checklist | PR text
   2. If real privilege elevation is required, use **`pkexec`** (polkit):
      the desktop polkit agent (`hyprpolkitagent` or equivalent) prompts the
      human graphically; the agent never touches the password itself.
-  3. `hyprpolkitagent` is NOT installed by default on this host (checked
-     2026-09-20: `polkitd` runs, no user agent, package `hyprpolkitagent`
-     absent) — if `pkexec` cannot find an authentication agent, stop and hand
+  3. `hyprpolkitagent` (package `hyprpolkitagent`) is the desktop polkit agent —
+     must be **enabled and running** as a user service, otherwise `pkexec`
+     has nobody to show the graphical prompt to:
+     `systemctl --user enable --now hyprpolkitagent`.
+     If `pkexec` reports no authentication agent, stop and hand
      the exact command to the human instead of improvising.
 - Never `chmod`/`chown` system paths, never write to `/etc/polkit-1` without
   explicit human approval per command.
