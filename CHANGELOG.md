@@ -14,6 +14,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 - **Contract freeze for 1.x (M6-T1, issue #50):** SPEC §0 freezes the dispatcher names + grammar, all 11 registered config keys under `plugin:mru-switcher:` (names / types / defaults / reload semantics, incl. the ticket's 10: `ui`, `external_socket`, `start_offset`, `wrap`, `debounce_ms`, `default_scope`, `restore_focus_on_cancel`, `border_style`, `border_color`, `border_size`), and the snapshot / apply / restore semantics as **stable for 1.x**; breaking any of them requires a major bump (semver, AGENTS §15 / VERSION-MAP)
 
+- **ADR-020 + SPEC §14 distribution/installation (M6 packaging, ADR-020):** new ADR-020 (Accepted, human acceptance 2026-09-20) freezes the installation/distribution contracts — hyprpm as primary channel, canonical source layout `~/.local/src/mru-switcher`, optional `scripts/install.sh`, `examples/` as first-class user assets, README as user doc + bounded badges, no placeholder paths in user-facing commands (REQ-DIST-001..024; non-unit checks T-DIST-01..04); SPEC gains §14 "Distribution and installation" with REQ-DIST-001..024 verbatim and ADR-020 in the header; REQ-TRACE gains the REQ-DIST rows and the T-DIST index. Docs-only; no dispatcher/config/code change. `examples/`, `install.sh`, and the README/USER rewrite are a separate follow-up ticket (D2)
+
 ### Changed
 
 - SPEC §3.4 `mru:status` payload is now **normative** (was "informative, do not parse until 1.0"): `active= index= size= scope= session= last_end=` frozen for 1.x; new keys may be appended without a breaking change; `last_end` carries the internal `SessionEndReason` (REQ-F-009). Documentation only — dispatcher behaviour unchanged

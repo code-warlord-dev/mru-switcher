@@ -107,6 +107,14 @@
 | REQ-O-006 | T-O-07, nest | listener/client fd watch via `wl_event_loop_add_fd` / `wl_event_source_remove` (adapter: nest smoke only; loop is compositor-owned, ADR-019) | M5 |
 | REQ-O-007 | T-O-02, `t_o_07_oversized_drop_and_no_client_send` | out-of-range `select` ignored; oversize peer line dropped without send | M5 |
 | REQ-O-008 | T-O-07, nest (unload mid-session), (adapter: nest smoke only; loop is compositor-owned, ADR-019) | teardown: remove fd watches, close clients, unlink socket; no leak | M5 |
+| REQ-DIST-001..003 | T-DIST-02 | README, USER.md, ADR-020 | M6 packaging |
+| REQ-DIST-004..006 | T-DIST-02 | `hyprpm.toml`, README, USER.md | M6-T5 / T9 |
+| REQ-DIST-007..010 | T-DIST-01, T-DIST-04 | README, USER.md, install script | M6 packaging |
+| REQ-DIST-011..013 | T-DIST-01 | `scripts/install.sh` (optional) | M6 packaging |
+| REQ-DIST-014..017 | T-DIST-03 | `examples/`, USER.md, README | M6 packaging |
+| REQ-DIST-018..020 | T-DIST-04 | README structure | M6 packaging |
+| REQ-DIST-021..022 | — | README header / positioning | M6 packaging |
+| REQ-DIST-023..024 | T-DIST-04 | USER.md, README first-setup | M6 packaging |
 
 ## Test ID index
 
@@ -184,3 +192,7 @@
 | T-O-06 | absent peer safe; message sequence correct; null resolver | M5 |
 | T-O-07 | socket start/stop lifecycle, first-client-wins, framing, peer close, oversize | M5 |
 | T-O-08 | peer select then apply focuses chosen window | M5 |
+| T-DIST-01 | fresh clone → documented source build → `hyprctl plugin load` succeeds (nest or host, pinned Hyprland) | M6 |
+| T-DIST-02 | hyprpm add + enable + reload loads the plugin on the pinned revision after the 1.0 tag | M6 |
+| T-DIST-03 | `examples/mru-switcher.conf` accepted by hyprlang (no unknown keys, defaults load) | M6 |
+| T-DIST-04 | README and USER.md contain zero occurrences of `/path/to/` or `/absolute/path` in user commands | M6 |
