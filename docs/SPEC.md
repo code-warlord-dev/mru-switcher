@@ -575,6 +575,7 @@ When `restore_focus_on_cancel = true`:
 | T-O-06 | `ExternalOverlayUI` with absent/failing transport does not abort the session (REQ-O-002, REQ-UI-001) |
 | T-O-07 | AF_UNIX server: accept first client, line framing, non-blocking send/recv (REQ-O-006; loopback test) |
 | T-O-08 | peer `apply`/`cancel` at Idle are safe idempotent no-ops (covers REQ-O-004 idle leg) |
+| T-FUZZ-01 | overlay protocol parse-path fuzz harness (`tests/fuzz/fuzz_overlay_protocol.cpp`): bounded, deterministic generated + mutated inputs (corpus + raw bytes) — the parser never crashes or throws and structured bad lines (REQ-O-005) yield `nullopt`; runs as a ctest under every CI job incl. the ASan/UBSan `sanitize` job (REQ-O-005, REQ-O-008) |
 
 T-UI-03..07 continue the T-UI series begun in M2 (T-UI-01/02).
 

@@ -64,6 +64,12 @@ bool OverlaySocketServer::start(const std::string &path, LineHandler on_line) {
         return false;
     }
 
+    // THREAT-MODEL: force mode 0600 on the bound socket file so an unrelated
+    // local user cannot connect. Parent-directory protection stays the
+    // operator's responsibility. Non-fatal: the listener is still functional.
+    if (::fchmod(fd, 0600) != 0 && log_sink_)
+        log_sink_("mru-switcher: overlay socket: fchmod(0600) failed (non-fatal), socket still bound");
+
     set_nonblocking(fd); // belt-and-suspenders (SOCK_NONBLOCK already set)
     if (::listen(fd, 4) != 0) {
         ::close(fd);

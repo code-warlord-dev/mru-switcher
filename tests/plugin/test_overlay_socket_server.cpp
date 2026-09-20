@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -87,6 +88,12 @@ TEST(t_o_07_start_stop_lifecycle) {
     CHECK(server.started());
     CHECK(server.listener_fd() >= 0);
     CHECK(server.path() == path);
+
+    // THREAT-MODEL: the bound socket file is forced to mode 0600 (fchmod) so an
+    // unrelated local user cannot connect. Parent-directory 0700 stays operator.
+    struct stat st{};
+    CHECK(::fstat(server.listener_fd(), &st) == 0);
+    CHECK((st.st_mode & 0777) == 0600);
 
     server.stop();
     CHECK(!server.started());

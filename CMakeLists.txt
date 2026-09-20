@@ -150,6 +150,15 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(plugin_overlay_socket_server PRIVATE mru_plugin_core mru_domain)
   mru_warnings(plugin_overlay_socket_server)
   add_test(NAME plugin_overlay_socket_server COMMAND plugin_overlay_socket_server)
+
+  # T-FUZZ-01: bounded deterministic fuzz harness over the overlay_protocol
+  # parse path (REQ-O-005/008). Standalone main() only — no libFuzzer
+  # dependency in CI; runs under every job incl. the ASan/UBSan `sanitize` job.
+  # Future `-fsanitize=fuzzer` builds compile this TU with -DMRU_FUZZ_NO_MAIN.
+  add_executable(fuzz_overlay_protocol tests/fuzz/fuzz_overlay_protocol.cpp)
+  target_link_libraries(fuzz_overlay_protocol PRIVATE mru_plugin_core)
+  mru_warnings(fuzz_overlay_protocol)
+  add_test(NAME fuzz_overlay_protocol COMMAND fuzz_overlay_protocol)
 endif()
 
 if(MRU_BUILD_PLUGIN)

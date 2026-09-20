@@ -28,7 +28,7 @@
 | Stale address focuses wrong app | WindowRef generation (ADR-013) |
 | Overlay sends crafted messages | Size limits, version field, schema validation, ignore unknown; no shell exec |
 | Path traversal via `external_socket` | Absolute path allowlist under runtime dir; reject `..` |
-| Symlink swap on socket path | Document; prefer `SOCK_CLOEXEC` + mode `0600` on user runtime dir |
+| Symlink swap on socket path | Stale-socket cleanup removes only `lstat`-confirmed sockets (a swapped path fails the bind → REQ-O-001 null degrade); plugin **enforces mode `0600`** on the bound socket file (`fchmod`); parent-directory protection is operator responsibility (`0700` runtime dir) |
 | Log sensitive titles | Default log without titles; opt-in |
 | DoS via log spam | Rate limit |
 | DoS via overlay flood | Backpressure: drop/coalesce; never block compositor loop |
@@ -36,11 +36,12 @@
 
 ## External protocol minimum controls (M5)
 
-- Max message size (e.g. 64 KiB)  
-- Protocol version negotiation; reject unknown major  
-- Timeouts on write; non-blocking I/O  
-- Fuzz parser in CI before 1.0  
-- Socket permissions `0600`, directory `0700`  
+- Max message size (`kMaxLineBytes` = 64 KiB; oversized/incomplete line → dropped, REQ-O-005)
+- Protocol version negotiation; reject unknown version
+- Timeouts on write; non-blocking I/O
+- **Socket file mode `0600` — enforced by the plugin** (`fchmod` on the bound listener fd after `bind()`; failure is non-fatal and logged)
+- **Parent-directory protection — operator responsibility**: run the socket under a `0700`-permission directory (e.g. `$XDG_RUNTIME_DIR`)
+- **Fuzz parser in CI** — `T-FUZZ-01`: `LLVMFuzzerTestOneInput` harness over `overlay_protocol::parse_command` with deterministic generated/mutated inputs; runs as a ctest under every CI job incl. the ASan/UBSan `sanitize` job  
 
 ## Out of scope
 
