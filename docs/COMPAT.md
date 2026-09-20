@@ -240,7 +240,8 @@ Pinning is **required** for M2 exit. Shipping without a matrix row is a process 
 **Pinning is a release contract.** Every plugin release (0.x row and 1.x alike) ships against a
 documented Hyprland commit — `efb50993780079460b0cbed1363e2166a2de1d9f` (v0.56.2) for v1.0.0 — and
 the same pin is machine-readable in `hyprpm.toml` under `commit_pins` (Hyprland SHA → plugin SHA).
-The plugin-side hash is finalized only at the release tag (v1.0.0, M6-T9); until then it carries a
-provisional origin/main value annotated in the manifest. The plugin fails closed on header-hash
+The plugin-side hash is finalized in the M6-T9 prep pass to main `320c4cb` (annotated in the
+manifest) and MUST be re-verified against the tagged commit before the v1.0.0 release is published.
+The plugin fails closed on header-hash
 mismatch (§Policy), so an unpinned rebuild against a newer Hyprland is a rebuild event, not a silent
 compatibility window.
