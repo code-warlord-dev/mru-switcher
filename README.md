@@ -300,8 +300,9 @@ mru:status
 * **Binds do nothing** — make sure the config was reloaded (`hyprctl reload`)
   and that `source = …mru-switcher-bindings.conf` is actually in your config.
 * **Plugin fails to load after a Hyprland update** — this is fail-closed
-  behaviour on an ABI mismatch, not a crash. Recompile against the new headers
-  (source install) or wait for a release built for the newer Hyprland.
+  behaviour on an ABI mismatch, not a crash. This is expected protection, with a short recovery:
+  rebuild against the new headers (source install) or run `hyprpm update` — full walkthrough in
+  the [user guide](docs/USER.md), "If the plugin fails to load after a Hyprland update".
 * **`unknown key` / `unknown value` warnings** — the example files match the
   currently released keys; make sure you are not mixing an older example with
   a newer plugin or vice versa.
@@ -309,7 +310,7 @@ mru:status
   session is running (lock-in is mandatory, not a setting), so exit the session
   cleanly with `mru:apply` / `mru:cancel` and avoid other focus binds that
   bypass the plugin mid-session. Back-to-back `cycle`/`apply` pairs rotate the
-  list deterministically (ADR-021).
+  list deterministically.
 * **Config changes not applying** — edit the file and run
   `hyprctl reload`; an already-open session keeps its original settings until
   apply/cancel.
@@ -346,7 +347,7 @@ documented in depth under `docs/`:
 2. [Specification](docs/SPEC.md) — normative behaviour and testing requirements
 3. [Architecture](docs/ARCHITECTURE.md) and [design decisions](docs/DECISIONS.md)
 4. [Plugin system](docs/HYPRLAND-PLUGIN-SYSTEM.md) — host constraints
-5. [Failure modes](docs/FAILURE-MODES.md) and [security](docs/SECURITY.md)
+5. [Failure modes](docs/FAILURE-MODES.md), [risk profiles](docs/RISK-PROFILES.md) and [security](docs/SECURITY.md)
 6. [Requirements traceability](docs/REQ-TRACE.md)
 7. [Compatibility](docs/COMPAT.md) and [roadmap](docs/ROADMAP.md)
 8. [Contributing](docs/CONTRIBUTING.md) and [changelog](CHANGELOG.md)

@@ -18,6 +18,10 @@
 | 0.2.0 | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | **nest tested 2026-09-15, re-verified 2026-09-17** | First `.so`; headers at `/usr/include/hyprland` (distro `hyprland` pkg). Nest deps: **aquamarine `0.15.0`** (`libaquamarine.so.14`), Wayland backend. Live re-verify: `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md` |
 | 0.5.0 → 1.0 | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | **nest tested 2026-09-15..19 (M3–M5 smokes)** | **IPC caveat — host limitation (M6-T1):** `hyprctl dispatch` prints only `ok`; the `mru:status` payload (SPEC §3.4) rides in the error field of a *successful* dispatch result, which `hyprctl` surfaces only on failure — read it via a libwayland dispatcher binding or the plugin log. Host limitation, not a plugin defect; failure-path errors (e.g. `mru-switcher: not initialized`) do surface through `hyprctl` |
 | 1.0.0 (pending tag) | `efb50993780079460b0cbed1363e2166a2de1d9f` | `v0.56.2` | hyprpm install smoke pending release tag (M6-T9); **stress smokes PASS 2026-09-19** (see §Stress evidence) | hyprpm distribution via `hyprpm.toml`: `commit_pins` populated (Hyprland `efb5099` → plugin `320c4cb`, finalized in the M6-T9 prep pass — re-verify against the tagged commit), repository metadata + build stanza verified by a clean-checkout build (M6-T5, issue #47) |
+| 1.0.0 (pending tag) | `5c9377c15f85c50648f35ca5a213754f95b93ca0` | `v0.56.1` | **untested** — declared in `hyprpm.toml` `commit_pins` for users on this compositor, no nest run on this revision | Declared-but-untested older pin (multi-pin pass, M6-T9 prep follow-up); only `v0.56.2` is nest-verified; plugin-side hash re-verified at the tagged commit |
+| 1.0.0 (pending tag) | `36b2e0cfe0c6094dbc47bd42a437431315bb3087` | `v0.56.0` | **untested** — declared in `hyprpm.toml` `commit_pins` for users on this compositor, no nest run on this revision | Declared-but-untested older pin (multi-pin pass, M6-T9 prep follow-up); only `v0.56.2` is nest-verified; plugin-side hash re-verified at the tagged commit |
+| 1.0.0 (pending tag) | `af923e30d1d24f1f4a4f5cb8308065173c1d9539` | `v0.55.0` | **untested** — declared in `hyprpm.toml` `commit_pins` for users on this compositor, no nest run on this revision | Declared-but-untested older pin (multi-pin pass, M6-T9 prep follow-up); only `v0.56.2` is nest-verified; plugin-side hash re-verified at the tagged commit |
+| 1.0.0 (pending tag) | `0002f148c9a4fe421a9d33c0faa5528cdc411e62` | `v0.54.0` | **untested** — declared in `hyprpm.toml` `commit_pins` for users on this compositor, no nest run on this revision | Declared-but-untested older pin (multi-pin pass, M6-T9 prep follow-up); only `v0.56.2` is nest-verified; plugin-side hash re-verified at the tagged commit |
 
 ### Stress evidence (M6, pin v0.56.2)
 
@@ -238,9 +242,11 @@ See `docs/agent-state/research/2026-09-17-nest-aquamarine-diagnosis.md`.
 Pinning is **required** for M2 exit. Shipping without a matrix row is a process failure, not an optional doc gap.
 
 **Pinning is a release contract.** Every plugin release (0.x row and 1.x alike) ships against a
-documented Hyprland commit — `efb50993780079460b0cbed1363e2166a2de1d9f` (v0.56.2) for v1.0.0 — and
-the same pin is machine-readable in `hyprpm.toml` under `commit_pins` (Hyprland SHA → plugin SHA).
-The plugin-side hash is finalized in the M6-T9 prep pass to main `320c4cb` (annotated in the
+documented primary Hyprland commit — `efb50993780079460b0cbed1363e2166a2de1d9f` (v0.56.2) for v1.0.0 — and
+the same pins are machine-readable in `hyprpm.toml` under `commit_pins` (Hyprland SHA → plugin SHA).
+Older pins (`v0.56.1` / `v0.56.0` / `v0.55.0` / `v0.54.0`) are declared-but-untested (matrix rows above);
+only `v0.56.2` carries nest evidence.
+The plugin-side hashes are finalized in the multi-pin pass (M6-T9 prep follow-up; annotated in the
 manifest) and MUST be re-verified against the tagged commit before the v1.0.0 release is published.
 The plugin fails closed on header-hash
 mismatch (§Policy), so an unpinned rebuild against a newer Hyprland is a rebuild event, not a silent

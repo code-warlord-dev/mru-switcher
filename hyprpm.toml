@@ -1,20 +1,25 @@
 # Distribution manifest for hyprpm (M6-T5, issue #47).
 #
-# Hyprland pin: v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f) — the tested
-# revision per docs/COMPAT.md. Pinning is a **release contract** (COMPAT "Risk note").
+# Hyprland pins: each entry is "<hyprland_sha> = <plugin_sha>".
+# Primary tested pin: v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f) —
+# the only revision covered by nest smokes per docs/COMPAT.md.
+# Entries for v0.56.1 / v0.56.0 / v0.55.0 / v0.54.0 are declared but
+# UNTESTED (no nest on those revisions; see COMPAT matrix) — honest
+# multi-pin for hyprpm users on slightly older compositors.
+# Pinning is a **release contract** (COMPAT "Risk note").
 #
-# The plugin-side hash is finalized to the release-prep main revision
-# 320c4cb (2026-09-20, docs/metadata-only release-prep pass; M6-T9 prep).
-# The v1.0.0 tag itself remains an explicit human gate; the pin MUST be
+# The plugin-side hash is finalized to the multi-pin main revision
+# cf3a8e7ac08ab446dfc349315f639836bcca80c5 (2026-09-20, docs/metadata-only
+# multi-pin pass; M6-T9 prep follow-up).
+# The v1.0.0 tag itself remains an explicit human gate; the pins MUST be
 # re-verified against the tagged commit before the release is published.
 [repository]
 name = "mru-switcher"
 authors = ["code-warlord-dev"]
 # commit_pins: "<hyprland_sha> = <plugin_sha>" (hyprpm reads this array).
-# Plugin-side hash finalized to release-prep main
-# 320c4cbd4eec31476cb5a67588ade6a5d0b156a0 (M6-T9 prep); re-verify against
-# the tagged commit at v1.0.0.
-commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = 320c4cbd4eec31476cb5a67588ade6a5d0b156a0"]
+# Plugin-side hash finalized at multi-pin commit (M6-T9 prep follow-up);
+# re-verify against the tagged commit at v1.0.0.
+commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "5c9377c15f85c50648f35ca5a213754f95b93ca0 = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "36b2e0cfe0c6094dbc47bd42a437431315bb3087 = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "af923e30d1d24f1f4a4f5cb8308065173c1d9539 = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "0002f148c9a4fe421a9d33c0faa5528cdc411e62 = cf3a8e7ac08ab446dfc349315f639836bcca80c5"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"

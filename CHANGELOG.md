@@ -8,6 +8,19 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **External docs review integrated (user/dev split + risk narratives):** README / USER.md / API.md
+  scrubbed of internal requirement IDs (`REQ-*`), ADR references and milestone markers (M4/M5/M6) —
+  user-facing docs now describe outcomes and syntax; all traceability remains authoritative in
+  `docs/SPEC.md` / `docs/REQ-TRACE.md` (nothing removed from the developer surface). New
+  `docs/RISK-PROFILES.md`: three narrative risk profiles — external overlay failure (FM-08),
+  malicious/broken configuration, window-close storm — each tracing trigger → guards → degradation
+  → user-visible result → pinned tests; `docs/FAILURE-MODES.md` FM-08 row links to the profile as
+  narrative entry point (matrix stays the reference); USER.md gains a user-facing "If the plugin
+  fails to load after a Hyprland update" recovery guide (real log line, `hyprpm update` / source
+  rebuild / disable paths, linked from README Troubleshooting); release checklist gains an explicit
+  artifacts item (`.so` + `sha256sums.txt` + built-against Hyprland commit note). Review source:
+  `docs/agent-state/research/2026-09-20-external-docs-review.md`. Docs-only — no behavior change
+
 - **Pending MRU promotion is flushed at session start (M6, ADR-021, REQ-H-011):** new domain operation `HistoryTracker::flush_pending()` — `SessionController::begin_session` cancels a still-pending debounce job and commits its window immediately (through the REQ-H-009 validity guard) **before** the candidate list is built and before lock-in engages, so back-to-back `cycle`/`apply` pairs rotate the history deterministically (A↔B) instead of depending on whether `debounce_ms` elapsed. Tests **T-H-10** (`t_h_10_start_flushes_pending_promotion_immediately`, `t_h_10_flush_does_not_commit_invalid_pending_window`, `t_h_10_flush_without_pending_is_a_noop`) and **T-H-11** (`t_h_11_chained_applies_rotate_without_clock_advance`, issue #65 regression; negative control verified: the test fails with the flush removed)
 
 - **Source installer `scripts/install.sh` (M6 packaging, ADR-020 §4):** optional secondary helper for the source channel (ticket D2) — targets the canonical layout (SPEC REQ-DIST-007), detects Hyprland headers via `pkg-config --modversion hyprland` and verifies them against the pinned version (`docs/COMPAT.md` v0.56.2; override via `--hyprland-version` / `MRU_HYPRLAND_PIN`), and fails on toolchain gaps, missing headers, wrong arch, or pin skew; configures + builds with the exact `hyprpm.toml`/CI flags (`cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON` + `cmake --build build -j`); verifies `build/mru-switcher.so` is an ELF shared object; prints a success summary (source path, plugin path, detected Hyprland, recommended keybindings). `curl | bash` is not documented anywhere — the invocation is `git clone … ~/.local/src/mru-switcher && cd … && ./scripts/install.sh`; the script never edits `hyprland.conf` and only writes a fragment under `~/.config/hypr/conf.d/` when `--write-conf` is passed. No code/domain/plugin change; no README/USER/`examples/` edits (separate ticket D2a). Satisfies REQ-DIST-011..013 (T-DIST-01)

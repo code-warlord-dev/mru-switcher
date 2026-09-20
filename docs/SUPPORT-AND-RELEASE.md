@@ -34,7 +34,8 @@ See also AGENTS.md §16.
 - [ ] Nested smoke (plugin releases) — manual nest gate per `docs/agent-state/reports/2026-09-19-m6-manual-nest-gate.md` (required pre-tag for v1.0.0)  
 - [ ] REQ-TRACE updated for new REQs  
 - [ ] Tag annotated `vX.Y.Z`  
-- [ ] Checksums for artifacts (when binary shipped)  
+- [ ] Release artifacts attached: the built `.so` for the pinned Hyprland commit + `sha256sums.txt`
+      (and a note naming the exact Hyprland commit the artifact was built against)  
 - [ ] hyprpm.toml pins updated  
 
 ## Rollback

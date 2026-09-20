@@ -1,11 +1,13 @@
 # Session State
 Updated: 2026-09-20
-Human goal: v1.0.0 — release-prep through PR (no tag): NIT T-H-06..11 SPEC §9 + pin finalize done; tag deferred to explicit human command
-Active milestone: M6 — all tickets + pre-release triage closed; M6-T9 prep merged, tag + manual nest gate remain (human)
-Branch: main @ 321a2c6 (+ state-sync PR chore/state-post-80)
-PR: #80 MERGED (321a2c6) — M6-T9 prep; state-sync PR follows
-Next action: idle — await explicit human release command (manual nest gate + v1.0.0 tag per #54; re-verify plugin pin at tag)
-Blocked: v1.0.0 tag + manual nest gate — explicit human release command only
-State: ctest 18/18 gcc + ASan/UBSan green; CI 7/7 (incl. `installer`); docs/metadata-only branch, build re-verified pre-PR
-SPEC focus: T-H-06..11 now normative (SPEC §9); REQ-SEL-003/005, REQ-S-006, REQ-R-003, REQ-H-011 refs; ADR-021
-Last artifact: PR #80 (squash 321a2c6) — commit_pins finalized to 320c4cbd4eec… (re-verify at tag); T-H-06..11 normative in SPEC §9
+Human goal: integrate external docs review (user/dev split + risk narratives); v1.0.0 tag stays human-gated
+Active milestone: M6 closed — release-prep merged; docs-review integration PR in review
+Branch: docs/external-review-integration
+PR: docs-review PR (this branch) — user/dev split, RISK-PROFILES.md, hash-mismatch recovery guide
+Next action: await human review of the PR + explicit release command (tag v1.0.0 per #54)
+Blocked: v1.0.0 tag + GitHub Release + manual nest gate — explicit human release command only
+State: ctest 18/18 gcc + ASan/UBSan green @ 4afcf21; this PR is docs-only (no build surface)
+SPEC focus: unchanged — SPEC/REQ-TRACE untouched; user docs scrubbed of REQ-*/ADR-*/M-markers
+Open questions: behavioral review items filed as issues (overlay auth, mru:status ext, profiles, hash-mismatch notification, snapshot limit, Nix/AUR)
+Last artifact: docs/external-review-integration — review archived at docs/agent-state/research/2026-09-20-external-docs-review.md
+; T-H-06..11 normative in SPEC §9
