@@ -174,7 +174,11 @@ if(MRU_BUILD_PLUGIN)
     src/plugin/hypr/hyprland_overlay_socket.cpp)
   target_include_directories(mru_plugin_hypr PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)
+  # Hyprland headers as SYSTEM: their own warnings (GNU extensions, missing
+  # overrides, unused params in Color.hpp, ...) must not trip our -Werror.
+  # Only our include dirs above keep strict diagnostics.
+  target_include_directories(mru_plugin_hypr SYSTEM PUBLIC
     ${HYPRLAND_INCLUDE_DIRS})
   # hypr_window_source.cpp calls mru_plugin_core's merge_mru_order; declaring the
   # static-library dependency makes CMake order the link line so the final .so
@@ -187,7 +191,10 @@ if(MRU_BUILD_PLUGIN)
   target_include_directories(mru-switcher PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin
-    ${CMAKE_CURRENT_BINARY_DIR}/generated
+    ${CMAKE_CURRENT_BINARY_DIR}/generated)
+  # Same SYSTEM treatment as mru_plugin_hypr: Hyprland headers must not trip
+  # our -Werror (see comment above).
+  target_include_directories(mru-switcher SYSTEM PRIVATE
     ${HYPRLAND_INCLUDE_DIRS})
   target_link_libraries(mru-switcher PRIVATE mru_plugin_core mru_plugin_hypr mru_domain)
   set_target_properties(mru-switcher PROPERTIES PREFIX "" OUTPUT_NAME mru-switcher)
