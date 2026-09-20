@@ -8,9 +8,9 @@
 # multi-pin for hyprpm users on slightly older compositors.
 # Pinning is a **release contract** (COMPAT "Risk note").
 #
-# The plugin-side hash is finalized to the multi-pin main revision
-# cf3a8e7ac08ab446dfc349315f639836bcca80c5 (2026-09-20, docs/metadata-only
-# multi-pin pass; M6-T9 prep follow-up).
+# 05b2b9a (2026-09-20): Lua bridge hl.plugin.mru.* (#83) — v0.56.2 pin
+# re-verified by hyprpm update + live plugin load on the Lua session
+# (addLuaFunction registered; dispatchers/config unchanged).
 # The v1.0.0 tag itself remains an explicit human gate; the pins MUST be
 # re-verified against the tagged commit before the release is published.
 [repository]
@@ -19,7 +19,7 @@ authors = ["code-warlord-dev"]
 # commit_pins: "<hyprland_sha> = <plugin_sha>" (hyprpm reads this array).
 # Plugin-side hash finalized at multi-pin commit (M6-T9 prep follow-up);
 # re-verify against the tagged commit at v1.0.0.
-commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "5c9377c15f85c50648f35ca5a213754f95b93ca0 = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "36b2e0cfe0c6094dbc47bd42a437431315bb3087 = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "af923e30d1d24f1f4a4f5cb8308065173c1d9539 = cf3a8e7ac08ab446dfc349315f639836bcca80c5", "0002f148c9a4fe421a9d33c0faa5528cdc411e62 = cf3a8e7ac08ab446dfc349315f639836bcca80c5"]
+commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "5c9377c15f85c50648f35ca5a213754f95b93ca0 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "36b2e0cfe0c6094dbc47bd42a437431315bb3087 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "af923e30d1d24f1f4a4f5cb8308065173c1d9539 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "0002f148c9a4fe421a9d33c0faa5528cdc411e62 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
