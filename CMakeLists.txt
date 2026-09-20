@@ -183,4 +183,10 @@ if(MRU_BUILD_PLUGIN)
   target_link_libraries(mru-switcher PRIVATE mru_plugin_core mru_plugin_hypr mru_domain)
   set_target_properties(mru-switcher PROPERTIES PREFIX "" OUTPUT_NAME mru-switcher)
   mru_warnings(mru-switcher)
+  # The Hyprland PluginAPI facade is extern "C" by contract (APICALL EXPORT) yet
+  # must return C++ types (std::string / PLUGIN_DESCRIPTION_INFO); gcc accepts
+  # this silently, system clang (22.x) flags it as -Wreturn-type-c-linkage. The
+  # diagnostic is noise here: these symbols are only ever read by the plugin
+  # loader in-process, never by C code. Gate it to the plugin target only.
+  target_compile_options(mru-switcher PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wno-return-type-c-linkage>)
 endif()
