@@ -117,6 +117,8 @@
 | REQ-DIST-018..020 | T-DIST-04 | README structure | M6 packaging |
 | REQ-DIST-021..022 | — | README header / positioning | M6 packaging |
 | REQ-DIST-023..024 | T-DIST-04 | USER.md, README first-setup | M6 packaging |
+| REQ-DIST-025 | T-DIST-04 | README first-setup (hyprpm channel), USER.md §2, `examples/` | M6 packaging |
+| REQ-DIST-026..027 | T-DIST-01, T-DIST-05 | `scripts/install.sh`, CI `installer` job | M6 packaging |
 
 ## Test ID index
 
@@ -200,3 +202,4 @@
 | T-DIST-02 | hyprpm add + enable + reload loads the plugin on the pinned revision after the 1.0 tag | M6 |
 | T-DIST-03 | `examples/mru-switcher.conf` accepted by hyprlang (no unknown keys, defaults load) | M6 |
 | T-DIST-04 | README and USER.md contain zero occurrences of `/path/to/` or `/absolute/path` in user commands | M6 |
+| T-DIST-05 | `scripts/install.sh`: `bash -n` + `shellcheck` (when available) clean, `--dry-run` in a clean temp dir writes nothing and exits 0, unknown option exits non-zero (CI `installer` job) | M6 |

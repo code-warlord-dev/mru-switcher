@@ -39,14 +39,34 @@ Run `./scripts/install.sh --help` for flags.
 
 ### 2. Start from the shipped examples
 
-The files under `examples/` are the starting point for configuration. Copy
-them, then `source` them from `hyprland.conf`:
+The files under `examples/` are the starting point for configuration.
+
+**Source install** — the checkout keeps them at
+`~/.local/src/mru-switcher/examples`:
 
 ```bash
 mkdir -p ~/.config/hypr/conf.d
 cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
 cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
 ```
+
+**hyprpm install** — hyprpm builds inside its own cache, so no source tree is
+left on disk. Download the same two files instead:
+
+```bash
+mkdir -p ~/.config/hypr/conf.d
+curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher.conf -o ~/.config/hypr/conf.d/mru-switcher.conf
+curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher-bindings.conf -o ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+For a pinned release (the `v1.0.0` pin, once published), replace `main` with the
+tag so the examples match the plugin you are running.
+
+With the guided helper (`scripts/install.sh --write-conf`) both files are copied
+verbatim into `~/.config/hypr/conf.d/` for you; an existing file is only
+replaced with `--force`, which saves a `.bak` backup first.
+
+Then `source` them from `hyprland.conf`:
 
 ```conf
 # hyprland.conf

@@ -169,13 +169,44 @@ Run `./scripts/install.sh --help` for flags.
 ## First setup
 
 Copy the example configuration and keybindings into your Hyprland config
-directory, then `source` them from `hyprland.conf`:
+directory (`~/.config/hypr/conf.d/`), then `source` them from `hyprland.conf`.
+Where the examples come from depends on how you installed the plugin.
+
+### If you built from source
+
+The checkout keeps them at `~/.local/src/mru-switcher/examples`:
 
 ```bash
 mkdir -p ~/.config/hypr/conf.d
 cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
 cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
 ```
+
+### If you installed via hyprpm
+
+hyprpm builds the plugin inside its own cache, so a hyprpm install leaves no
+`~/.local/src/mru-switcher` tree to copy from. Download the two example files
+from the repository instead:
+
+```bash
+mkdir -p ~/.config/hypr/conf.d
+curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher.conf -o ~/.config/hypr/conf.d/mru-switcher.conf
+curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher-bindings.conf -o ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+> Installed a **pinned release** rather than `main`? Swap `main` for the tag in
+> those URLs (for example `.../v1.0.0/examples/mru-switcher.conf`, once the
+> `v1.0.0` tag is published) so the examples match the plugin you are running.
+
+If you do keep a local checkout of the repository (for example the canonical
+`~/.local/src/mru-switcher` for a source install), copy straight from it:
+
+```bash
+cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mru-switcher.conf
+cp ~/.local/src/mru-switcher/examples/mru-switcher-bindings.conf ~/.config/hypr/conf.d/mru-switcher-bindings.conf
+```
+
+### Then, for either channel
 
 Add these lines to `hyprland.conf`:
 
@@ -195,6 +226,11 @@ That is the whole classic workflow: `Alt+Tab` cycles the frozen list, releasing
 `ui = border` (a first-run override of the plugin default) so you can see the
 selection while you browse; see the comments in the file to switch it back to
 `null`.
+
+If you installed with the guided helper script, it can do this copy for you
+instead: `./scripts/install.sh --write-conf` writes both files verbatim into
+`~/.config/hypr/conf.d/` (and only there — your `hyprland.conf` is never
+edited, so the two `source` lines above are still yours to add).
 
 ---
 
