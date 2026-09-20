@@ -1,5 +1,5 @@
 # Progress
-Updated: 2026-09-19 (v0.5.0 released — M5 external overlay: PR #40 squash f3906b6, live nest 13/13, ADR-018/019, CI 6/6; next: M6 hardening)
+Updated: 2026-09-20 (ADR-021 + packaging-2 + triage closed: PR #74-#78 squash-merged; ctest 18/18; next: M6-T9 tag — human gate only)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
@@ -105,5 +105,10 @@ Updated: 2026-09-19 (v0.5.0 released — M5 external overlay: PR #40 squash f390
 - [x] ADS-020 design gate — ADR-020 Accepted + SPEC §14 REQ-DIST-001..024 + REQ-TRACE rows + T-DIST-01..04 (PR #70, bec0bac) — human-approved input merged
 - [x] DIST examples — PR #71 (ba7de47): `examples/mru-switcher.conf` (all 11 keys, inline docs, `ui=border` marked demo override) + `examples/mru-switcher-bindings.conf` (SPEC §11 binds); README rewritten as end-user document per REQ-DIST-018; USER.md Quick start hyprpm-first; T-DIST-04/REQ-DIST-019 greps PASS
 - [x] DIST installer — PR #72 (c70e6b9): `scripts/install.sh` (canonical `~/.local/src` layout, pin check, ELF verify, `--write-conf` opt-in, no curl|bash); shellcheck clean; build paths CWD-independent
-- [ ] M6-T9 release close-out — v1.0.0 tag (human gate): finalize `commit_pins`, run manual nest gate (T-DIST-01/02/03 live legs), CHANGELOG/VERSION-MAP per §16
-- [ ] Pre-release triage (post-review): #67 lock_history_on_session=false no-op (ADR-driven), #65 chained sessions, #58 clang 22 -Werror, #59 socket perms + fuzz parser, #55 M6-B1 reload
+- [x] Pre-release triage (post-review) — all five issues closed on merged main:
+  - [x] #65/#67 history semantics — ADR-021 (Accepted 2026-09-20) implemented in PR #74 (squash 8f76ffa): mandatory unconditional lock-in (REQ-H-001/010), `lock_history_on_session` reserved/ignored + warn-once, `HistoryTracker::flush_pending()` before snapshot/lock-in (REQ-H-011); T-H-10 a/b/c + T-H-11; ctest 17/17 + ASan + clang-format; spec-compliance review APPROVE
+  - [x] #58 clang 22 `-Wreturn-type-c-linkage` — PR #76 (aac7a26): clang-only per-target suppression on the plugin facade; failure reproduced on main, fixed build verified with clang 22.1.8
+  - [x] #59 THREAT-MODEL controls gap — PR #77 (cd3b4ce): plugin enforces socket mode 0600 (`fchmod`, non-fatal), THREAT-MODEL/SECURITY aligned; T-FUZZ-01 deterministic parse-path fuzz harness as ctest #18 incl. the sanitize job; 18/18 gcc + ASan
+  - [x] #55 M6-B1 same-path reload — PR #78 (88b8135): deterministic same-inode trigger (3/3 SEGV) vs new-inode clean (3/3); operator guidance in COMPAT/USER; no plugin-side mitigation (host limitation)
+- [x] Packaging hardening pass 2 — PR #75 (89a2ee4): REQ-DIST-025/026/027 added and implemented (hyprpm first-setup for shipped examples, enterprise install.sh, `installer` CI job); sandbox matrix 8/8; honest hyprpm badge
+- [ ] M6-T9 release close-out — v1.0.0 tag (human gate): finalize `commit_pins` (#54), run manual nest gate (T-DIST-01/02/03 live legs + fast-toggle #65 leg), CHANGELOG/VERSION-MAP per §16; DO NOT tag without explicit human release command
