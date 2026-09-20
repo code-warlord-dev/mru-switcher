@@ -1,13 +1,12 @@
 # Session State
-Updated: 2026-09-20
-Human goal: integrate external docs review (user/dev split + risk narratives); v1.0.0 tag stays human-gated
-Active milestone: M6 closed — release-prep merged; docs-review integration PR in review
-Branch: docs/external-review-integration
-PR: docs-review PR (this branch) — user/dev split, RISK-PROFILES.md, hash-mismatch recovery guide
-Next action: await human review of the PR + explicit release command (tag v1.0.0 per #54)
-Blocked: v1.0.0 tag + GitHub Release + manual nest gate — explicit human release command only
-State: ctest 18/18 gcc + ASan/UBSan green @ 4afcf21; this PR is docs-only (no build surface)
-SPEC focus: unchanged — SPEC/REQ-TRACE untouched; user docs scrubbed of REQ-*/ADR-*/M-markers
-Open questions: behavioral review items filed as issues (overlay auth, mru:status ext, profiles, hash-mismatch notification, snapshot limit, Nix/AUR)
-Last artifact: docs/external-review-integration — review archived at docs/agent-state/research/2026-09-20-external-docs-review.md
-; T-H-06..11 normative in SPEC §9
+Updated: 2026-09-21
+Human goal: keybindings as first-class install step; fix and document the Lua apply-on-release host bug (ADR-022)
+Active milestone: M6 (release-prep); v1.0.0 tag stays human-gated
+Branch: (uncommitted on main) -> feat/bindings-first-class (to create)
+PR: none yet
+Next action: create branch, commit docs+packaging, open PR; human applies the Lua fix to the user's own ~/.config/hypr (Tab-release already live + working there)
+Blocked: none
+State: user confirmed working on host (release-on-Tab); scripts/setup-bindings.sh sandbox-tested (dry-run, force+backup, exit codes 0/2/4/6, conflict filter); ci.yml installer job extended; ./packages/scripts bash -n OK (shellcheck n/a on this host)
+SPEC focus: §14.6/REQ-DIST-018 (verify script header citation) — no normative SPEC change (ADR-022 documented only)
+Open questions: none blocking
+Last artifact: ADR-022 in docs/DECISIONS.md; bisect memo docs/agent-state/research/2026-09-20-lua-modifier-release-bisect.md
