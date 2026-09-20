@@ -8,6 +8,23 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Examples + user-facing packaging (M6, ADR-020 / ticket D2):** `examples/mru-switcher.conf`
+  (complete, loadable `plugin { mru-switcher { … } }` block — every one of the 11 registered config
+  keys documented inline with purpose, default, allowed values, and a recommendation; `ui = border`
+  as a clearly-marked first-run demo override of the code default `null`) and
+  `examples/mru-switcher-bindings.conf` (only the 4 recommended binds: `mru:cycle next`/`prev`,
+  `bindrt` apply-on-Alt-release, `mru:cancel`); README restructured as an end-user document per
+  REQ-DIST-018 order with the bounded badge set (REQ-DIST-021), separate Hyprland+Omarchy / Niri
+  positioning claims (REQ-DIST-022), hyprpm-first installation phrased per REQ-DIST-003, canonical
+  `~/.local/src/mru-switcher` source layout (REQ-DIST-007/008/010), and examples-based first setup
+  (REQ-DIST-017/023/024); USER.md Quick start switched to hyprpm-first with the canonical source
+  path and `examples/` pointer, placeholder paths removed (REQ-DIST-014..024, T-DIST-03/04);
+  README/USER also document the optional guided installer per REQ-DIST-012 (exact preferred
+  invocation `clone → cd → ./scripts/install.sh`; no `curl | bash`) and the pre-tag nest gate gains
+  a T-DIST-03 examples-load step.
+  Docs/config-only — no dispatcher, config-key, or code change; `scripts/install.sh` itself is a
+  separate ticket (D2b)
+
 - **CI release guard (M6-T3, issue #49):** new `release-guard` job (ubuntu-24.04, grep+python3 only, ~30s) asserting the ctest matrix still holds ≥17 binaries, REQ-TRACE covers T-H-06/07/08, `CHANGELOG [Unreleased]` is non-empty, and `hyprpm.toml commit_pins` parses non-empty; nested smoke stays a manual pre-tag gate (`docs/agent-state/reports/2026-09-19-m6-manual-nest-gate.md`)
 
 - **hyprpm distribution manifest (M6-T5, issue #47):** `hyprpm.toml` now carries `commit_pins` (`efb50993780079460b0cbed1363e2166a2de1d9f` = Hyprland v0.56.2 → plugin hash; the plugin-side value is provisional until the `v1.0.0` tag, M6-T9), repository metadata and a build stanza verified by a clean-checkout build producing `build/mru-switcher.so` (REQ-H-004); `docs/COMPAT.md` gains the v1.0.0 matrix row ("hyprpm install smoke pending release tag") and an explicit "pinning is a release contract" statement, `docs/VERSION-MAP.md` fills the 1.0.0 Hyprland pin, README install section gains hyprpm instructions, `docs/HYPRLAND-PLUGIN-SYSTEM.md` §10 references the populated pins
