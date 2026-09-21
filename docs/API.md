@@ -138,23 +138,29 @@ local s = hl.plugin.mru.status()       -- same payload as mru:status (§3.4)
 ```
 
 Errors raise a Lua error (e.g. unknown scope token); `status` returns the
-`active=… index=… size=… scope=… session=… last_end=…` string. Omarchy-style — the working recipe (host caveat: release binds on a modifier
-key do not fire on the Lua path, so apply commits on **Tab** release, not on
-Alt release — a host limitation (see docs/DECISIONS.md); `hl.plugin.mru.*` is the typed Lua bridge and
-preferred over `hl.dispatch("mru:…")`, which reaches the same dispatchers but
-returns nothing and surfaces errors as strings):
+`active=… index=… size=… scope=… session=… last_end=…` string.
+`hl.plugin.mru.*` is the typed Lua bridge and preferred over
+`hl.dispatch("mru:…")`, which reaches the same dispatchers but returns nothing
+and surfaces errors as strings.
+
+Omarchy-style — the working recipe. A release bind keyed on a *modifier* does not
+fire on the Lua keybind path in the pinned build (host limitation, see
+docs/DECISIONS.md), so the recipe commits with an explicit apply key; for literal
+"release Alt to apply" behaviour use `examples/mru-switcher-bindings-poll.lua`
+instead — load one of the two, never both. (And do not reach for apply-on-Tab-release:
+it moves real focus on every step and breaks the frozen-list browse.)
 
 ```lua
 hl.unbind("ALT + TAB")
 hl.unbind("ALT + SHIFT + TAB")
 hl.bind("ALT + TAB",         function() hl.plugin.mru.cycle("next") end)
 hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.cycle("prev") end)
-hl.bind("ALT + TAB",         function() hl.plugin.mru.apply() end, { release = true })
-hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.apply() end, { release = true })
+hl.bind("ALT + Return",      function() hl.plugin.mru.apply() end)
 hl.bind("ALT + Escape",      function() hl.plugin.mru.cancel() end)
 ```
 
-This exact fragment ships as `examples/mru-switcher-bindings.lua`.
+This exact fragment ships as `examples/mru-switcher-bindings.lua`; the optional
+Alt-release variant ships as `examples/mru-switcher-bindings-poll.lua`.
 
 ---
 

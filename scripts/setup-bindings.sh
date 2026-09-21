@@ -11,6 +11,16 @@
 #   - prints the single source / dofile line you add yourself
 #   - never touches hyprland.conf, bindings.lua, or Omarchy defaults
 #
+# Which apply model each backend gets (ADR-023):
+#   hyprlang : bindrt on ALT_L applies when Alt is released (unchanged recipe;
+#              still awaiting a nest re-verification on the pin - docs/COMPAT.md)
+#   lua      : B1 explicit apply key (ALT + Return) - the default profile this
+#              script installs. B2 "release Alt to apply" is an optional
+#              copy-paste reference: examples/mru-switcher-bindings-poll.lua
+#              (hl.timer + hl.is_key_down), because a release bind keyed on a
+#              modifier token does not fire on the pinned Hyprland's Lua path.
+#              apply-on-Tab-release is NOT a supported profile.
+#
 # Invocation (mirrors install.sh - git clone, never curl|bash):
 #   ./scripts/setup-bindings.sh --dry-run
 #   ./scripts/setup-bindings.sh
@@ -64,12 +74,21 @@ usage() {
 Usage: ${SCRIPT_NAME} [options]
 
 Write the mru-switcher keybinding file for your Hyprland config backend, and
-print the one line to add so the binds take effect (ADR-022). The plugin does
-not capture keys, so without this step Alt+Tab does nothing.
+print the one line to add so the binds take effect (ADR-022/ADR-023). The
+plugin does not capture keys, so without this step Alt+Tab does nothing.
 
 The script only ever writes its OWN file:
     Lua / Omarchy : \${XDG_CONFIG_HOME:-\$HOME/.config}/hypr/mru-switcher-bindings.lua
     hyprlang      : \${XDG_CONFIG_HOME:-\$HOME/.config}/hypr/conf.d/mru-switcher-bindings.conf
+
+Apply model depends on the backend:
+    Lua      : explicit apply key (B1) - cycle on ALT+TAB, commit on ALT+Return.
+               "Release Alt to apply" (B2) is an optional copy-paste reference
+               (examples/mru-switcher-bindings-poll.lua: hl.timer + hl.is_key_down
+               poll). apply-on-Tab-release is not supported: it moves real focus
+               on every Tab press and breaks the browse-then-commit workflow.
+    hyprlang : bindrt on ALT_L applies when Alt is released (unchanged recipe;
+               still awaiting a nest re-verification on the pin - docs/COMPAT.md).
 
 It never edits hyprland.conf / bindings.lua / Omarchy defaults, never touches
 existing binds, and never runs hyprctl reload unless you pass --reload.
@@ -104,7 +123,7 @@ Exit codes:
     0 success | 1 unexpected | 2 usage | 3 root refused
     4 examples not found | 5 write/backup | 6 existing file without --force
 
-Docs: ADR-022, README.md ("Installation"), docs/USER.md (Quick start).
+Docs: ADR-022/ADR-023, README.md ("Installation"), docs/USER.md (Quick start).
 EOF
 }
 
@@ -269,9 +288,16 @@ print_next_step() {
   if [[ "$OPT_BACKEND" == "lua" ]]; then
     printf '%s\n' "  In an already-loaded Lua config (bindings.lua), before the plugin binds:"
     printf '    dofile(os.getenv("HOME") .. "/.config/hypr/mru-switcher-bindings.lua")\n'
+    printf '%s\n' "  That fragment is model B1: cycle on ALT+TAB, commit on ALT+Return."
+    printf '%s\n' "  Want \"release Alt to apply\" (B2) instead? Copy examples/mru-switcher-"
+    printf '%s\n' "  bindings-poll.lua here and dofile that one instead (hl.timer +"
+    printf '%s\n' "  hl.is_key_down poll); load one of the two, never both. This helper"
+    printf '%s\n' "  only ever installs the B1 fragment."
   else
     printf '%s\n' "  In hyprland.conf, with the other source= lines:"
     printf '    source = ~/.config/hypr/conf.d/mru-switcher-bindings.conf\n'
+    printf '%s\n' "  That fragment commits on Alt release (bindrt); Lua/Omarchy users want"
+    printf '%s\n' "  examples/mru-switcher-bindings.lua (explicit apply) or its poll variant."
   fi
   printf '%s\n' "  Then reload: hyprctl reload"
 }
