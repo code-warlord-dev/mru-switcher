@@ -607,6 +607,18 @@ bind   = ALT, Escape,    mru:cancel
 
 Modifier release MUST be bound by the user (or documented wrapper); the plugin does not hook raw XKB itself in v0.1.
 
+> **Note (informative — ADR-023):** the modifier-release `bindrt` mapping above is the
+> *intended* hyprlang route, but it must be **empirically re-verified on the pinned
+> revision** before it is documented as working: a release bind keyed on a modifier token
+> is subject to the same `KeybindManager` current-mods matching that makes the equivalent
+> Lua modifier-release bind silently not fire (source-level analysis, no live nest run
+> yet). Lua/Omarchy users therefore use the explicit-apply or modifier-hold-poll route
+> instead — `ALT+Return` → `mru:apply`, or `hl.is_key_down` + `hl.timer` — because a
+> release bind keyed on a modifier does not fire on that keybind path. See ADR-023 and
+> `examples/mru-switcher-bindings.lua` / `examples/mru-switcher-bindings-poll.lua`.
+> Committing apply on **Tab release** is explicitly *not* the recommended mapping (it moves
+> focus on every Tab step and breaks the browse-then-commit contract of ADR-002).
+
 ---
 
 ## 12. Appendix B — External UI protocol (normative, M5)

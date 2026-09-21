@@ -218,6 +218,13 @@ cp ~/.local/src/mru-switcher/examples/mru-switcher.conf ~/.config/hypr/conf.d/mr
 
 ### Part 2 — keybindings (choose one backend)
 
+Omarchy already binds `Alt+Tab` to its own window cycle ("Focus on next
+window"), and a new bind is **added** on top of it rather than replacing it —
+you would get both switchers at once. So the stock `Alt+Tab` binds MUST be
+unbound first: the shipped Lua fragment does it for you with
+`hl.unbind("ALT + TAB")`, on hyprlang add `unbind = ALT, TAB` (and
+`unbind = ALT SHIFT, TAB`) before sourcing the binding file.
+
 **Hyprlang** — copy the binding file and `source` it (see
 [Part 3](#part-3--load-and-reload) for the wording):
 
@@ -245,12 +252,27 @@ or downloaded (for a hyprpm install):
 curl -fsSL https://raw.githubusercontent.com/code-warlord-dev/mru-switcher/main/examples/mru-switcher-bindings.lua -o ~/.config/hypr/mru-switcher-bindings.lua
 ```
 
-**Why release-on-Tab for Lua?** On the Lua keybind path, release binds on a *modifier* key (e.g. `hl.bind("ALT + ALT_L", …, {release=true})`, the Lua
-equivalent of `bindrt = ALT, ALT_L`) never fire in the pinned build (Hyprland
-v0.56.2 / efb5099). The Lua recipe therefore commits on the release of **Tab**
-— an ordinary key, which fires reliably — with the same Niri-style result.
-On Hyprlang, the classic `bindrt = ALT, ALT_L` works as written. Full details
-and the evidence matrix are in [docs/DECISIONS.md](docs/DECISIONS.md).
+**What applies the selection depends on the backend.** Both recipes cycle the
+list on `Alt+Tab` and cancel on `Alt+Escape`; only the commit trigger differs.
+
+* **Hyprlang** — `examples/mru-switcher-bindings.conf` sticks to the classic
+  `bindrt = ALT, ALT_L` recipe: the selection is applied when you release Alt.
+  That line still needs a re-check on the currently pinned Hyprland build; if
+  releasing Alt does nothing for you, use an explicit apply key instead
+  (`bind = ALT, Return, mru:apply`).
+* **Lua / Omarchy** — `examples/mru-switcher-bindings.lua` cycles on `ALT+TAB`
+  and commits with an explicit **`ALT + Return`** apply key: nothing moves until
+  you press it, so the list stays frozen while you browse. A release bind keyed
+  on a modifier key does not fire on the Lua keybind path in the pinned build,
+  which is why the commit key exists. If you still want the literal "release Alt
+  to apply" feel, `examples/mru-switcher-bindings-poll.lua` ships as an optional
+  drop-in reference that watches the modifier state and applies on release —
+  load one of the two files, never both. Committing on the release of **Tab** is
+  not the fix: it fires a real focus move on every step, so the list stops
+  matching what you see and the browse-then-commit workflow is gone.
+
+Background and host evidence: [docs/DECISIONS.md](docs/DECISIONS.md) and
+[docs/COMPAT.md](docs/COMPAT.md).
 
 ### Part 3 — load and reload
 
@@ -268,7 +290,10 @@ hyprctl reload
 ```
 
 That is the whole classic workflow: `Alt+Tab` cycles the frozen list, releasing
-the key applies the selection, `Escape` cancels. The example config ships with
+the key applies the selection (the `bindrt` line flagged for a re-check on this
+pinned build in
+[Part 2](#part-2--keybindings-choose-one-backend)), `Escape` cancels. The example
+config ships with
 `ui = border` (a first-run override of the plugin default) so you can see the
 selection while you browse; see the comments in the file to switch it back to
 `null`.
@@ -305,8 +330,12 @@ snippet:
 * `examples/mru-switcher-bindings.conf` — the four recommended keybindings,
   hyprlang flavour (works on the default `hyprland.conf` backend).
 * `examples/mru-switcher-bindings.lua` — the same binds as a Lua fragment for
-  **Lua/Omarchy** configs (`hyprland.lua`), committing on Tab release because
-  of the host modifier-release caveat (see docs/DECISIONS.md).
+  **Lua/Omarchy** configs (`hyprland.lua`), committing with an explicit apply
+  key (`ALT + Return`) because of the host modifier-release caveat (see
+  docs/DECISIONS.md).
+* `examples/mru-switcher-bindings-poll.lua` — optional Lua variant of the same
+  binds that applies the selection when Alt is released instead, by watching the
+  modifier state; load it *or* the fragment above, never both.
 * `scripts/setup-bindings.sh` — installs the right binding file for your
   backend with a live conflict check (`--help` for flags).
 
@@ -373,8 +402,11 @@ mru:status
   on hyprlang use `unbind = ALT, TAB`.
 * **Selection does not apply when you release the modifier (Lua)** — known host
   issue: release binds on modifier keys do not fire on the Lua keybind path in
-  the pinned build (see docs/DECISIONS.md). Use the Lua recipe, which applies
-  on Tab release.
+  the pinned build (see docs/DECISIONS.md). Use the shipped Lua recipe, which
+  commits with the explicit `ALT + Return` apply key, or the optional
+  `examples/mru-switcher-bindings-poll.lua` variant if you want Alt release to
+  apply. Committing on the release of Tab is not a fix: it moves focus on every
+  step and breaks the frozen list.
 * **Plugin fails to load after a Hyprland update** — this is fail-closed
   behaviour on an ABI mismatch, not a crash. This is expected protection, with a short recovery:
   rebuild against the new headers (source install) or run `hyprpm update` — full walkthrough in

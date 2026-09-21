@@ -131,18 +131,26 @@ hl.unbind("ALT + TAB")
 hl.unbind("ALT + SHIFT + TAB")
 hl.bind("ALT + TAB",         function() hl.plugin.mru.cycle("next") end)
 hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.cycle("prev") end)
-hl.bind("ALT + TAB",         function() hl.plugin.mru.apply() end, { release = true })
-hl.bind("ALT + SHIFT + TAB", function() hl.plugin.mru.apply() end, { release = true })
+hl.bind("ALT + Return",      function() hl.plugin.mru.apply() end)
 hl.bind("ALT + Escape",      function() hl.plugin.mru.cancel() end)
 ```
 
-> **Lua caveat (host):** on the Lua keybind path, release binds on a
+> **Lua caveat (host):** on the Lua keybind path, a release bind keyed on a
 > *modifier* key (`hl.bind("ALT + ALT_L", …, { release = true })`, the Lua
-> equivalent of `bindrt`) never fire in the pinned build (Hyprland
-> v0.56.2 / efb5099). The Lua recipe therefore commits on the release of
-> **Tab** — an ordinary key, which fires reliably. The `hl.unbind` lines are
-> needed on Omarchy, whose default `Alt+Tab` (Focus on next window) would
-> otherwise fire together with the MRU bind.
+> equivalent of `bindrt`) never fires in the pinned build (Hyprland
+> v0.56.2 / efb5099) — release binds only fire reliably for ordinary keys. The
+> Lua recipe therefore commits with an **explicit apply key**, `ALT + Return`:
+> nothing moves until you press it, and the list stays frozen while you browse.
+> If you want the literal "release Alt to apply" behaviour, install the poll
+> variant `examples/mru-switcher-bindings-poll.lua` (a `hl.timer` that watches
+> `hl.is_key_down("Alt_L")` / `"Alt_R"` and applies once, on logical release) —
+> load one variant or the other, never both. Committing on the release of
+> **Tab** is *not* recommended: it fires a real focus move on every step, so the
+> frozen list stops matching what you see and the browse-then-commit workflow is
+> lost. See [DECISIONS.md](DECISIONS.md) for the corrected decision.
+>
+> The `hl.unbind` lines are needed on Omarchy, whose default `Alt+Tab` (Focus on
+> next window) would otherwise fire together with the MRU bind.
 
 ### 4. Optional config
 
@@ -199,7 +207,7 @@ observed by the plugin on Hyprland 0.56.2 — edit the config file and run
 |--------|--------|
 | First `Alt+Tab` | Opens a session, builds a **snapshot** of windows in MRU order, selects the second entry (previous window) by default |
 | Further `Tab` / `Shift+Tab` | Moves selection inside the frozen snapshot only |
-| Release (`mru:apply`; Alt on hyprlang, **Tab** with the Lua recipe) | Focuses the selected window and ends the session |
+| Apply (`mru:apply`; hyprlang: Alt release via `bindrt`, pending re-verification — see [COMPAT.md](COMPAT.md); Lua: explicit `Alt+Return`, or Alt release with the optional poll variant) | Focuses the selected window and ends the session |
 | `Escape` | Cancels the session without changing focus (unless `restore_focus_on_cancel` is set) |
 
 While a session is active, intermediate focus changes (mouse, other keybinds) do **not**
@@ -443,10 +451,15 @@ window"): the Lua recipe does this with `hl.unbind("ALT + TAB")`; on hyprlang
 use `unbind = ALT, TAB`.
 
 **Selection does not apply when I release Alt (Lua/Omarchy).**  
-Known host limitation: release binds on a *modifier* key never fire
-on the Lua keybind path in the pinned build. Use the Lua recipe, which commits
-on **Tab** release — an ordinary key that fires reliably — while keeping the
-Niri-style workflow.
+Known host limitation: a release bind keyed on a *modifier* token never fires
+on the Lua keybind path in the pinned build. The default Lua recipe therefore
+commits with an explicit apply key — `Alt+Return` → `mru:apply` (§3): nothing
+moves until you press it. For the literal "release Alt to apply" behaviour,
+install the optional poll variant `examples/mru-switcher-bindings-poll.lua`
+(a `hl.timer` watching `hl.is_key_down("Alt_L")` / `"Alt_R"`); load one of the
+two files, never both. Committing on **Tab** release is not a fix: it fires a
+real focus move on every step and breaks the frozen-list workflow (see
+[DECISIONS.md](DECISIONS.md), ADR-023).
 
 **Plugin fails to load after Hyprland update.**  
 Recompile against the new headers. The plugin aborts on hash mismatch to avoid crashes.

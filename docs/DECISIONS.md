@@ -999,7 +999,7 @@ Rationale: MRU order must reflect the window the user actually focused. Without 
 
 ## ADR-022: Keybinding delivery is a first-class install step; host modifier-release caveat
 
-**Status:** Accepted (2026-09-20)
+**Status:** Accepted (2026-09-20); product framing of the Lua recipe superseded in part by ADR-023 (2026-09-21)
 
 **Context:**
 
@@ -1075,6 +1075,11 @@ equal to the plugin's apply-on-release semantics.
   to the real bridge and the proven modmask form.
 - The host caveat stays recorded in `docs/COMPAT.md` so future pins re-check whether
   modifier-key release binds work before the Lua recipe changes back.
+- **ADR-023 (2026-09-21):** the Lua Tab-release recipe is a **keybind-path workaround, not a
+  semantic equivalence with apply-on-release** — Tab-release commits a real focus move per
+  step, so the frozen snapshot stops matching the visible state. That framing is superseded:
+  the Lua channel ships an explicit apply key (B1) or a modifier-hold poll (B2). This ADR's
+  host caveat and its "bindings are an install step" decision remain in force.
 
 ### Follow-ups
 
@@ -1087,3 +1092,110 @@ equal to the plugin's apply-on-release semantics.
 - CHANGELOG Unreleased entries.
 
 ---
+
+## ADR-023: Apply-on-Tab-release is not the product model; Lua ships explicit-apply or a modifier-hold poll
+
+**Status:** Accepted (2026-09-21)
+
+**Context:**
+
+ADR-022 (merged PR #85) adopted "commit apply on **Tab release**" as the Lua/Omarchy
+recipe, because on the pinned Hyprland (v0.56.2 / commit `efb5099`) a `release = true`
+keybind whose key is a **modifier** token (`hl.bind("ALT + ALT_L"|"ALT + ALT_R", …,
+{ release = true })`) never fires on the Lua keybind path, while ordinary keys with the
+same modmask do fire.
+
+That workaround is rejected as **product semantics**. Committing on Tab release fires a
+**real focus move on every Tab step**: the compositor focus moves immediately, the frozen
+snapshot stops matching what the user sees, the MRU stack reshuffles under the user (the
+window focused mid-browse is promoted), and the "browse, then commit" contract of ADR-002
+(virtual selection; one focus change per session) is destroyed. Tab-release is therefore
+not a semantic equivalent of apply-on-release, it is a stack-breaking UX.
+
+The host limitation is a **keybind-path** limitation only. The pin already exposes every
+primitive a correct release model needs:
+
+- `hl.is_key_down("Alt_L"|"Alt_R")` — registered `src/config/lua/bindings/LuaBindingsToplevel.cpp:552`,
+  implemented `:417-459` over `CKeybindManager::m_pressedKeys`;
+- `hl.timer(cb, { timeout = ms, type = "repeat" })` — `LuaBindingsToplevel.cpp:539,466-529`,
+  armed on the compositor main event loop via `g_pEventLoopManager->addTimer`
+  (main-thread; no background thread);
+- `hl.on("input.keyboard.key", …)` — event-driven raw key stream,
+  `src/config/lua/LuaEventHandler.cpp:179-186`/`:298`, forwarding
+  `Event::bus()->m_events.input.keyboard.key`;
+- the same `Event::bus` key event for the native plugin (`EventBus.hpp`; emitted from
+  `InputManager` before keybinds) — no function hooks required.
+
+Shipping Omarchy switchers already commit apply on the **logical release of Alt** using
+exactly these mechanisms (an `hl.is_key_down` + `hl.timer` poll, or the raw key stream), so
+the model recommended here is proven in production on the same pin. Evidence memo:
+`docs/agent-state/research/2026-09-21-modifier-hold-poll-api.md`; correction plan:
+`docs/agent-state/plans/2026-09-21-alt-release-correction.md`.
+
+**Decision:**
+
+- **Apply-on-Tab-release is rejected as product semantics** and demoted to at most a
+  *diagnostic footnote* (a demo that ordinary-key release binds fire). It is never a
+  recommended recipe in README/USER/API/examples and never the default profile of
+  `scripts/setup-bindings.sh`.
+- **B1 — explicit apply key is the supported default for the Lua/Omarchy channel:** cycle
+  on `ALT+TAB` **press**, commit with `ALT+Return` → `mru:apply`, cancel with `ALT+Escape`
+  → `mru:cancel`, no release binds. No host workaround, no polling. See
+  `examples/mru-switcher-bindings.lua`.
+- **B2 — a modifier-hold poll is the supported route for literal "release Alt to apply"
+  in Lua:** `hl.is_key_down` on `Alt_L`/`Alt_R` sampled by an `hl.timer` repeat on the
+  compositor main loop, with exactly-once apply and a guard so a session that never
+  started cannot commit. Shipped as `examples/mru-switcher-bindings-poll.lua`. The
+  event-driven `hl.on("input.keyboard.key")` form is an accepted equivalent, not a
+  requirement.
+- **One recipe per backend, never one recipe for both.** hyprlang keeps
+  `bindrt = ALT, ALT_L, mru:apply` (the intended modifier-release route); Lua uses B1 or
+  B2. Tab-release is not "the way to get apply-on-release".
+- **Unbinding Omarchy's stock `ALT+TAB` binds before binding MRU is a required first step,**
+  not optional polish: `hl.unbind("ALT + TAB")` and `hl.unbind("ALT + SHIFT + TAB")`
+  (Omarchy binds both directions twice — `cycle_next` and `bring_to_top`). `hl.bind`/`bind`
+  add a duplicate rather than replacing, so otherwise both actions fire or the wrong one
+  wins, silently.
+
+**Consequences:**
+
+- Stack-safe UX in both Lua variants: B1 commits on an explicit key, B2 on logical Alt
+  release; neither moves focus while browsing (ADR-002 preserved).
+- The docs carry a per-backend recipe table (hyprlang `bindrt` | Lua B1 | Lua B2) instead
+  of one "apply on release" claim that only ever held on a single keybind path.
+- The host caveat stays recorded in `docs/COMPAT.md`, now phrased as a **keybind-path**
+  limitation.
+- **hyprlang `bindrt` is not yet proven on the pin.** Its COMPAT "keeps working" claim
+  predates the source-level analysis in the evidence memo: the same
+  `KeybindManager::handleKeybinds` current-mods matching that kills the Lua
+  modifier-release bind plausibly kills `bindrt = ALT, ALT_L` as well. This is a
+  **source-analysis** finding, not a live nest result — it MUST be empirically re-verified
+  (nested smoke) before 1.0, and COMPAT + SPEC §11 must be corrected if the nest shows it
+  broken (hyprlang users then also need B1 or native Alt-event detection).
+- ADR-022 remains immutable and in force for its host caveat and its "bindings are an
+  install step" decision; only the **product framing of its Lua recipe** is superseded
+  (noted in its status line).
+- No normative SPEC behaviour changes: SPEC §11 (informative appendix) gains a
+  re-verification note only; every REQ-* line is untouched.
+
+### Follow-ups
+
+- `examples/mru-switcher-bindings.lua` rewritten to B1 (cycle on `ALT+TAB` press, apply on
+  `ALT+Return`, cancel on `ALT+Escape`, no release binds).
+- New `examples/mru-switcher-bindings-poll.lua` (B2 reference: `hl.timer` 25 ms repeat +
+  `hl.is_key_down` on `Alt_L`/`Alt_R`, exactly-once apply).
+- `examples/mru-switcher-bindings.conf` flags its `bindrt` line as not-yet-nest-verified.
+- README.md, docs/USER.md, docs/API.md: Tab-release recipe removed/corrected to B1/B2;
+  Omarchy unbind step stated as required.
+- CHANGELOG.md: Unreleased entry correcting the ADR-022 Lua recipe.
+- `scripts/setup-bindings.sh`: help text off Tab-release; default Lua profile = B1.
+- `docs/COMPAT.md`: mitigation cell rewritten to the corrected model; `bindrt` "keeps
+  working" downgraded to "re-verify before 1.0".
+- The empirical nest check on `efb5099` is human-gated (see the correction plan's
+  "Deferred" section) — this ADR carries source-level reasoning only.
+- Optional / later: native plugin Alt-release detection via
+  `Event::bus()->m_events.input.keyboard.key` (event-driven, no hooks), which would make
+  hyprlang users independent of the `bindrt` question.
+
+---
+
