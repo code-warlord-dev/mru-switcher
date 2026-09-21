@@ -1,12 +1,12 @@
 # Session State
 Updated: 2026-09-22
-Human goal: correction stream delivered — Tab-release dropped as the Lua product recipe; explicit-apply (B1) default + modifier-hold poll (B2) reference shipped (ADR-023, PR #87). РЕЛИЗ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ
+Human goal: ADR-023 stream delivered (PR #87); NEW live-host bug: no visual feedback on cycle — root-caused to dead plugin-config channels on the Lua host (report linked below). РЕЛИЗ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ
 Active milestone: M6 (release-prep); v1.0.0 tag strictly human-gated (NO tag without explicit human command)
-Branch: none (on main)
-PR: #87 merged (squash f0a58a0, CI 8/8, review APPROVE)
-Next action: idle — wait for human: (a) empirical bindrt nest check on efb5099, (b) manual nest gate (T-DIST-01/02/03 + fast-toggle #65 + bindrt leg), (c) explicit tag command
+Branch: chore/state-lua-config-report (state PR for the host-bug report)
+PR: #87 merged (squash f0a58a0, CI 8/8, review APPROVE); state PR for host-bug report pending
+Next action: ship state PR (report + SESSION/PROGRESS links); then wait for human: (a) decision on Lua-config dead end (upstream research / docs honesty pass), (b) empirical bindrt nest check, (c) manual nest gate, (d) explicit tag command
 Blocked: none
-State: ADR-023 on main: B1 default (examples/mru-switcher-bindings.lua), B2 poll reference (examples/mru-switcher-bindings-poll.lua), Omarchy unbind mandated, COMPAT bindrt downgraded to re-verify-before-1.0, SPEC §11 informative note only; host user config still on the human's live release-on-Tab setup — re-point to B1/poll at leisure
-SPEC focus: REQ-DIST-016/017/018 (deliverability, non-normative bindings story); REQ-F-002 (apply) untouched; no normative REQ change in PR #87
-Open questions: does hyprlang bindrt fire apply on Alt release on efb5099? (empirical nest check — human-gated, before 1.0)
-Last artifact: https://github.com/code-warlord-dev/mru-switcher/pull/87
+State: live host runs working B2 poll binds (bindings.lua) but NO visual feedback is possible — every plugin-config channel is dead on the Lua backend (hyprctl keyword disabled; hl.config + config file reject plugin.*; hl.keyword nil; hl.plugin.load silently fails); plugin loads from root-owned /var/cache/hyprpm/code_warlord/mru-switcher (enabled=true ⇒ survives reboot; state hash 57f3164 = main)
+SPEC focus: REQ-CFG-* (config surface unreachable on Lua hosts — host gap, not plugin bug); REQ-DIST-016..019 (docs may need Lua-host caveat); no plugin change implied
+Open questions: (1) does upstream Lua config ever support plugin {} blocks (newer Hyprland or planned hl.* API)? (2) COMPAT/USER honesty pass timing — needs-adr? (3) does hyprlang bindrt fire apply on Alt release on efb5099?
+Last artifact: docs/agent-state/reports/2026-09-22-lua-host-plugin-config-dead-end.md
