@@ -14,6 +14,7 @@ TEST(sidecar_01_full_overlay) {
     const SidecarParse p = parse("ui = border\ndebounce_ms = 100\ndefault_scope = workspace\n"
                                  "start_offset = first\nwrap = false\nborder_style = solid\n"
                                  "border_color = 0xff112233\nborder_size = 3\n"
+                                 "selection_follow_workspace = false\n"
                                  "restore_focus_on_cancel = true\nexternal_socket = /tmp/mru.sock\n");
     CHECK(p.warnings.empty());
     std::vector<std::string> warns;
@@ -28,6 +29,7 @@ TEST(sidecar_01_full_overlay) {
     CHECK(!cfg.wrap);
     CHECK(cfg.border_color == "0xff112233");
     CHECK(cfg.border_size == 3);
+    CHECK(!cfg.selection_follow_workspace); // ADR-026 / REQ-UI-012
     CHECK(cfg.restore_focus_on_cancel);
     CHECK(cfg.external_socket == "/tmp/mru.sock");
 }
@@ -104,6 +106,30 @@ TEST(sidecar_07_debounce_clamped) {
     apply_overlay(cfg, parse("debounce_ms = 99999\n"), [&](const std::string &w) { warns.push_back(w); });
     CHECK(cfg.debounce_ms == 5000);
     CHECK(warns.empty()); // clamped, not invalid
+}
+
+// ADR-026 / REQ-UI-012: the sidecar can set the view-follow toggle; an invalid
+// value keeps the base (default true) and warns once (REQ-CFG-001).
+TEST(sidecar_08_selection_follow_workspace_overlay) {
+    PluginConfig base = default_plugin_config();
+    auto overlay = [&](const char *text) {
+        PluginConfig cfg = base;
+        std::vector<std::string> warns;
+        apply_overlay(cfg, parse(text), [&](const std::string &w) { warns.push_back(w); });
+        return std::make_pair(cfg, warns);
+    };
+
+    const auto [off, warns_off] = overlay("selection_follow_workspace = false\n");
+    CHECK(!off.selection_follow_workspace);
+    CHECK(warns_off.empty());
+
+    const auto [on, warns_on] = overlay("selection_follow_workspace = true\n");
+    CHECK(on.selection_follow_workspace);
+    CHECK(warns_on.empty());
+
+    const auto [bad, warns_bad] = overlay("selection_follow_workspace = maybe\n");
+    CHECK(bad.selection_follow_workspace); // invalid keeps the base value
+    CHECK(warns_bad.size() == 1);
 }
 
 } // namespace

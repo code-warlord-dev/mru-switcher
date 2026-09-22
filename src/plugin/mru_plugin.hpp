@@ -10,6 +10,7 @@
 #include "hypr/hypr_focus_gateway.hpp"
 #include "hypr/hypr_scheduler.hpp"
 #include "hypr/hypr_window_source.hpp"
+#include "hypr/hypr_workspace_navigator.hpp"
 #include "hypr/hyprctl_border_prop_io.hpp"
 #include "hypr/hyprland_overlay_socket.hpp"
 #include "hypr/null_ui.hpp"
@@ -31,9 +32,10 @@ namespace mru::plugin {
 // HistoryTracker&, so the tracker must outlive it (ADR-015); the ui proxy's
 // factory builds a BorderHighlightUI holding a BorderPropIo&, so border_io must
 // outlive ui (REQ-UI-009); it may also build an ExternalOverlayUI holding an
-// OverlayTransport&, so overlay_socket must outlive ui too (ADR-018). The reverse
-// order is enforced by an explicit teardown_state(); this type is therefore never
-// copyable or movable.
+// OverlayTransport&, so overlay_socket must outlive ui too (ADR-018). The
+// workspace_navigator holds a registry&, so it must die before the registry. The
+// reverse order is enforced by an explicit teardown_state(); this type is
+// therefore never copyable or movable.
 struct PluginState {
     PluginState() = default;
     PluginState(const PluginState &) = delete;
@@ -46,6 +48,11 @@ struct PluginState {
     std::unique_ptr<mru::domain::HistoryTracker> tracker; // must outlive source
     std::unique_ptr<HyprlandWindowSource> source;
     std::unique_ptr<HyprlandFocusGateway> fg;
+    // ADR-026: persistent navigator owned by the state (the per-session
+    // BorderHighlightUI borrows a reference from the backend factory). It holds a
+    // registry&, so it dies BEFORE the registry; declared between fg and border_io
+    // so the explicit reverse-order teardown places it exactly there.
+    std::unique_ptr<HyprlandWorkspaceNavigator> workspace_navigator;
     std::unique_ptr<HyprctlBorderPropIo> border_io;        // must outlive ui (factory builds BorderHighlightUI)
     std::unique_ptr<mru::domain::UIPort> ui;               // SessionUIBackendProxy (REQ-UI-009, ADR-017)
     std::unique_ptr<HyprlandOverlaySocket> overlay_socket; // must outlive ui (ExternalOverlayUI transport)

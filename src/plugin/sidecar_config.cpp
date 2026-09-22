@@ -52,6 +52,8 @@ bool assign_raw(SidecarOverrides &o, const std::string &key, std::string value) 
         o.border_color = std::move(value);
     else if (key == "border_size")
         o.border_size = std::move(value);
+    else if (key == "selection_follow_workspace")
+        o.selection_follow_workspace = std::move(value);
     else if (key == "lock_history_on_session")
         o.lock_history_on_session = std::move(value);
     else if (key == "restore_focus_on_cancel")
@@ -211,6 +213,15 @@ void apply_overlay(PluginConfig &cfg, const SidecarParse &parsed,
             cfg.border_size = static_cast<int>(raw);
         else
             invalid("border_size", *o.border_size);
+    }
+    // ADR-026 / REQ-UI-012: ui=border view-follow toggle. Unknown values keep the
+    // base value and warn (REQ-CFG-001), same as every other bool key here.
+    if (o.selection_follow_workspace.has_value()) {
+        bool b = false;
+        if (parse_bool_strict(*o.selection_follow_workspace, b))
+            cfg.selection_follow_workspace = b;
+        else
+            invalid("selection_follow_workspace", *o.selection_follow_workspace);
     }
     // REQ-H-010 / ADR-021: reserved key is stored for compat but never affects
     // behaviour (lock-in is mandatory); `false` additionally warns.

@@ -73,20 +73,23 @@ std::string normalize_capture(std::string raw, BorderSlot slot) {
 }
 
 BorderHighlightUI::BorderHighlightUI(BorderPropIo &io, Validator is_valid, BorderStyle style, std::string color,
-                                     int size, Warn warn)
+                                     int size, Warn warn, WorkspaceNavigator &navigator)
     : io_(io), is_valid_(std::move(is_valid)), style_(style), color_(std::move(color)), size_(size),
-      warn_(std::move(warn)) {}
+      warn_(std::move(warn)), navigator_(navigator) {}
 
 void BorderHighlightUI::on_session_start(const mru::domain::Snapshot &snapshot, std::size_t index) {
     restore_all(); // defensive: never leak a highlight from a previous session
     snapshot_ = snapshot;
     degraded_ = false; // REQ-UI-002: the degrade decision is per session
+    // ADR-026: pair every begin() with an end() — a degraded session that never
+    // highlights still ends cleanly with an empty capture set.
+    navigator_.begin();
     if (!probe_available()) {
         degraded_ = true;
         warn_once("border API unavailable; highlight disabled for this session");
         return;
     }
-    highlight(index);
+    highlight(index); // also drives navigator_.ensure_visible (REQ-UI-012)
 }
 
 void BorderHighlightUI::on_selection_changed(std::size_t index) {
@@ -94,8 +97,16 @@ void BorderHighlightUI::on_selection_changed(std::size_t index) {
     highlight(index);
 }
 
-void BorderHighlightUI::on_session_end(mru::domain::UIEndReason) {
+void BorderHighlightUI::on_session_end(mru::domain::UIEndReason reason) {
     restore_all(); // REQ-UI-005: full clear on every end path
+    // ADR-026: Cancelled -> restore the monitors this session elevated; Applied ->
+    // leave views as-is (the target workspace is already active; FocusGateway
+    // focuses the selected window next). Fail-soft, like every other port below.
+    try {
+        navigator_.end(reason);
+    } catch (...) {
+        warn_once("workspace restore failed");
+    }
     snapshot_.reset();
     degraded_ = false;
 }
@@ -139,6 +150,16 @@ void BorderHighlightUI::highlight(std::size_t index) {
         !read_slot(ref.address, BorderSlot::InactiveColor, cap.inactive)) {
         warn_once("border property read failed; skipping highlight");
         return;
+    }
+
+    // ADR-026 / REQ-UI-012: keep the selected window visible (workspace elevation,
+    // never window focus — REQ-F-003 / REQ-UI-006). Runs only when the highlight
+    // is actually about to be drawn — a degraded/read-failed target never flips the
+    // view without a highlight. Fail-soft like the border writes (REQ-UI-001).
+    try {
+        navigator_.ensure_visible(ref);
+    } catch (...) {
+        warn_once("workspace elevation failed");
     }
 
     const std::string &highlight = style_color();

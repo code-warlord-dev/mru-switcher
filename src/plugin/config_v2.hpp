@@ -27,6 +27,9 @@ struct Values {
     SP<Config::Values::String> border_style;
     SP<Config::Values::String> border_color;
     SP<Config::Values::Int> border_size;
+    // ADR-026 / REQ-UI-012: keep the selected window visible during a border
+    // session (active-workspace elevation, no window focus); read by read_config().
+    SP<Config::Values::Bool> selection_follow_workspace;
     SP<Config::Values::Bool> wrap;
     // REQ-H-010 / ADR-021: reserved key — still registered (0.x configs keep
     // parsing) and still read so read_config() can warn once when it is `false`;
@@ -69,7 +72,7 @@ auto read(const SP<V> &value) {
     return value->value();
 }
 
-// Registers the 11 documented keys; fail closed on the first registration error
+// Registers the 12 documented keys; fail closed on the first registration error
 // (short-circuit): PLUGIN_INIT aborts with a notification instead of half-registering.
 // Returns nullopt on success, or a human-readable reason for the host rejection
 // (e.g. "name collision" when the same keys are already registered by a loaded

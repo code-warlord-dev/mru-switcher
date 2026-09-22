@@ -108,6 +108,14 @@ TEST(cfg_07_border_defaults) {
     EQ(cfg.border_size, -1);
 }
 
+// ADR-026 / REQ-UI-012: the view-follow toggle defaults to true (out-of-the-box
+// visible selection when the ring crosses workspace boundaries); it is effective
+// only when the built backend is `border`.
+TEST(cfg_08_selection_follow_workspace_default) {
+    const auto cfg = default_plugin_config();
+    CHECK(cfg.selection_follow_workspace);
+}
+
 } // namespace
 
 int main() {

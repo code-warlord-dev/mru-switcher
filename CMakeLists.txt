@@ -177,6 +177,7 @@ if(MRU_BUILD_PLUGIN)
     src/plugin/hypr/identity_registry.cpp
     src/plugin/hypr/hypr_window_source.cpp
     src/plugin/hypr/hypr_focus_gateway.cpp
+    src/plugin/hypr/hypr_workspace_navigator.cpp
     src/plugin/hypr/hypr_scheduler.cpp
     src/plugin/hypr/hyprctl_border_prop_io.cpp
     src/plugin/hypr/hyprland_overlay_socket.cpp)
