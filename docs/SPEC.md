@@ -368,6 +368,7 @@ in 1.x; a change to any of them requires a major version bump. Additive new keys
 | `border_style` | string/enum | `solid` | Border highlight style; M4: only `solid` has effect; unknown/reserved (`pulse`, `dim`, …) → `solid` + warn-once (REQ-UI-007) |
 | `border_color` | color/string | `0xffffd9a0` | Border highlight colour — documented implementation default (hex `0xAARRGGBB`); format as accepted by the pinned Hyprland; documented in USER/API (REQ-UI-008) |
 | `border_size` | int | `-1` | Border highlight size; `-1` = do not touch window border size (colour only) (REQ-UI-008) |
+| `selection_follow_workspace` | bool | `true` | When `ui = border`, keep the selected window visible: elevate its workspace onto its monitor on session start / selection change without focusing any window; `false` = legacy off-screen highlight (ADR-026, REQ-UI-012). Applies to sessions started after reload (REQ-CFG-002) |
 | `lock_history_on_session` | bool | `true` | **Reserved — value ignored.** Lock-in while a session is Active is mandatory (REQ-H-001/010, ADR-021). Kept registered for 0.x config compatibility; non-default values trigger a warn-once notification. Removal is a 2.0 candidate |
 | `restore_focus_on_cancel` | bool | `false` | On cancel, focus `session_origin` if still valid |
 | `external_socket` | string | (empty) | Path for the External UI protocol (M5, ADR-018): AF_UNIX stream socket bound by the plugin. Empty path or bind failure ⇒ `ui = external` behaves as `null` + warn-once (REQ-O-001) |
@@ -405,7 +406,7 @@ on_session_end(reason: Applied | Cancelled)  # UI; internal SessionEndReason is 
 | Backend | Requirements |
 |---------|--------------|
 | `null` | No compositor side effects |
-| `border` | Visible highlight of selected window; cleared on session end; MUST NOT leave permanent rule damage |
+| `border` | Visible highlight of selected window; cleared on session end; MUST NOT leave permanent rule damage. With `selection_follow_workspace = true`, view follows the selection (workspace elevation for hidden targets, no window focus — ADR-026/REQ-UI-012) |
 | `external` | Best-effort notify via AF_UNIX socket (M5, ADR-018); session logic MUST work if peer absent |
 
 UI provisioning follows ADR-004 / ADR-017; the config default is `border` since ADR-025 (previously `null` per ADR-011; `null` remains the explicit opt-out) and concrete border symbols are adapter-private, recorded in `docs/COMPAT.md` (REQ-UI-011).
@@ -442,7 +443,9 @@ UI provisioning follows ADR-004 / ADR-017; the config default is `border` since 
 
 **REQ-UI-011** Prefer public compositor/plugin APIs for border mutation on the pinned Hyprland revision. Exact symbols are adapter-private and recorded in `docs/COMPAT.md`. Function hooks are not required for M4 compliance.
 
-M4 UI out of scope: live window previews inside the plugin; full behaviour of `pulse` / `dim` (reserved only); the M5 external overlay protocol. ~~Changing the default `ui` from `null` to `border`~~ — done via ADR-025 (default is now `border`; CHANGELOG entry under Unreleased).
+**REQ-UI-012** (ADR-026) When the effective backend is `border` and `selection_follow_workspace = true`, `BorderHighlightUI` SHALL ensure the workspace containing the selected window is the active workspace of that window's monitor on `on_session_start` and on each `on_selection_changed`, WITHOUT applying window focus (REQ-UI-006 / REQ-F-003), and only when that workspace is currently inactive on its monitor (already-visible targets on other monitors are not elevated in this revision). On `on_session_end(Cancelled)` the plugin SHALL restore the active workspaces of the monitors it elevated to their recorded session-start values; on `Applied` it SHALL leave views unchanged. Elevation failures SHALL fail soft (warn-once) and never abort the session (REQ-UI-001).
+
+M4 UI out of scope: live window previews inside the plugin; full behaviour of `pulse` / `dim` (reserved only); the M5 external overlay protocol. ~~Changing the default `ui` from `null` to `border`~~ — done via ADR-025 (default is now `border`; CHANGELOG entry under Unreleased). ~~Off-screen selection feedback~~ — mostly done via ADR-026 (`selection_follow_workspace`, default `true`); multi-monitor focus-monitor movement remains out of scope (ADR-026).
 
 ### 5.3 External overlay (M5)
 
@@ -564,6 +567,7 @@ When `restore_focus_on_cancel = true`:
 | T-UI-05 | apply/cancel/unload -> no stuck highlight |
 | T-UI-06 | invalid WindowRef on highlight path -> no crash, session continues |
 | T-UI-07 | unknown `border_style` -> solid + no abort |
+| T-UI-08 | ADR-026/REQ-UI-012: `selection_follow_workspace = true` (default) drives `ensure_visible` on session start + each selection change; never on a degraded/invalid-target session; `end(reason)` forwarded verbatim (Cancelled → restore, Applied → leave); navigator failures fail soft warn-once, never abort (`tests/plugin/test_border_highlight_ui.cpp`, `t_ui_012_*`); config default + sidecar overlay (`cfg_08_*`, `sidecar_08_*`) |
 | T-DISP-01 | omitted cycle direction equals next |
 | T-F-05 | FocusResult InvalidTarget and Failed paths |
 | T-S-07 | Active cycle ignores different scope token |
@@ -590,7 +594,7 @@ When `restore_focus_on_cancel = true`:
 | T-H-10 | session-start pending-promotion flush (M6, ADR-021, REQ-H-011): an Idle focus with a pending debounce job is committed immediately — through the REQ-H-009 validity guard — before candidates/lock-in; an invalid pending window is **not** committed; no pending job → no-op (`tests/domain/test_session_controller.cpp`, `t_h_10_*`) |
 | T-H-11 | chained `mru:cycle`+`mru:apply` sessions rotate the MRU order with **no clock advance** between them (#65 regression, ADR-021); negative control verified — fails with `HistoryTracker::flush_pending()` removed (`tests/domain/test_session_controller.cpp`, `t_h_11_*`) |
 
-T-UI-03..07 continue the T-UI series begun in M2 (T-UI-01/02). T-H-09 is intentionally unused — the number was reserved during M6 review and never assigned; identifiers stay stable once printed (no renumbering).
+T-UI-03..08 continue the T-UI series begun in M2 (T-UI-01/02). T-H-09 is intentionally unused — the number was reserved during M6 review and never assigned; identifiers stay stable once printed (no renumbering).
 
 ---
 

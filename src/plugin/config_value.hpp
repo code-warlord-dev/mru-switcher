@@ -34,6 +34,10 @@ struct PluginConfig {
     BorderStyle border_style = BorderStyle::Solid; // REQ-UI-007
     std::string border_color = "0xffffd9a0";       // REQ-UI-008: verbatim setprop value
     int border_size = -1;                          // REQ-UI-008: -1 = leave size untouched
+    // ADR-026 / REQ-UI-012: with ui=border, keep the selected window visible by
+    // elevating its (inactive) workspace onto its monitor while a session is
+    // active — no window focus. `false` = exact pre-ADR-026 off-screen highlight.
+    bool selection_follow_workspace = true;        // APPLIES TO THE NEXT SESSION (REQ-CFG-002)
     std::string external_socket;                   // REQ-O-001: AF_UNIX path (empty -> null fallback)
 };
 

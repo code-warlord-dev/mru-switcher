@@ -17,6 +17,20 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Selection view follows the highlighted window (ADR-026, SPEC REQ-UI-012, new config key
+  `selection_follow_workspace`, default `true`):** with `ui = border`, the plugin now keeps the
+  selected window visible while a session is active — if the selected window's workspace is not the
+  active workspace of its monitor, that workspace is activated (`CMonitor::changeWorkspace` with
+  `noFocus`, so **no** window/keyboard focus moves; REQ-F-003 / REQ-UI-006, ADR-023 intact). On
+  cancel the elevated monitors are restored to their session-start workspaces; on apply views are
+  left as-is (the target workspace is active and FocusGateway focuses the window next). Already-visible
+  targets on other monitors are not elevated. Elevation failures fail soft (warn-once), never abort a
+  session (REQ-UI-001). `false` restores the exact pre-ADR-026 off-screen highlight. Only effective
+  for `ui = border`; reload applies to the **next** session (REQ-CFG-002). New Hyprland-free port
+  `src/plugin/workspace_navigator.hpp` (+ `HyprlandWorkspaceNavigator` adapter), wired through
+  `BorderHighlightUI`; tests `t_ui_012_*` (5 cases) + `cfg_08_*`/`sidecar_08_*`. Workspace
+  elevation mechanism is adapter-private, recorded in `docs/COMPAT.md` (REQ-UI-011).
+
 - **Sidecar config file as a second delivery path for Lua hosts (ADR-024, SPEC REQ-CFG-005):**
   on Lua-config Hyprland builds the `plugin:mru-switcher:*` keys are unsettable (validator rejects
   plugin special-category keys — `docs/agent-state/reports/2026-09-22-lua-host-plugin-config-dead-end.md`),

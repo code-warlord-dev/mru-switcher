@@ -37,6 +37,7 @@ using mru::plugin::BorderHighlightUI;
 using mru::plugin::BorderPropIo;
 using mru::plugin::BorderSlot;
 using mru::plugin::BorderStyle;
+using mru::plugin::WorkspaceNavigator;
 
 const std::string kHighlight = "0xffffd9a0";
 constexpr std::uint64_t A = 0xA;
@@ -124,6 +125,31 @@ bool color_slot_write_is_bare_clear(const FakeBorderPropIo &io) {
     }
     return false;
 }
+
+// ADR-026 / REQ-UI-012 recording navigator: proves BorderHighlightUI drives the
+// port at the right lifecycle points and forwards the end reason verbatim; can
+// inject elevation/restore failures to prove fail-soft isolation (REQ-UI-001).
+// The workspace-restore policy itself lives in the Hyprland adapter
+// (HyprlandWorkspaceNavigator) and is not unit-testable without a compositor.
+struct FakeWorkspaceNavigator : WorkspaceNavigator {
+    int begin_calls = 0;
+    std::vector<mru::domain::WindowRef> ensured;
+    std::vector<mru::domain::UIEndReason> ends;
+    bool throw_on_ensure = false;
+    bool throw_on_end = false;
+
+    void begin() override { ++begin_calls; }
+    void ensure_visible(const mru::domain::WindowRef &ref) override {
+        ensured.push_back(ref);
+        if (throw_on_ensure)
+            throw std::runtime_error("fake navigator ensure");
+    }
+    void end(mru::domain::UIEndReason reason) override {
+        ends.push_back(reason);
+        if (throw_on_end)
+            throw std::runtime_error("fake navigator end");
+    }
+};
 
 // --- T-UI-03: ui=null -> no border side effects ---------------------------------
 TEST(t_ui_03_null_backend_no_border_io) {
@@ -548,6 +574,126 @@ TEST(t_ui_010_size_falls_back_to_unset_when_read_fails) {
     CHECK(size_unset);
     CHECK(!size_zero_restore);
     CHECK(!color_slot_write_is_bare_clear(io));
+}
+
+// --- ADR-026 / REQ-UI-012: selection view follows the highlighted window --------
+// session start drives the navigator begin() once and ensure_visible() with the
+// initially highlighted ref (via highlight()); every selection change does the
+// same with the current ref; the end reason is forwarded on session end.
+TEST(t_ui_012_selection_visible) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    seed(io, B, "0xb1", "0xb2");
+    FakeWorkspaceNavigator nav;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, {}, nav);
+    const Snapshot snap({ref(A), ref(B)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    CHECK(nav.begin_calls == 1);
+    EQ(nav.ensured.size(), 1u);
+    CHECK(nav.ensured[0] == ref(A)); // session start: selected window made visible
+
+    ui.on_selection_changed(1);
+    EQ(nav.ensured.size(), 2u);
+    CHECK(nav.ensured[1] == ref(B)); // selection change: new selection made visible
+
+    ui.on_session_end(UIEndReason::Applied);
+    EQ(nav.ends.size(), 1u);
+    CHECK(nav.ends[0] == UIEndReason::Applied);
+    CHECK(!any_highlight_left(io)); // existing border contract unaffected
+}
+
+// REQ-UI-010 (ADR-026): an invalid target is skipped BEFORE the navigator runs —
+// a closed/stale window never triggers a workspace elevation.
+TEST(t_ui_012_invalid_target_skips_navigation) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    FakeWorkspaceNavigator nav;
+    const auto valid = [](const WindowRef &r) { return r.address != B; }; // B invalid
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, {}, nav);
+    const Snapshot snap({ref(A), ref(B)}, Scope::Global);
+
+    ui.on_session_start(snap, 1); // invalid B: no border, no elevation
+    EQ(io.set_calls, 0);
+    EQ(nav.begin_calls, 1); // begin still pairs every session
+    CHECK(nav.ensured.empty());
+
+    ui.on_selection_changed(0); // valid A: border AND elevation
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == kHighlight);
+    EQ(nav.ensured.size(), 1u);
+    CHECK(nav.ensured[0] == ref(A));
+    ui.on_session_end(UIEndReason::Cancelled);
+    EQ(nav.ends.size(), 1u);
+}
+
+// ADR-026: a degraded session (REQ-UI-002 runtime probe failure) skips elevation
+// WITH the highlight — no ensure_visible side effects at all.
+TEST(t_ui_012_degraded_session_skips_navigation) {
+    FakeBorderPropIo io;
+    io.fail_gets = true; // border API unavailable at session start
+    int warnings = 0;
+    FakeWorkspaceNavigator nav;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1,
+                         [&](std::string_view) { ++warnings; }, nav);
+    const Snapshot snap({ref(A), ref(B)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    ui.on_selection_changed(1);
+    ui.on_session_end(UIEndReason::Cancelled);
+
+    EQ(io.set_calls, 0);               // degraded to null: no border writes
+    CHECK(nav.ensured.empty());        // and no workspace elevation
+    EQ(nav.begin_calls, 1);            // begin/end still pair up per session
+    EQ(nav.ends.size(), 1u);
+    CHECK(nav.ends[0] == UIEndReason::Cancelled);
+    EQ(warnings, 1);                   // exactly one warn-once
+}
+
+// REQ-UI-012: the end reason is forwarded verbatim; the Cancelled-restore-vs-
+// Applied-leave policy lives in the Hyprland adapter (HyprlandWorkspaceNavigator).
+TEST(t_ui_012_end_reason_forwarded_verbatim) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    FakeWorkspaceNavigator nav;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, {}, nav);
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    ui.on_session_end(UIEndReason::Cancelled);
+    ui.on_session_start(snap, 0);
+    ui.on_session_end(UIEndReason::Applied);
+
+    EQ(nav.begin_calls, 2);
+    EQ(nav.ends.size(), 2u);
+    CHECK(nav.ends[0] == UIEndReason::Cancelled);
+    CHECK(nav.ends[1] == UIEndReason::Applied);
+}
+
+// REQ-UI-001: an elevation/restore failure in the navigator is isolated — the
+// session continues, the highlight still draws, and border restore still runs.
+TEST(t_ui_012_navigator_throw_is_swallowed) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xa1", "0xa2");
+    int warnings = 0;
+    FakeWorkspaceNavigator nav;
+    nav.throw_on_ensure = true;
+    nav.throw_on_end = true;
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1,
+                         [&](std::string_view) { ++warnings; }, nav);
+    const Snapshot snap({ref(A)}, Scope::Global);
+
+    ui.on_session_start(snap, 0); // ensure throws -> warn-once, border still drawn
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == kHighlight);
+    EQ(warnings, 1);
+    ui.on_selection_changed(0);
+    ui.on_session_end(UIEndReason::Cancelled); // end throws -> warn-once dedupes, restore still runs
+    CHECK(io.values[A][idx(BorderSlot::ActiveColor)] == "0xa1");
+    CHECK(!any_highlight_left(io));
+    EQ(warnings, 1); // REQ-UI-002 warn-once: the restore failure is intentionally silent
 }
 
 } // namespace

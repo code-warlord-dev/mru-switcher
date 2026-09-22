@@ -88,6 +88,10 @@ void build_state() {
         static_cast<std::uint32_t>(st.config.debounce_ms));
     st.source = std::make_unique<HyprlandWindowSource>(*st.registry, *st.tracker);
     st.fg = std::make_unique<HyprlandFocusGateway>(*st.registry);
+    // ADR-026: persistent session-agnostic navigator. BorderHighlightUI (built per
+    // session by the proxy factory) borrows a reference while a session lives;
+    // begin/end keep its capture state per session.
+    st.workspace_navigator = std::make_unique<HyprlandWorkspaceNavigator>(*st.registry);
 
     // Backend factory (ADR-004 / ADR-017 / ADR-018, ARCHITECTURE §11). REQ-UI-009:
     // the controller holds a UIPort&, so a stable SessionUIBackendProxy is installed
@@ -130,6 +134,7 @@ void teardown_state() {
     st.ui.reset();
     st.overlay_socket.reset(); // after ui: ExternalOverlayUI holds its transport& (ADR-018)
     st.border_io.reset();
+    st.workspace_navigator.reset(); // holds registry&; dies before the registry below
     st.fg.reset();
     st.source.reset();
     st.tracker.reset(); // cancel_pending() still sees a live scheduler

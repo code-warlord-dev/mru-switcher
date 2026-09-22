@@ -19,6 +19,7 @@ constexpr const char *KEY_UI = "plugin:mru-switcher:ui";
 constexpr const char *KEY_BORDER_STYLE = "plugin:mru-switcher:border_style";
 constexpr const char *KEY_BORDER_COLOR = "plugin:mru-switcher:border_color";
 constexpr const char *KEY_BORDER_SIZE = "plugin:mru-switcher:border_size";
+constexpr const char *KEY_SELECTION_FOLLOW_WORKSPACE = "plugin:mru-switcher:selection_follow_workspace";
 constexpr const char *KEY_LOCK_HISTORY_ON_SESSION = "plugin:mru-switcher:lock_history_on_session";
 constexpr const char *KEY_RESTORE_FOCUS_ON_CANCEL = "plugin:mru-switcher:restore_focus_on_cancel";
 constexpr const char *KEY_EXTERNAL_SOCKET = "plugin:mru-switcher:external_socket";
@@ -72,6 +73,17 @@ std::optional<std::string> register_all(HANDLE handle, Values &out) {
         KEY_BORDER_SIZE, "Border size override; -1 = do not change the window border size (REQ-UI-008)", -1);
     if (!HyprlandAPI::addConfigValueV2(handle, out.border_size))
         return "host rejected config value '" + std::string(KEY_BORDER_SIZE) + "' (name collision: already registered)";
+
+    // ADR-026 / REQ-UI-012: view follows the selection while ui=border. Effective
+    // on the NEXT session (REQ-CFG-002); `false` = pre-ADR-026 off-screen highlight.
+    out.selection_follow_workspace = Config::Values::makeConfigValue<Config::Values::Bool>(
+        KEY_SELECTION_FOLLOW_WORKSPACE,
+        "ui=border: keep the selected window visible by elevating its workspace during "
+        "the session (no window focus); false = legacy off-screen highlight (ADR-026)",
+        true);
+    if (!HyprlandAPI::addConfigValueV2(handle, out.selection_follow_workspace))
+        return "host rejected config value '" + std::string(KEY_SELECTION_FOLLOW_WORKSPACE) +
+               "' (name collision: already registered)";
 
     out.lock_history_on_session = Config::Values::makeConfigValue<Config::Values::Bool>(
         KEY_LOCK_HISTORY_ON_SESSION,
@@ -144,6 +156,7 @@ mru::plugin::PluginConfig read_config(const Values &values) {
     // border_color is forwarded verbatim to `setprop`; border_size -1 = untouched.
     cfg.border_color = read(values.border_color);
     cfg.border_size = static_cast<int>(read(values.border_size));
+    cfg.selection_follow_workspace = read(values.selection_follow_workspace); // ADR-026 / REQ-UI-012
 
     // REQ-O-001 / ADR-018: empty path means `ui=external` degrades to null.
     cfg.external_socket = read(values.external_socket);

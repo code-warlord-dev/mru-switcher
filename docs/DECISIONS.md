@@ -1295,3 +1295,93 @@ sidecar (ADR-024) is opt-in and does not fix first-run behaviour.
 
 ---
 
+## ADR-026: Selection view follows the highlighted window (`selection_follow_workspace`)
+
+**Status:** Accepted (2026-09-22) — human decision by CEO (diag: live report + nest repro).
+
+**Context:**
+
+With the default scope `global` (REQ-SC-002), the virtual selection can target a
+window whose workspace is **not** the active workspace of its monitor.
+`BorderHighlightUI` still borders that off-screen window, while REQ-F-003 keeps
+`mru:cycle` purely virtual, so the compositor never switches the view during the
+hold. The user watches an apparently-dead ring while the highlight silently walks
+to another workspace — live report (2026-09-22): «border просто уходит на другой
+воркспейс, но на него переключение не происходит». Reproduced in the nest with
+two workspaces: during the cycle the active workspace stays put and the border is
+drawn only on the hidden window; `mru:apply` still works (on the pin,
+`fullWindowFocus` switches the workspace via `changeWorkspace` on focus).
+
+The defect is limited to the **hold/browse phase**: selection can be invisible.
+
+**Options considered:**
+
+- **A — view follows selection:** when the selected window's workspace is not the
+  active workspace of its monitor, make it active during the session. Border always
+  visible out of the box; real Alt+Tab across workspaces. On cancel, restore
+  elevated workspaces.
+- **B — default scope = `visible`:** ring only walks currently visible workspaces;
+  minimal and consistent with ADR-016 «you see it — it is in the ring», but removes
+  cross-workspace Alt+Tab from the default and leaves `global` visually degraded.
+- **C — HUD counter/label** when the target is off-view (layer surface). More work,
+  effectively a preview of the M5 overlay slot.
+
+**Human decision:** A.
+
+**Mechanics (pinned evidence, `src/output/Monitor.cpp` at the pin):**
+
+`CMonitor::changeWorkspace(PHLWORKSPACE, bool internal, bool noMouseMove, bool noFocus)`
+with `internal = false`, `noMouseMove = true`, `noFocus = true` makes the workspace
+active on its monitor — animated, `workspace`/`workspacev2` IPC posted, bars and
+`Event::bus` consistent, correct recalc/damage — **without moving window or keyboard
+focus**. The focused window is untouched, so REQ-F-003 is preserved (verified in the
+nest: the border moves, the focused window does not). Resolution of `WindowRef` →
+monitor/workspace uses the same `WindowIdentityRegistry` path as
+`HyprlandFocusGateway` (ADR-006).
+
+**Decision:**
+
+- New Hyprland-free output port `WorkspaceNavigator` (plural, mirrors
+  `BorderPropIo`, ADR-007) with:
+  - `begin()` — record active-workspace-per-monitor for monitors the session touches
+    (lazy: captured on first elevation);
+  - `ensure_visible(WindowRef)` — if the window's monitor's active workspace differs
+    from the window's workspace, `changeWorkspace(ws, false, true, true)` — i.e. a
+    silent-`noFocus` elevation;
+  - `end(UIEndReason)` — on `Cancelled`, restore each touched monitor to its recorded
+    pre-elevation workspace (same no-focus call); on `Applied`, leave views as-is
+    (the target's workspace is already active; `FocusGateway` then focuses it);
+    then clear session state.
+- `BorderHighlightUI` owns the port's lifecycle: `begin()` + ensure on
+  `on_session_start` and inside `highlight()`, `end(reason)` on `on_session_end`.
+  If degraded (REQ-UI-002 runtime probe failure) elevation is skipped with the
+  highlight. Fail-soft always: exceptions/refusals degrade to a warn-once and must
+  never abort the session (REQ-UI-001).
+- New config key `selection_follow_workspace` (bool, default `true`), effective
+  only when the built backend is `border`. `false` = exact pre-ADR-026 behaviour.
+  Reload semantics per REQ-CFG-002 (next session only).
+- The `null` and `external` backends are untouched: no highlight, no elevation.
+- Cross-monitor already-visible workspaces are **not** elevated in this revision:
+  the target is on a screen the user may look at, and forcing a focus-monitor move
+  during the hold would drag keyboard focus (real window focus) — the exact
+  per-step focus ADR-023 rejected. Revisit only with explicit multi-monitor
+  feedback.
+- REQ-F-003 is formally unchanged: the elevation changes the *active workspace*,
+  never the focused window. ADR-023 remains intact (no per-step window focus/apply).
+
+**Consequences:**
+
+- Out-of-the-box `ui = border` (ADR-025) is now actually visible when the ring
+  crosses workspace boundaries — the reported bug is fixed.
+- A new frozen-but-additive config key enters the §4 table (minor release, no 1.x
+  break).
+- `restore_focus_on_cancel` (REQ-R-001) is orthogonal: workspace restore happens in
+  the UI port's `end(Cancelled)`; a configured origin re-focus happens via
+  FocusGateway afterwards. Both run on the compositor thread.
+- Users who dislike workspace flips during the hold can set
+  `selection_follow_workspace = false`.
+- Documented limitation: multiple monitors with already-visible targets do not move
+  focus monitor during the hold (see above).
+
+---
+

@@ -180,6 +180,7 @@ plugin {
         border_style            = solid    # solid only for now; pulse/dim reserved -> solid + warn-once
         border_color            = 0xffffd9a0  # border highlight colour (bright accent; verbatim setprop grammar)
         border_size             = -1       # -1 = leave border size unchanged (colour only)
+        selection_follow_workspace = true  # ui=border: activate the selected window's workspace so it stays visible (ADR-026)
         restore_focus_on_cancel = false
         external_socket         =        # AF_UNIX path; required when ui = external (empty = degrade to null)
     }
@@ -201,7 +202,8 @@ and the plugin re-reads its settings (via the `config.reloaded` event):
 
 - `debounce_ms` — applies to the MRU updates that happen **after** the reload.
 - Everything else (`default_scope`, `start_offset`, `wrap`,
-  `restore_focus_on_cancel`, `ui`, `external_socket`, and the
+  `restore_focus_on_cancel`, `ui`, `external_socket`,
+  `selection_follow_workspace`, and the
   border-* keys) — applies to the **next** session you start. Note: switching `ui` away
   from `external` (or clearing `external_socket`) stops the socket listener at reload;
   the already-running session continues with its frozen backend.
@@ -306,11 +308,12 @@ plugin {
         border_style = solid          # pulse/dim reserved → treated as solid + one-time warning
         border_color = rgba(33ccffee) # example — see below and API.md for accepted formats
         border_size  = -1             # -1 = do not change border width
+        selection_follow_workspace = true  # ADR-026: keep the selection visible; false = legacy off-screen highlight
     }
 }
 ```
 
-If you omit the border keys, the documented defaults are: `border_style = solid`, `border_color = 0xffffd9a0` (hex `0xAARRGGBB`), `border_size = -1` (= do not change border width). Accepted colour formats are those supported by the pinned Hyprland: `rgb(...)`, `rgba(rrggbbaa)`, or hex `0xAARRGGBB` as in the default. Full key reference: `docs/API.md`; availability on your Hyprland build: `docs/COMPAT.md`.
+If you omit the border keys, the documented defaults are: `border_style = solid`, `border_color = 0xffffd9a0` (hex `0xAARRGGBB`), `border_size = -1` (= do not change border width), `selection_follow_workspace = true`. Accepted colour formats are those supported by the pinned Hyprland: `rgb(...)`, `rgba(rrggbbaa)`, or hex `0xAARRGGBB` as in the default. Full key reference: `docs/API.md`; availability on your Hyprland build: `docs/COMPAT.md`.
 
 ### Border behaviour (what you should see)
 
@@ -318,12 +321,20 @@ If you omit the border keys, the documented defaults are: `border_style = solid`
 2. Further `Tab` / `Shift+Tab` — highlight **moves** with the virtual selection; real focus stays put until release.
 3. Release Alt (`mru:apply`) or Escape (`mru:cancel`) — highlight is **removed**.
 4. Plugin unload / Hyprland exit mid-session — highlight is cleared as part of teardown.
+5. With `selection_follow_workspace = true` (default, ADR-026): if the selected window
+   is on a **hidden** workspace, that workspace is activated so the highlight stays
+   visible, and the affected monitors are restored to their session-start workspaces
+   on cancel. **No window/keyboard focus moves during this** — real focus still lands
+   only on apply (item 2/3 are unchanged). On apply the target workspace is left active
+   (the selected window is focused there next). Already-visible windows are never touched.
+   Set `selection_follow_workspace = false` for the exact pre-ADR-026 behaviour
+   (highlight off-screen while the switch target is on a hidden workspace).
 
-If the border APIs are unavailable on your Hyprland build, the plugin keeps switching correctly and falls back to no highlight (same as `null`, one-time warning).
+If the border APIs are unavailable on your Hyprland build, the plugin keeps switching correctly and falls back to no highlight (same as `null`, one-time warning). Workspace elevation is skipped too during such a degraded session.
 
 ### UI settings reload
 
-`ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel.
+`ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel. `selection_follow_workspace` follows the same rule — it is read when a session's backend is built.
 
 ### Updating the plugin (never overwrite the `.so` in place)
 
@@ -420,6 +431,8 @@ plugin {
 - [ ] Repeated Tab moves highlight without moving real focus
 - [ ] Apply (Alt release) focuses selection and removes highlight
 - [ ] Cancel (Escape) removes highlight and does not leave a stuck border
+- [ ] Selection on a hidden workspace: `selection_follow_workspace = true` activates it, cancel restores the previous workspace, and **no window is focused** during the session
+- [ ] `selection_follow_workspace = false` (or `ui = null`) restores the previous non-visual/fixed behaviour
 - [ ] Rapid Tab does not leave multiple windows highlighted
 - [ ] `len == 1` (only the focused window in scope): the active-border slot also highlights
 - [ ] Unload the plugin mid-session: borders are restored
@@ -455,7 +468,7 @@ excluded from every scope (including `global`). Shown scratchpad windows behave
 like normal windows and follow the selected scope.
 
 **Multi-monitor.**  
-Use `scope = monitor` for per-monitor switching, or `global` for a single list across all outputs.
+Use `scope = monitor` for per-monitor switching, or `global` for a single list across all outputs. With `ui = border` and `selection_follow_workspace = true` (default), switching to a window parked on a hidden workspace is still visible — its workspace is activated for the highlight and restored on cancel (ADR-026).
 
 **Alt+Tab does nothing.**  
 The plugin does not bind its own keys — without the keybinding install step it

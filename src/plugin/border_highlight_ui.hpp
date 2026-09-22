@@ -12,6 +12,7 @@
 #include "mru/domain/snapshot.hpp"
 #include "mru/domain/ui_port.hpp"
 #include "mru/domain/window_ref.hpp"
+#include "workspace_navigator.hpp"
 
 namespace mru::plugin {
 
@@ -46,6 +47,16 @@ class BorderPropIo {
 //     evidence: docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md) — never
 //     with a bare `-1`; `unset` is only the size fallback when the prior read
 //     failed (R0 F3/F10).
+//
+// ADR-026 / REQ-UI-012 (view follows selection): while a session is active the
+// backend also drives a WorkspaceNavigator so the highlighted window is never
+// off-screen — begin() at session start, ensure_visible() inside highlight()
+// (so the session-start probe and every selection change cover it), end(reason)
+// at session end. Elevation is skipped with the highlight when the runtime probe
+// degrades the backend. The navigator is never the source of a window focus
+// (REQ-F-003 / REQ-UI-006) and is driven fail-soft (REQ-UI-001); the default
+// argument supplies the shared no-op used by ui=border with
+// `selection_follow_workspace = false` (exact pre-ADR-026 behaviour).
 class BorderHighlightUI : public mru::domain::UIPort {
   public:
     // Same identity rules as focus: address + generation / weak-lock (REQ-UI-010).
@@ -54,7 +65,7 @@ class BorderHighlightUI : public mru::domain::UIPort {
     using Warn = std::function<void(std::string_view)>;
 
     BorderHighlightUI(BorderPropIo &io, Validator is_valid, BorderStyle style, std::string color, int size,
-                      Warn warn = {});
+                      Warn warn = {}, WorkspaceNavigator &navigator = null_workspace_navigator());
 
     void on_session_start(const mru::domain::Snapshot &snapshot, std::size_t index) override;
     void on_selection_changed(std::size_t index) override;
@@ -100,6 +111,10 @@ class BorderHighlightUI : public mru::domain::UIPort {
     std::string color_;
     int size_ = -1;
     Warn warn_;
+    // ADR-026: view-follow port. Lifecycle is tied to the session: begin() on
+    // on_session_start, ensure_visible() on every highlight, end(reason) on
+    // on_session_end.
+    WorkspaceNavigator &navigator_;
     bool warned_ = false;   // per backend INSTANCE: at most one runtime warning (REQ-UI-001);
                             // production backends are per-session, cross-session dedupe lives
                             // in the plugin's warn sink

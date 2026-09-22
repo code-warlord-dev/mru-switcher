@@ -1,11 +1,11 @@
 # Session State
 Updated: 2026-09-22
-Human goal: live-host border highlight must work on Lua/Omarchy. РЕЛИЗ/ТЕГ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ.
+Human goal: live-host border highlight works (confirmed by human); now fix multi-workspace blindness — selection view follows the highlighted window. РЕЛИЗ/ТЕГ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ.
 Active milestone: M6 (release-prep); v1.0.0 tag strictly human-gated
-Branch: main (27d9ead)
-PR: #99 merged (squash 27d9ead) — Lua-host border fix + load diagnostic; CI 8/8 green, ctest 19/19
+Branch: feat/adr-026-selection-follow-workspace (worktree contains ADR-026 implementation, uncommitted)
+PR: none yet — preparing PR for ADR-026 / REQ-UI-012 (view-follow)
 Blocked: none
-Next action: human live-host swap — unload /var/cache/hyprpm/code_warlord/mru-switcher/mru-switcher.so (old build) → load ~/.local/src/mru-switcher/build/mru-switcher.so (build/mru-switcher.so now has the setprop fix). hyprpm enabled=false: reboot won't auto-reload. Then human verifies border highlight on Alt+Tab hold (expected color 0xffffd9a0).
-SPEC focus: REQ-UI-002/003/011; REQ-CFG-002; ADR-017 §2 (adapter-private binding in COMPAT)
-Open questions: (1) upstream Lua `plugin {}` support? (2) live swap + highlight verified by human?
-Last artifact: PR #99 (merged 27d9ead) — hyprctl_border_prop_io.cpp set() via g_pKeybindManager->m_dispatchers["setprop"]; register_all optional<> diagnostic; CHANGELOG/USER/COMPAT rows; nest proof of 0xffffd9a0 write+restore
+Next action: commit feature → push → PR → self-review → CI → squash-merge; then live-host note for human (border now follows workspace during hold)
+SPEC focus: REQ-UI-012, REQ-UI-006, REQ-F-003, REQ-CFG-002, §4 `selection_follow_workspace`; ADR-026
+Open questions: (1) upstream Lua `plugin {}` support? (2) after merge: human live-host perception of workspace flips during Alt-hold (multi-monitor already-visible targets NOT elevated by design)
+Last artifact: ADR-026 + SPEC §4/§5/§9 edits + implementation (WorkspaceNavigator port, HyprlandWorkspaceNavigator adapter via CMonitor::changeWorkspace(ws,false,true,true), BorderHighlightUI begin/ensure/end, config key default true, sidecar, tests t_ui_012_*×5 + cfg_08* + sidecar_08*, docs) — build+ctest 19/19, nest smoke: view follows selection, focus untouched, cancel restores session-start workspace
