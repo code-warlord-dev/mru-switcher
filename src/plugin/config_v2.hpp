@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <typeinfo>
@@ -70,7 +71,10 @@ auto read(const SP<V> &value) {
 
 // Registers the 11 documented keys; fail closed on the first registration error
 // (short-circuit): PLUGIN_INIT aborts with a notification instead of half-registering.
-bool register_all(HANDLE handle, Values &out);
+// Returns nullopt on success, or a human-readable reason for the host rejection
+// (e.g. "name collision" when the same keys are already registered by a loaded
+// instance). Plain bool hid that cause (`addConfigValueV2` returns only bool).
+std::optional<std::string> register_all(HANDLE handle, Values &out);
 
 // Port of the M2 PluginConfig derivation: manual clamp [0,5000] (REQ-CFG-004),
 // enum fallback + once-warn (REQ-CFG-001), ui mapping (REQ-UI-002).

@@ -479,6 +479,22 @@ real focus move on every step and breaks the frozen-list workflow (see
 **Plugin fails to load after Hyprland update.**  
 Recompile against the new headers. The plugin aborts on hash mismatch to avoid crashes.
 
+**`ui=border` is set but the selected window gets no highlight colour.**  
+On Lua/Omarchy builds (0.56.2), builds before this fix routed border writes through the host's
+`dispatch` command, which Lua re-evaluates and rejects (`address:0x…` is not valid Lua) — the
+highlight was never drawn, with only a one-off yellow toast. Current builds call the compositor's
+`setprop` dispatcher in-process instead and work on both config backends. If you still see no
+highlight: check the loaded plugin is not an older build (`hyprctl plugin list`, then
+unload → load the current `.so` — see "Updating the plugin") and that
+`hyprctl getoption plugin:mru-switcher:ui` reads `border` / `str: border`.
+
+**`hyprctl plugin load` fails with `failed to register config values: … name collision`.**
+It means the `plugin:mru-switcher:*` keys are already registered — a mru-switcher build is already
+loaded (the reminder text in the error says so). It is not a crash and nothing is half-registered:
+`hyprctl plugin list`, then `hyprctl plugin unload <path>` of the loaded build, then load the new
+one. This host-side rejection is specific to the Lua config backend; on hyprlang a cross-path
+reload succeeds.
+
 ---
 
 ## Manual test checklist

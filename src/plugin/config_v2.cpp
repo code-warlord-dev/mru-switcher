@@ -1,5 +1,6 @@
 #include "config_v2.hpp"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -24,69 +25,76 @@ constexpr const char *KEY_EXTERNAL_SOCKET = "plugin:mru-switcher:external_socket
 
 } // namespace
 
-bool register_all(HANDLE handle, Values &out) {
+std::optional<std::string> register_all(HANDLE handle, Values &out) {
     // REQ-CFG-002: defaults under plugin:mru-switcher:, registered only in PLUGIN_INIT.
     // 3-arg makeConfigValue — no .min/.max (manual clamp_debounce_ms stays, REQ-CFG-004).
     out.debounce_ms = Config::Values::makeConfigValue<Config::Values::Int>(
         KEY_DEBOUNCE_MS, "Debounce before MRU commits the focus change (ms); 0 = immediate", 400);
     if (!HyprlandAPI::addConfigValueV2(handle, out.debounce_ms))
-        return false;
+        return "host rejected config value '" + std::string(KEY_DEBOUNCE_MS) + "' (name collision: already registered)";
 
     out.default_scope = Config::Values::makeConfigValue<Config::Values::String>(
         KEY_DEFAULT_SCOPE, "Default scope for mru:cycle: global | monitor | workspace | visible | app", "global");
     if (!HyprlandAPI::addConfigValueV2(handle, out.default_scope))
-        return false;
+        return "host rejected config value '" + std::string(KEY_DEFAULT_SCOPE) +
+               "' (name collision: already registered)";
 
     out.start_offset = Config::Values::makeConfigValue<Config::Values::String>(
         KEY_START_OFFSET, "Selection start offset: first | second", "second");
     if (!HyprlandAPI::addConfigValueV2(handle, out.start_offset))
-        return false;
+        return "host rejected config value '" + std::string(KEY_START_OFFSET) +
+               "' (name collision: already registered)";
 
     out.wrap = Config::Values::makeConfigValue<Config::Values::Bool>(KEY_WRAP, "Wrap the selection at list ends", true);
     if (!HyprlandAPI::addConfigValueV2(handle, out.wrap))
-        return false;
+        return "host rejected config value '" + std::string(KEY_WRAP) + "' (name collision: already registered)";
 
     out.ui = Config::Values::makeConfigValue<Config::Values::String>(
         KEY_UI, "UI backend: null | border | external (ADR-025 default)", "border");
     if (!HyprlandAPI::addConfigValueV2(handle, out.ui))
-        return false;
+        return "host rejected config value '" + std::string(KEY_UI) + "' (name collision: already registered)";
 
     out.border_style = Config::Values::makeConfigValue<Config::Values::String>(
         KEY_BORDER_STYLE, "Border highlight style: solid (pulse/dim reserved, treated as solid) (REQ-UI-007)", "solid");
     if (!HyprlandAPI::addConfigValueV2(handle, out.border_style))
-        return false;
+        return "host rejected config value '" + std::string(KEY_BORDER_STYLE) +
+               "' (name collision: already registered)";
 
     // Verbatim pass-through to `setprop <color>`: a String keeps accepted formats
     // (hex 0xAARRGGBB / rgb() / rgba()) intact; Color would normalize them away.
     out.border_color = Config::Values::makeConfigValue<Config::Values::String>(
         KEY_BORDER_COLOR, "Border highlight colour (hex 0xAARRGGBB or rgb()/rgba()) (REQ-UI-008)", "0xffffd9a0");
     if (!HyprlandAPI::addConfigValueV2(handle, out.border_color))
-        return false;
+        return "host rejected config value '" + std::string(KEY_BORDER_COLOR) +
+               "' (name collision: already registered)";
 
     out.border_size = Config::Values::makeConfigValue<Config::Values::Int>(
         KEY_BORDER_SIZE, "Border size override; -1 = do not change the window border size (REQ-UI-008)", -1);
     if (!HyprlandAPI::addConfigValueV2(handle, out.border_size))
-        return false;
+        return "host rejected config value '" + std::string(KEY_BORDER_SIZE) + "' (name collision: already registered)";
 
     out.lock_history_on_session = Config::Values::makeConfigValue<Config::Values::Bool>(
         KEY_LOCK_HISTORY_ON_SESSION,
         "Reserved and ignored: MRU history is always locked while a session is active (REQ-H-010)", true);
     if (!HyprlandAPI::addConfigValueV2(handle, out.lock_history_on_session))
-        return false;
+        return "host rejected config value '" + std::string(KEY_LOCK_HISTORY_ON_SESSION) +
+               "' (name collision: already registered)";
 
     out.restore_focus_on_cancel = Config::Values::makeConfigValue<Config::Values::Bool>(
         KEY_RESTORE_FOCUS_ON_CANCEL, "On cancel, refocus the window that was focused at session start", false);
     if (!HyprlandAPI::addConfigValueV2(handle, out.restore_focus_on_cancel))
-        return false;
+        return "host rejected config value '" + std::string(KEY_RESTORE_FOCUS_ON_CANCEL) +
+               "' (name collision: already registered)";
 
     // ADR-018: AF_UNIX path bound by the plugin when `ui=external`. Registered in
     // PLUGIN_INIT; read_config() consumes it for the M5 external overlay.
     out.external_socket = Config::Values::makeConfigValue<Config::Values::String>(
         KEY_EXTERNAL_SOCKET, "External UI protocol AF_UNIX socket path (ui=external; ADR-018)", "");
     if (!HyprlandAPI::addConfigValueV2(handle, out.external_socket))
-        return false;
+        return "host rejected config value '" + std::string(KEY_EXTERNAL_SOCKET) +
+               "' (name collision: already registered)";
 
-    return true;
+    return std::nullopt;
 }
 
 mru::plugin::PluginConfig read_config(const Values &values) {

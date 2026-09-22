@@ -4,6 +4,7 @@
 #include <format>
 #include <string>
 
+#include <hyprland/src/managers/KeybindManager.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
 
 namespace mru::plugin {
@@ -63,10 +64,17 @@ std::string HyprctlBorderPropIo::get(std::uint64_t address, BorderSlot slot) {
 }
 
 bool HyprctlBorderPropIo::set(std::uint64_t address, BorderSlot slot, const std::string &value) {
+    // On Lua config backends (0.56.2 / efb5099) the hyprctl `dispatch` command is
+    // re-evaluated as Lua (hl.dispatch(<raw args>)), so `setprop address:0x…` from
+    // invokeHyprctlCommand("dispatch", …) is a parse error and the write never runs.
+    // Call the compositor's `setprop` dispatcher in-process instead — the legacy
+    // dispatcher translator is backend-agnostic (see docs/COMPAT.md Known host limits).
     try {
-        const std::string out = HyprlandAPI::invokeHyprctlCommand("dispatch", "setprop " + selector(address) + " " +
-                                                                                  prop_name(slot) + " " + value);
-        return !looks_like_error(out);
+        const auto it = g_pKeybindManager->m_dispatchers.find("setprop");
+        if (it == g_pKeybindManager->m_dispatchers.end())
+            return false;
+        const SDispatchResult res = it->second(selector(address) + " " + prop_name(slot) + " " + value);
+        return res.success && res.error.empty();
     } catch (...) {
         return false;
     }
