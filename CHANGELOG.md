@@ -6,6 +6,10 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+### Changed
+
+- Plugin version corrected to match the 0.5.0 release line (CMake PROJECT_VERSION was stale at 0.4.0 while v0.5.0 tag already exists).
+
 ### Added
 
 - **Sidecar config file as a second delivery path for Lua hosts (ADR-024, SPEC REQ-CFG-005):**

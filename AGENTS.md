@@ -105,6 +105,7 @@ Layout:
 3. **Instruct** the subagent: “Load skill X; follow its non-negotiables; report against SPEC ids …”.  
 4. **Do not** re-encode skill content in the brief — point to the skill and project docs.  
 5. If no skill fits, use `find-skills` or propose a new skill via the skill-creator workflow; do not silently freestyle host-API advice that belongs in `hyprland-plugin`.
+6. For ANY Lua/Omarchy host work, load `hyprland-lua-config` first.
 
 ### 3.3 Full installed inventory
 
@@ -121,6 +122,9 @@ Layout:
 | [hyprland-focus-mru](.agents/skills/hyprland-focus-mru/) | `.agents/skills/hyprland-focus-mru/` |
 | [hyprland-nested-dev](.agents/skills/hyprland-nested-dev/) | `.agents/skills/hyprland-nested-dev/` |
 | [hyprland-plugin](.agents/skills/hyprland-plugin/) | `.agents/skills/hyprland-plugin/` |
+| [hyprland-lua](.agents/skills/hyprland-lua/) | `.agents/skills/hyprland-lua/` |
+| [hyprland-lua-config](.agents/skills/hyprland-lua-config/) | `.agents/skills/hyprland-lua-config/` |
+| [omarchy-plugin-security](.agents/skills/omarchy-plugin-security/) | `.agents/skills/omarchy-plugin-security/` |
 | [implement](.agents/skills/implement/) | `.agents/skills/implement/` |
 | [mru-switcher](.agents/skills/mru-switcher/) | `.agents/skills/mru-switcher/` |
 | [plugin-spec-compliance](.agents/skills/plugin-spec-compliance/) | `.agents/skills/plugin-spec-compliance/` |
@@ -141,6 +145,9 @@ Paths are relative to `.agents/skills/`. Project-owned skills always live in-rep
 | [cpp-plugin-architecture](.agents/skills/cpp-plugin-architecture/) | Expert | Ports/adapters, pure domain, FocusGateway, tests |
 | [hyprland-nested-dev](.agents/skills/hyprland-nested-dev/) | Advanced | Nested session, load/reload, smoke checklist |
 | [plugin-spec-compliance](.agents/skills/plugin-spec-compliance/) | Expert | SPEC/ADR review, requirement IDs, merge gates |
+| [hyprland-lua-config](.agents/skills/hyprland-lua-config/) | Expert | Lua/Omarchy config, hyprpm, hyprctl, sidecar config host work |
+| [hyprland-lua](.agents/skills/hyprland-lua/) | Expert | Hyprland 0.55+ Lua API — hl.bind/hl.on/hl.dsp, rules, hyprctl dispatch |
+| [omarchy-plugin-security](.agents/skills/omarchy-plugin-security/) | Expert | Omarchy plugin security review and marketplace hardening |
 
 ### 3.5 Suggested activation matrix
 
@@ -157,6 +164,8 @@ Paths are relative to `.agents/skills/`. Project-owned skills always live in-rep
 | Stress-test design before code | `grill-me` / `grilling` + `mru-switcher` |
 | Domain type redesign | `domain-modeling` + `cpp-plugin-architecture` + ADR process |
 | Repo layout | `codebase-design` + `cpp-plugin-architecture` |
+| Lua/Omarchy config or binding task | `hyprland-lua-config` (+ `hyprland-lua`) |
+| Omarchy plugin security review | `omarchy-plugin-security` + `code-review` |
 
 ### 3.6 Ecosystem skills (skills.sh and peers)
 
@@ -171,6 +180,9 @@ Paths are relative to `.agents/skills/`. Project-owned skills always live in-rep
 | **research** | Upstream Hyprland API churn investigation |
 | **grill-me** / **grilling** | Stress-test design before coding |
 | **writing-plans** | Multi-step requirements → implementation plan |
+| **hyprland-lua** | Hyprland 0.55+ Lua API reference for host config work |
+| **hyprland-lua-config** | Lua config, hyprpm, hyprctl, Omarchy integration procedures |
+| **omarchy-plugin-security** | Security hardening for Omarchy plugin submissions |
 | **find-skills** | Discover additional skills when the matrix is insufficient |
 
 ```bash
@@ -405,6 +417,7 @@ Deliverable format: patch | memo | checklist | PR text
 | List jumps while Alt held | `hyprland-focus-mru` + SPEC REQ-H-* |
 | PR ready | `plugin-spec-compliance` + `code-review` → self-merge both hosts |
 | Upstream Hyprland update | `research` → impact memo → pin or fix adapters |
+| Lua/Omarchy config question | `hyprland-lua-config` + `hyprland-lua` |
 
 ---
 
