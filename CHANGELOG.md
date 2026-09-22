@@ -8,6 +8,21 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Sidecar config file as a second delivery path for Lua hosts (ADR-024, SPEC REQ-CFG-005):**
+  on Lua-config Hyprland builds the `plugin:mru-switcher:*` keys are unsettable (validator rejects
+  plugin special-category keys — `docs/agent-state/reports/2026-09-22-lua-host-plugin-config-dead-end.md`),
+  so the plugin now reads an opt-in sidecar file (`$XDG_CONFIG_HOME/mru-switcher/config`, else
+  `~/.config/mru-switcher/config`) at load and on every `hyprctl reload` and overlays the same 11
+  SPEC §4 keys (only present-and-valid keys win; unknown/invalid warn once, never abort; missing file
+  is silent). New Hyprland-free `src/plugin/sidecar_config.{hpp,cpp}` + `tests/plugin/test_sidecar_config.cpp`
+  (T-CFG-07, 7 cases), `examples/mru-switcher-sidecar.conf` (`ui=border` demo), COMPAT limitation row +
+  USER.md Lua caveat. No new keys, no renames, no default change; hyprlang hosts unaffected.
+
+- **Plugin facade split by responsibility (no behavior change):** `src/plugin/mru_plugin.cpp` 516 → 74
+  lines (INIT/EXIT only); new flat TUs `plugin_dispatch`, `plugin_lua_bridge`, `plugin_events`,
+  `plugin_overlay_wiring`, `plugin_lifecycle` + shared `plugin_internal.hpp`. CI `plugin-guards` job
+  updated for the new facade TU list.
+
 - **Keybinding delivery is a first-class install step (ADR-022), fixing the Lua/Omarchy
   apply-on-release failure:** the Lua bridge recipe that shipped in `task_0001` used
   `hl.bind("ALT_L"/"ALT_R", …, {release=true})` (plus `hl.dispatch`), and on the pinned

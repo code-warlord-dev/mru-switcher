@@ -14,6 +14,7 @@
 #include "plugin_internal.hpp"
 #include "plugin_lifecycle.hpp"
 #include "plugin_overlay_wiring.hpp"
+#include "sidecar_config.hpp"
 
 namespace mru::plugin {
 namespace {
@@ -35,6 +36,27 @@ static void guarded_listener(std::string_view tag, const std::function<void(void
 }
 
 } // namespace
+
+// --- sidecar overlay (ADR-024) ---------------------------------------------------
+//
+// Second delivery path for the SPEC §4 keys on hosts where the hyprlang
+// `plugin:mru-switcher:*` channel is unsettable (Lua backend 0.56.2: the
+// validator rejects plugin special-category keys). Missing file = no-op.
+
+static void sidecar_warn(const std::string &msg) {
+    static bool warned = false;
+    if (warned)
+        return;
+    warned = true;
+    HyprlandAPI::addNotification(PHANDLE, msg, CHyprColor{1, 0.7, 0, 1}, 5000);
+}
+
+static void apply_sidecar_overlay(PluginConfig &cfg) {
+    const auto parsed = sidecar::load_default();
+    sidecar::apply_overlay(cfg, parsed, sidecar_warn);
+    if (!parsed.warnings.empty())
+        sidecar_warn(parsed.warnings.front());
+}
 
 void subscribe_events() {
     auto &st = state();
@@ -83,8 +105,11 @@ void subscribe_events() {
         guarded_listener("config.reloaded", [&] {
             // REQ-CFG-002: refresh cached values. The active session is untouched
             // (REQ-S-009); new values apply to the next session and to later debounce windows.
+            // ADR-024: the Lua host cannot write plugin keys, so the sidecar file
+            // overlays the same keys after the hyprlang read (hyprlang hosts: absent).
             auto &st = state();
             st.config = mru::plugin::config::read_config(st.config_v2);
+            apply_sidecar_overlay(st.config);
             st.tracker->set_debounce_ms(static_cast<std::uint32_t>(st.config.debounce_ms));
             st.controller->set_policy(policy_from_config(st.config));
             // Early bind for `ui=external`: on this pin config values are only

@@ -380,6 +380,14 @@ in 1.x; a change to any of them requires a major version bump. Additive new keys
 
 **REQ-CFG-004** Numeric `debounce_ms` outside `[0, 5000]` SHALL be clamped into range; implementations MAY log once at warn when clamping.
 
+**REQ-CFG-005** (sidecar overlay, ADR-024) On hosts where the hyprlang `plugin:mru-switcher:*` channel is
+unsettable (Lua backend), the plugin MAY read the same keys from an opt-in sidecar file
+(`$XDG_CONFIG_HOME/mru-switcher/config`, else `~/.config/mru-switcher/config`). Only keys explicitly
+present **and valid** in the file replace the hyprlang-derived value; unknown keys are ignored, invalid
+values keep the base value, every problem warns at most once and never aborts the load. Missing file is
+silent. Reload semantics follow REQ-CFG-002 (active session untouched, next session only). The key table
+above is unchanged — the sidecar is a second delivery path, not a new surface.
+
 ---
 
 ## 5. UI port specification

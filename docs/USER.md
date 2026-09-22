@@ -45,6 +45,20 @@ keybinding file comes in two flavours — pick the one for your config backend:
 * **hyprlang** (default `hyprland.conf`): `examples/mru-switcher-bindings.conf`
 * **Lua / Omarchy** (`hyprland.lua`): `examples/mru-switcher-bindings.lua`
 
+> **Lua / Omarchy — plugin settings need the sidecar file.** On the Lua
+> config backend (Hyprland 0.56.2) the `plugin:mru-switcher:*` keys are
+> unsettable — `hl.config` and the config file both reject them with
+> `unknown config key 'plugin.mru-switcher.*'` (see `docs/COMPAT.md`). Copy
+> the plugin settings to the sidecar instead:
+>
+> ```bash
+> mkdir -p ~/.config/mru-switcher
+> cp ~/.local/src/mru-switcher/examples/mru-switcher-sidecar.conf ~/.config/mru-switcher/config
+> ```
+>
+> then `hyprctl reload`. Missing file = compiled defaults (`ui=null`, no
+> visuals). Details: ADR-024, SPEC REQ-CFG-005.
+
 **Source install** — the checkout keeps them at
 `~/.local/src/mru-switcher/examples`:
 

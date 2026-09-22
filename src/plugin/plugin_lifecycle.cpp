@@ -4,6 +4,7 @@
 #include <memory>
 #include <string_view>
 
+#include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/plugins/PluginSystem.hpp>
 
 #include "border_highlight_ui.hpp"
@@ -19,8 +20,30 @@
 #include "plugin_internal.hpp"
 #include "plugin_overlay_wiring.hpp"
 #include "session_ui.hpp"
+#include "sidecar_config.hpp"
 
 namespace mru::plugin {
+
+namespace {
+
+// Warn-once sink for the sidecar overlay at load (HIGH-4: notifications only,
+// never throws into the compositor).
+void sidecar_warn_load(const std::string &msg) {
+    static bool warned = false;
+    if (warned)
+        return;
+    warned = true;
+    HyprlandAPI::addNotification(PHANDLE, msg, CHyprColor{1, 0.7, 0, 1}, 5000);
+}
+
+void apply_sidecar_overlay(PluginConfig &cfg) {
+    const auto parsed = sidecar::load_default();
+    sidecar::apply_overlay(cfg, parsed, sidecar_warn_load);
+    if (!parsed.warnings.empty())
+        sidecar_warn_load(parsed.warnings.front());
+}
+
+} // namespace
 
 PluginState &state() {
     static PluginState s;
@@ -53,6 +76,9 @@ mru::domain::SessionPolicy policy_from_config(const PluginConfig &cfg) {
 void build_state() {
     auto &st = state();
     st.config = mru::plugin::config::read_config(st.config_v2);
+    // ADR-024: Lua hosts cannot set plugin keys via hl.config — the sidecar
+    // file overlays the same SPEC §4 keys (absent on hyprlang hosts: no-op).
+    apply_sidecar_overlay(st.config);
 
     st.registry = std::make_unique<WindowIdentityRegistry>();
     st.scheduler = std::make_unique<HyprlandSchedulerPort>();
