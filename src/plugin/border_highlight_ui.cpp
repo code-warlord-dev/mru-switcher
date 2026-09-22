@@ -142,15 +142,6 @@ void BorderHighlightUI::highlight(std::size_t index) {
     if (!is_valid_ || !is_valid_(ref))
         return; // REQ-UI-010: invalid target -> skip highlight, session continues
 
-    // ADR-026 / REQ-UI-012: keep the selected window visible (workspace elevation,
-    // never window focus — REQ-F-003 / REQ-UI-006). Independent of the border
-    // read/write path below; fail-soft like it (REQ-UI-001).
-    try {
-        navigator_.ensure_visible(ref);
-    } catch (...) {
-        warn_once("workspace elevation failed");
-    }
-
     // Restore safety (R0 F10): only override once BOTH prior colour values were
     // read back, otherwise a failed restore could leave an invisible border.
     WindowCapture cap;
@@ -159,6 +150,16 @@ void BorderHighlightUI::highlight(std::size_t index) {
         !read_slot(ref.address, BorderSlot::InactiveColor, cap.inactive)) {
         warn_once("border property read failed; skipping highlight");
         return;
+    }
+
+    // ADR-026 / REQ-UI-012: keep the selected window visible (workspace elevation,
+    // never window focus — REQ-F-003 / REQ-UI-006). Runs only when the highlight
+    // is actually about to be drawn — a degraded/read-failed target never flips the
+    // view without a highlight. Fail-soft like the border writes (REQ-UI-001).
+    try {
+        navigator_.ensure_visible(ref);
+    } catch (...) {
+        warn_once("workspace elevation failed");
     }
 
     const std::string &highlight = style_color();
