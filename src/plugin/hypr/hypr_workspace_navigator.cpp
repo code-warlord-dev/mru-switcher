@@ -21,7 +21,7 @@ void HyprlandWorkspaceNavigator::ensure_visible(const mru::domain::WindowRef &re
         return;
     const PHLWORKSPACE ws = w->m_workspace;
     if (!ws)
-        return; // special/scratchpad windows have no regular workspace to show
+        return;                           // special/scratchpad windows have no regular workspace to show
     const auto mon = w->m_monitor.lock(); // PHLMONITORREF -> SP<Monitor::CMonitor>
     if (!mon)
         return; // unmapped / transient window: no monitor to elevate

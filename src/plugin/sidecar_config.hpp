@@ -39,7 +39,7 @@ struct SidecarOverrides {
     std::optional<std::string> border_color;
     std::optional<std::string> border_size;
     std::optional<std::string> selection_follow_workspace; // ADR-026 / REQ-UI-012
-    std::optional<std::string> lock_history_on_session; // reserved, REQ-H-010 / ADR-021
+    std::optional<std::string> lock_history_on_session;    // reserved, REQ-H-010 / ADR-021
     std::optional<std::string> restore_focus_on_cancel;
     std::optional<std::string> external_socket;
 };

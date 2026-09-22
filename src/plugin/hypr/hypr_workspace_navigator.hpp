@@ -38,7 +38,7 @@ class HyprlandWorkspaceNavigator : public WorkspaceNavigator {
     // monitors are SP-owned on the pin; PHLMONITORREF/raw would be a use-after-free
     // risk in end(Cancelled)).
     struct MonitorCapture {
-        PHLMONITOR monitor;              // strong ref keeps the monitor alive while we may restore
+        PHLMONITOR monitor;                // strong ref keeps the monitor alive while we may restore
         WORKSPACEID pre_elevation_id = -1; // WORKSPACE_INVALID; ids are stable on the pin
     };
 

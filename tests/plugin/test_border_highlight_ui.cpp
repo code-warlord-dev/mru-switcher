@@ -635,20 +635,19 @@ TEST(t_ui_012_degraded_session_skips_navigation) {
     int warnings = 0;
     FakeWorkspaceNavigator nav;
     const auto valid = [](const WindowRef &) { return true; };
-    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1,
-                         [&](std::string_view) { ++warnings; }, nav);
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; }, nav);
     const Snapshot snap({ref(A), ref(B)}, Scope::Global);
 
     ui.on_session_start(snap, 0);
     ui.on_selection_changed(1);
     ui.on_session_end(UIEndReason::Cancelled);
 
-    EQ(io.set_calls, 0);               // degraded to null: no border writes
-    CHECK(nav.ensured.empty());        // and no workspace elevation
-    EQ(nav.begin_calls, 1);            // begin/end still pair up per session
+    EQ(io.set_calls, 0);        // degraded to null: no border writes
+    CHECK(nav.ensured.empty()); // and no workspace elevation
+    EQ(nav.begin_calls, 1);     // begin/end still pair up per session
     EQ(nav.ends.size(), 1u);
     CHECK(nav.ends[0] == UIEndReason::Cancelled);
-    EQ(warnings, 1);                   // exactly one warn-once
+    EQ(warnings, 1); // exactly one warn-once
 }
 
 // REQ-UI-012: the end reason is forwarded verbatim; the Cancelled-restore-vs-
@@ -682,8 +681,7 @@ TEST(t_ui_012_navigator_throw_is_swallowed) {
     nav.throw_on_ensure = true;
     nav.throw_on_end = true;
     const auto valid = [](const WindowRef &) { return true; };
-    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1,
-                         [&](std::string_view) { ++warnings; }, nav);
+    BorderHighlightUI ui(io, valid, BorderStyle::Solid, kHighlight, -1, [&](std::string_view) { ++warnings; }, nav);
     const Snapshot snap({ref(A)}, Scope::Global);
 
     ui.on_session_start(snap, 0); // ensure throws -> warn-once, border still drawn

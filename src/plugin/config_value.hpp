@@ -37,8 +37,8 @@ struct PluginConfig {
     // ADR-026 / REQ-UI-012: with ui=border, keep the selected window visible by
     // elevating its (inactive) workspace onto its monitor while a session is
     // active — no window focus. `false` = exact pre-ADR-026 off-screen highlight.
-    bool selection_follow_workspace = true;        // APPLIES TO THE NEXT SESSION (REQ-CFG-002)
-    std::string external_socket;                   // REQ-O-001: AF_UNIX path (empty -> null fallback)
+    bool selection_follow_workspace = true; // APPLIES TO THE NEXT SESSION (REQ-CFG-002)
+    std::string external_socket;            // REQ-O-001: AF_UNIX path (empty -> null fallback)
 };
 
 PluginConfig default_plugin_config();

@@ -68,8 +68,8 @@ std::unique_ptr<mru::domain::UIPort> create_session_backend() {
         // to the NEXT session — REQ-CFG-002). `false` picks the shared no-op
         // navigator = exact pre-ADR-026 off-screen highlight.
         WorkspaceNavigator &navigator = state().config.selection_follow_workspace
-            ? static_cast<WorkspaceNavigator &>(*state().workspace_navigator)
-            : null_workspace_navigator();
+                                            ? static_cast<WorkspaceNavigator &>(*state().workspace_navigator)
+                                            : null_workspace_navigator();
         return std::make_unique<BorderHighlightUI>(
             *state().border_io,
             [&](const mru::domain::WindowRef &ref) { return static_cast<bool>(state().registry->resolve(ref)); },
