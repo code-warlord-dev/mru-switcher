@@ -8,7 +8,12 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Changed
 
-- Plugin version corrected to match the 0.5.0 release line (CMake PROJECT_VERSION was stale at 0.4.0 while v0.5.0 tag already exists).
+- Plugin version corrected to match the 0.5.0 release line (CMake PROJECT_VERSION was stale at
+  0.4.0 while the v0.5.0 tag already exists).
+- **`ui` default is now `border` (ADR-025):** the plugin shows the border highlight
+  out of the box — on Lua/Omarchy hosts no config channel exists (ADR-024), so the old
+  `null` default meant invisible switching. Set `ui = null` explicitly to opt out.
+  Unknown `ui` tokens still fall back to null per REQ-CFG-001.
 
 ### Added
 

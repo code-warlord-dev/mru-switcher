@@ -54,12 +54,15 @@ TEST(cfg_04_ui_backend_parse) {
 // REQ-UI-003 / REQ-UI-002: effective backend selection (border vs null/external).
 TEST(t_ui_03_effective_backend_selection) {
     PluginConfig cfg = default_plugin_config();
-    EQ(effective_ui_backend(cfg), UiBackend::Null); // default ui=null
+    EQ(effective_ui_backend(cfg), UiBackend::Border); // ADR-025: default ui=border
 
-    cfg.ui_border = true;
-    EQ(effective_ui_backend(cfg), UiBackend::Border);
+    PluginConfig null_cfg; // explicit opt-out token ui=null
+    null_cfg.ui_null = true;
+    null_cfg.ui_border = false;
+    EQ(effective_ui_backend(null_cfg), UiBackend::Null);
 
     cfg.ui_border = false;
+    cfg.ui_null = false;
     cfg.ui_external = true; // M5: external overlay backend (ADR-018)
     EQ(effective_ui_backend(cfg), UiBackend::External);
 }
@@ -91,9 +94,10 @@ TEST(cfg_06_defaults) {
     CHECK(cfg.wrap);
     CHECK(cfg.lock_history_on_session); // reserved key: default stays true (REQ-H-010)
     CHECK(!cfg.restore_focus_on_cancel);
-    CHECK(cfg.ui_null);
-    CHECK(!cfg.ui_border);
-    CHECK(!cfg.ui_external);
+    CHECK(!cfg.ui_null);  // ADR-025: default is border
+    CHECK(cfg.ui_border); // ADR-025: default is border (REQ-UI-003)
+    CHECK(cfg.ui_external == false);
+    CHECK(cfg.ui_matched); // default token "border" is recognized (REQ-CFG-001)
 }
 
 // REQ-UI-008: M4 border config defaults.

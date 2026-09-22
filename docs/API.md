@@ -61,7 +61,7 @@ Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT`.
 | `wrap` | bool | `true` | |
 | `lock_history_on_session` | bool | `true` | **Reserved / ignored**: locking the window list while a session is active is mandatory. The key stays registered so 0.x configs keep parsing; a `false` value only triggers one warning notification per plugin lifetime. Removal is a 2.0 candidate |
 | `restore_focus_on_cancel` | bool | `false` | |
-| `ui` | enum | `null` | null \| border \| external |
+| `ui` | enum | `border` | null \| border \| external. Default `border` (ADR-025); `null` = explicit opt-out |
 | `external_socket` | string | `""` | AF_UNIX path for `ui = external`. Empty or unbindable → behaves as `null` + one warning |
 
 ### Added for border highlight (`ui = border`)

@@ -46,8 +46,8 @@ bool register_all(HANDLE handle, Values &out) {
     if (!HyprlandAPI::addConfigValueV2(handle, out.wrap))
         return false;
 
-    out.ui =
-        Config::Values::makeConfigValue<Config::Values::String>(KEY_UI, "UI backend: null | border | external", "null");
+    out.ui = Config::Values::makeConfigValue<Config::Values::String>(
+        KEY_UI, "UI backend: null | border | external (ADR-025 default)", "border");
     if (!HyprlandAPI::addConfigValueV2(handle, out.ui))
         return false;
 
