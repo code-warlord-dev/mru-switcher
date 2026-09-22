@@ -28,14 +28,20 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         if (!mru::plugin::hash_ok())
             throw std::runtime_error("mru-switcher: header hash mismatch, refusing to load");
 
-        if (!mru::plugin::config::register_all(PHANDLE, mru::plugin::state().config_v2)) {
+        if (const auto reg_err = mru::plugin::config::register_all(PHANDLE, mru::plugin::state().config_v2)) {
             // fail closed: an empty PLUGIN_DESCRIPTION_INFO does NOT unload the plugin
             // on pin 0.56.2 (loadPluginInternal has no empty-description check). The
             // only reliable fail-closed channel is an exception: loadPluginInternal
             // wraps initFunc in try/catch + setjmp and on std::exception runs
             // unloadPlugin(PLUGIN, true) and rejects the load. So PLUGIN_INIT lets a
             // std::exception propagate; the compositor's own catch is that barrier.
-            throw std::runtime_error("mru-switcher: failed to register config values");
+            //
+            // The most common host rejection is a name collision: the same keys are
+            // already registered because a mru-switcher instance is already loaded
+            // (Lua config backend 0.56.2, ADR-024 hosts; see registerPluginValue).
+            // Surface the actionable unload-first hint instead of a bare failure.
+            throw std::runtime_error("mru-switcher: failed to register config values: " + *reg_err +
+                                     " (if mru-switcher is already loaded, unload it first and try again)");
         }
         mru::plugin::build_state();            // constructs all members, seeds MRU (HIGH-5)
         mru::plugin::subscribe_events();       // HIGH-5: listeners after state exists

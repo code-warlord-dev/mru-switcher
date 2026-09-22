@@ -1,11 +1,11 @@
 # Session State
-Updated: 2026-09-22 (late)
-Human goal: (1) 3 new skills integrated into docs ✅ PR #96; (2) stale build* dirs purged (canonical build/ kept) ✅; (3) PROJECT_VERSION 0.4.0→0.5.0 ✅ PR #96; (4) ui=border default + bug fix ✅ PR #97 (ADR-025). РЕЛИЗ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ
-Active milestone: M6 (release-prep); v1.0.0 tag strictly human-gated — NOT executed
-Branch: main @ 1efbe77
-PR: #96 (skills+version+cleanup) and #97 (ADR-025 ui=border) both merged, branches deleted
+Updated: 2026-09-22
+Human goal: live-host border highlight must work on Lua/Omarchy. РЕЛИЗ/ТЕГ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ; PR → main обязателен (запрос человека).
+Active milestone: M6 (release-prep); v1.0.0 tag strictly human-gated
+Branch: fix/lua-host-border-and-ui-default (rebase planned on main b3ff7ca #96-#98)
+PR: #99 (to be updated after rebase; old base 20de82c not mergeable)
 Blocked: none
-Next action: idle — await human: live-host hyprpm reload to pick up 0.5.0 (border default will apply without any config); then M6-T9 tag ONLY on explicit command
-SPEC focus: REQ-CFG-002, REQ-UI-002/003 (ADR-025); ADR-024 sidecar unchanged
-Open questions: ui_matched=true on default (border recognized) — verified; unknown-token fallback still → null (REQ-CFG-001)
-Last artifact: PR #97 (squash 1efbe77) — ADR-025, SPEC §4/§5.2, 19/19 ctest, clang-format clean; ui default flip is user-visible, CHANGELOG Changed has both bullets
+Next action: PR #99 must be rebuilt onto main b3ff7ca — drop duplicated ADR-025/default/docs (already in main via #97), keep unique delta: (1) HyprctlBorderPropIo::set → in-process g_pKeybindManager->m_dispatchers["setprop"] (Lua dispatch shim broke unquoted setprop; nest-verified: mru:cycle writes 0xffffd9a0, cancel restores); (2) register_all returns optional reason + unload-first hint (Lua name-collision on re-load). Docs: CHANGELOG Fixed x2, USER FAQ x2, COMPAT rows x2 + row 49 + M4 mechanism. Then human live-host swap: unload /var/cache/hyprpm/code_warlord/mru-switcher/mru-switcher.so → load ~/.local/src/mru-switcher/build/mru-switcher.so.
+SPEC focus: REQ-UI-002/003/011; REQ-CFG-002/005; ADR-024/025 (on main)
+Open questions: (1) upstream Lua `plugin {}` support? (2) live swap done by human on Omarchy host?
+Last artifact: nest verification of border fix (nest3.log); ctest green at 20de82c; PR #99 opened then superseded by #96-#98 landing
