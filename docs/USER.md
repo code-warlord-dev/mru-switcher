@@ -56,8 +56,8 @@ keybinding file comes in two flavours — pick the one for your config backend:
 > cp ~/.local/src/mru-switcher/examples/mru-switcher-sidecar.conf ~/.config/mru-switcher/config
 > ```
 >
-> then `hyprctl reload`. Missing file = compiled defaults (`ui=null`, no
-> visuals). Details: ADR-024, SPEC REQ-CFG-005.
+> then `hyprctl reload`. Missing file = compiled defaults (`ui=border` by
+> default, ADR-025; `ui = null` opts out of visuals). Details: ADR-024, SPEC REQ-CFG-005.
 
 **Source install** — the checkout keeps them at
 `~/.local/src/mru-switcher/examples`:
@@ -117,9 +117,10 @@ hyprctl reload
 ```
 
 `examples/mru-switcher.conf` documents every config key inline (purpose,
-default, allowed values) and sets `ui = border` — a first-run demo override of
-the plugin default `null` — so you can see the selection; set it back to
-`null` if you prefer no visual feedback.
+default, allowed values). The plugin default is `ui = border` since ADR-025
+(built-in visual feedback, especially on Lua/Omarchy hosts with no config
+channel — ADR-024); the example keeps the explicit line so you can see the
+setting. Set `ui = null` if you prefer no visual feedback.
 
 ### 3. Recommended binds, inline
 
@@ -296,7 +297,7 @@ hyprctl activewindow -j
 | `border` | Temporarily highlight the **selected** window's border while you hold Alt and cycle |
 | `external` | Drive an external overlay via an AF_UNIX socket (see below). Empty/unbindable path → behaves as `null` with a one-time warning |
 
-Default is `null`. To enable border highlight:
+Default is `border` (ADR-025) — the highlight shows out of the box. To disable visual feedback:
 
 ```conf
 plugin {

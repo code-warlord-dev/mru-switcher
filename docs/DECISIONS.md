@@ -1256,3 +1256,42 @@ visual feedback), while hyprlang hosts configure it normally.
 
 ---
 
+## ADR-025: Default UI is border
+
+**Status:** Accepted (2026-09-22) — human decision by CEO.
+
+**Context:**
+
+ADR-024 established that on Lua/Omarchy hosts every channel for
+`plugin:mru-switcher:*` keys is dead: no hyprlang keys, no `hyprctl keyword`,
+no proven `hl.plugin.load(path, config)` path. On those hosts the plugin runs
+on compiled defaults alone. With the compiled default `ui = null` (ADR-011),
+that means the plugin is **visually silent by default** — users see Alt+Tab do
+"nothing" and file "no visuals / ui=border not applied" bug reports. The
+sidecar (ADR-024) is opt-in and does not fix first-run behaviour.
+
+**Decision:**
+
+- The compiled and registered default for the `ui` key becomes **`border`**
+  (both `PluginConfig` member defaults and the hyprlang registration default in
+  `config_v2.cpp`).
+- `ui = null` remains the explicit opt-out token for users who want purely
+  keyboard-driven switching.
+- Unknown `ui` tokens still fall back to `null` per REQ-CFG-001 (fallback
+  behaviour unchanged — only the default changes).
+- This supersedes ADR-011's "default is null" clause and the ADR-017
+  conditional ("M4 may change the default to `border` with a CHANGELOG entry").
+  Unknown-token fallback (REQ-CFG-001 / REQ-UI-002) is unchanged.
+
+**Consequences:**
+
+- Visual feedback (border highlight) works out of the box on Lua/Omarchy hosts
+  where no config channel exists (ADR-024 evidence).
+- hyprlang hosts behave identically except for the default: a config that never
+  mentions `ui` now gets `border` instead of `null`; an explicit `ui = null`
+  keeps the old non-visual behaviour.
+- `ui = external` and unknown-token fallback paths are untouched.
+- Change is user-visible: noted in CHANGELOG under Unreleased / Changed.
+
+---
+

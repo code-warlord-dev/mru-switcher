@@ -128,6 +128,8 @@ bool color_slot_write_is_bare_clear(const FakeBorderPropIo &io) {
 // --- T-UI-03: ui=null -> no border side effects ---------------------------------
 TEST(t_ui_03_null_backend_no_border_io) {
     mru::plugin::PluginConfig cfg = mru::plugin::default_plugin_config();
+    cfg.ui_null = true; // ADR-025: default is border, so opt out explicitly here
+    cfg.ui_border = false;
     EQ(mru::plugin::effective_ui_backend(cfg), mru::plugin::UiBackend::Null);
 
     FakeBorderPropIo io; // must stay untouched: the null backend has no adapter

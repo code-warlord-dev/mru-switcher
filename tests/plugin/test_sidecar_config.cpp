@@ -62,7 +62,8 @@ TEST(sidecar_04_invalid_values_keep_base) {
     apply_overlay(cfg, p, [&](const std::string &w) { warns.push_back(w); });
     CHECK(cfg.debounce_ms == base.debounce_ms);
     CHECK(cfg.wrap == base.wrap);
-    CHECK(cfg.ui_null && !cfg.ui_border); // unmatched ui keeps base (REQ-CFG-001)
+    // Invalid ui value keeps the base config (ADR-025 default: border) — REQ-CFG-001.
+    CHECK(cfg.ui_border && !cfg.ui_null);
     CHECK(cfg.default_scope == base.default_scope);
     CHECK(cfg.start_offset == base.start_offset);
     CHECK(cfg.border_size == base.border_size);

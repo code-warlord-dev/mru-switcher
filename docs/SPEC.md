@@ -364,7 +364,7 @@ in 1.x; a change to any of them requires a major version bump. Additive new keys
 | `default_scope` | string | `global` | One of: `global`, `monitor`, `workspace`, `visible`, `app` |
 | `start_offset` | string | `second` | `first` \| `second` |
 | `wrap` | bool | `true` | Wrap selection at ends |
-| `ui` | string | `null` | `null` \| `border` \| `external` — see REQ-UI-002 |
+| `ui` | string | `border` | `null` \| `border` \| `external` — see REQ-UI-002. Default `border` per ADR-025; `null` = explicit opt-out |
 | `border_style` | string/enum | `solid` | Border highlight style; M4: only `solid` has effect; unknown/reserved (`pulse`, `dim`, …) → `solid` + warn-once (REQ-UI-007) |
 | `border_color` | color/string | `0xffffd9a0` | Border highlight colour — documented implementation default (hex `0xAARRGGBB`); format as accepted by the pinned Hyprland; documented in USER/API (REQ-UI-008) |
 | `border_size` | int | `-1` | Border highlight size; `-1` = do not touch window border size (colour only) (REQ-UI-008) |
@@ -408,7 +408,7 @@ on_session_end(reason: Applied | Cancelled)  # UI; internal SessionEndReason is 
 | `border` | Visible highlight of selected window; cleared on session end; MUST NOT leave permanent rule damage |
 | `external` | Best-effort notify via AF_UNIX socket (M5, ADR-018); session logic MUST work if peer absent |
 
-UI provisioning follows ADR-004 / ADR-017; the config default stays `null` in M4 (ADR-011) and concrete border symbols are adapter-private, recorded in `docs/COMPAT.md` (REQ-UI-011).
+UI provisioning follows ADR-004 / ADR-017; the config default is `border` since ADR-025 (previously `null` per ADR-011; `null` remains the explicit opt-out) and concrete border symbols are adapter-private, recorded in `docs/COMPAT.md` (REQ-UI-011).
 
 **REQ-UI-001** Failures inside any `UIPort` implementation SHALL NOT abort `mru:cycle`, `mru:apply`, or `mru:cancel`, and SHALL NOT leave the session state machine in an undefined state. Session transitions remain driven by the controller and FocusGateway.
 
@@ -442,7 +442,7 @@ UI provisioning follows ADR-004 / ADR-017; the config default stays `null` in M4
 
 **REQ-UI-011** Prefer public compositor/plugin APIs for border mutation on the pinned Hyprland revision. Exact symbols are adapter-private and recorded in `docs/COMPAT.md`. Function hooks are not required for M4 compliance.
 
-M4 UI out of scope: live window previews inside the plugin; full behaviour of `pulse` / `dim` (reserved only); the M5 external overlay protocol; changing the default `ui` from `null` to `border` (optional product decision + CHANGELOG, not required by REQ-UI-*).
+M4 UI out of scope: live window previews inside the plugin; full behaviour of `pulse` / `dim` (reserved only); the M5 external overlay protocol. ~~Changing the default `ui` from `null` to `border`~~ — done via ADR-025 (default is now `border`; CHANGELOG entry under Unreleased).
 
 ### 5.3 External overlay (M5)
 
@@ -867,7 +867,7 @@ after the user has copied the example files.
 
 ### 14.10 Out of scope for this section
 
-- Changing default `ui` from `null` (ADR-011).  
+- ~~Changing default `ui` from `null` (ADR-011)~~ — superseded by ADR-025 (default is `border`; `null` is the explicit opt-out).  
 - Adding new dispatchers or config keys.  
 - Guaranteeing hyprpm behaviour on untested Hyprland commits.  
 - Windows / non-Linux packaging.  

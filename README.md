@@ -294,9 +294,9 @@ the key applies the selection (the `bindrt` line flagged for a re-check on this
 pinned build in
 [Part 2](#part-2--keybindings-choose-one-backend)), `Escape` cancels. The example
 config ships with
-`ui = border` (a first-run override of the plugin default) so you can see the
-selection while you browse; see the comments in the file to switch it back to
-`null`.
+`ui = border` (the built-in default since ADR-025, kept explicit so you can
+find and flip it) so you can see the
+selection while you browse; set `ui = null` in the file to switch visuals off.
 
 ### Guided helper for the keybindings
 
@@ -371,8 +371,9 @@ bind = ALT, TAB, mru:cycle, next monitor
 
 **UI backends** — the switching logic is independent of how it looks:
 
-* `null` — no visual feedback (the built-in default; pure keyboard workflow)
-* `border` — highlights the selected window's border while browsing. The
+* `null` — no visual feedback (opt-out; set `ui = null`; pure keyboard workflow)
+* `border` — highlights the selected window's border while browsing. This is
+  the **built-in default** (ADR-025). The
   border follows the **virtual selection**; real focus only moves on apply.
 * `external` — drives an out-of-process overlay over a socket for custom UIs.
   Opt-in and advanced; without a peer it behaves exactly like `null`.
@@ -390,8 +391,10 @@ mru:status
 
 ## Troubleshooting
 
-* **No visual feedback while switching** — the built-in default is `ui = null`.
-  Set `ui = border` (as the example does) to see the selection.
+* **No visual feedback while switching** — visual feedback is on by default
+  (`ui = border`, ADR-025), so silence means it was explicitly disabled or the
+  border backend degraded at session start (one-time warning). Set `ui = null`
+  to opt out.
 * **Alt+Tab does nothing** — first make sure the keybindings are actually
   installed (`hyprctl binds -j` should list the `mru:` binds after a reload on
   Hyprlang; on Lua run the recipe in
