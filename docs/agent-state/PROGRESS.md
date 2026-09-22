@@ -1,4 +1,5 @@
 # Progress
+Updated: 2026-09-22 (late) — skills integration PR #96 + ADR-025 ui=border default PR #97 merged; next: M6-T9 tag — human gate only
 Updated: 2026-09-22 (ADR-023 merged PR #87; live-host diagnosis: Lua plugin-config dead end — reports/2026-09-22-lua-host-plugin-config-dead-end.md; next: M6-T9 tag — human gate only)
 
 ## M0 Foundations
@@ -120,3 +121,5 @@ Updated: 2026-09-22 (ADR-023 merged PR #87; live-host diagnosis: Lua plugin-conf
   (`examples/mru-switcher-sidecar.conf`), same 11 SPEC §4 keys, REQ-CFG-005, T-CFG-07 (7 cases), COMPAT/USER honesty;
   **facade split** merged as PR #92 (squash e094c81): `mru_plugin.cpp` 516→74 lines. REMAINING (human): live-host
   sidecar verification (copy example → reload → border highlight) + optional upstream Lua `plugin {}` research
+- [x] Skills integration + version + cleanup — merged PR #96 (squash c485915): hyprland-lua / hyprland-lua-config / omarchy-plugin-security vendored + integrated into AGENTS.md (§3.2 default-skill rule for Lua work, §3.3-§3.6, §10) + .agents/skills/README.md; skills-lock.json committed; 17 stale build* dirs purged (canonical build/ kept); CMake PROJECT_VERSION corrected 0.4.0 → 0.5.0 (v0.5.0 tag exists in history). No REQ-*, CI 8/8
+- [x] ui = border default (ADR-025, CEO decision) — merged PR #97 (squash 1efbe77): compiled + registered default `ui = border` (config_value.hpp / config_v2.cpp); `ui = null` explicit opt-out; unknown-token fallback → null unchanged (REQ-CFG-001); ADR-025 supersedes ADR-011 default clause + ADR-017 conditional; SPEC §4/§5.2/§5 M4 note/§14.10, USER/API/COMPAT/README/examples/CHANGELOG aligned; tests: cfg_06_defaults, t_ui_03_effective_backend_selection, t_ui_03_null_backend_no_border_io (explicit null cfg), sidecar_04; ctest 19/19 + CI 8/8 + clang-format clean. M4 "out of scope" flip closed

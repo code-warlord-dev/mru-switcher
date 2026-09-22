@@ -1,12 +1,11 @@
 # Session State
-Updated: 2026-09-22
-Human goal: facade split (PR #92) + sidecar config fix for Lua hosts (PR #94) delivered per human brief. РЕЛИЗ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ
-Active milestone: M6 (release-prep); v1.0.0 tag strictly human-gated (NO tag without explicit human command)
-Branch: main (8148ea2)
-PR: #92 (facade split) + #94 (ADR-024 sidecar) merged; no open PRs
+Updated: 2026-09-22 (late)
+Human goal: (1) 3 new skills integrated into docs ✅ PR #96; (2) stale build* dirs purged (canonical build/ kept) ✅; (3) PROJECT_VERSION 0.4.0→0.5.0 ✅ PR #96; (4) ui=border default + bug fix ✅ PR #97 (ADR-025). РЕЛИЗ ТОЛЬКО ПО ЯВНОЙ КОМАНДЕ
+Active milestone: M6 (release-prep); v1.0.0 tag strictly human-gated — NOT executed
+Branch: main @ 1efbe77
+PR: #96 (skills+version+cleanup) and #97 (ADR-025 ui=border) both merged, branches deleted
 Blocked: none
-Next action: idle — wait for human: (a) live-host sidecar verification (copy examples/mru-switcher-sidecar.conf → ~/.config/mru-switcher/config + reload → border highlight), (b) upstream Lua plugin-{} research, (c) empirical bindrt nest check, (d) M6-T9 tag on explicit command
-State: mru_plugin.cpp 516→74 lines (INIT/EXIT only); sidecar overlay live on main (REQ-CFG-005/ADR-024). Live host still on hyprpm-cached .so — needs hyprpm rebuild/reload to pick up sidecar.
-SPEC focus: REQ-CFG-005 (sidecar overlay); REQ-DISP-001/002/003, REQ-CFG-001/002/004
-Open questions: (1) upstream Lua `plugin {}` support? (2) sidecar verified live on Omarchy host?
-Last artifact: PR #94 (squash 8148ea2) — sidecar_config + T-CFG-07 + ADR-024 + COMPAT/USER honesty
+Next action: idle — await human: live-host hyprpm reload to pick up 0.5.0 (border default will apply without any config); then M6-T9 tag ONLY on explicit command
+SPEC focus: REQ-CFG-002, REQ-UI-002/003 (ADR-025); ADR-024 sidecar unchanged
+Open questions: ui_matched=true on default (border recognized) — verified; unknown-token fallback still → null (REQ-CFG-001)
+Last artifact: PR #97 (squash 1efbe77) — ADR-025, SPEC §4/§5.2, 19/19 ctest, clang-format clean; ui default flip is user-visible, CHANGELOG Changed has both bullets
