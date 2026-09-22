@@ -86,7 +86,8 @@ add_library(mru_plugin_core STATIC
   src/plugin/session_ui.cpp
   src/plugin/overlay_protocol.cpp
   src/plugin/external_overlay_ui.cpp
-  src/plugin/overlay_socket_server.cpp)
+  src/plugin/overlay_socket_server.cpp
+  src/plugin/sidecar_config.cpp)
 target_include_directories(mru_plugin_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)
 target_link_libraries(mru_plugin_core PUBLIC mru_domain)
 mru_warnings(mru_plugin_core)
@@ -97,6 +98,13 @@ if(MRU_BUILD_TESTS)
   target_link_libraries(plugin_config_value PRIVATE mru_plugin_core)
   mru_warnings(plugin_config_value)
   add_test(NAME plugin_config_value COMMAND plugin_config_value)
+
+  # REQ-CFG-005 / ADR-024: sidecar overlay (Lua hosts) — pure parse + overlay.
+  add_executable(plugin_sidecar_config tests/plugin/test_sidecar_config.cpp)
+  target_include_directories(plugin_sidecar_config PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
+  target_link_libraries(plugin_sidecar_config PRIVATE mru_plugin_core)
+  mru_warnings(plugin_sidecar_config)
+  add_test(NAME plugin_sidecar_config COMMAND plugin_sidecar_config)
 
   add_executable(plugin_dispatch_args tests/plugin/test_dispatch_args.cpp)
   target_include_directories(plugin_dispatch_args PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/domain)
