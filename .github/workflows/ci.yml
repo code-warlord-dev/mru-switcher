@@ -165,12 +165,14 @@ jobs:
       - name: Plugin core stays Hyprland-free (ADR-007)
         run: |
           # The plugin core library (config_value, dispatch_args, status_format,
-          # mru_merge) must stay Hyprland-free; only the .so facade (mru_plugin.cpp/hpp)
-          # and the V2 config layer (config_v2.cpp/hpp, which reads Hyprland config
-          # values) may pull hyprland/hyprutils types.
+          # mru_merge, sidecar_config, session_ui, overlay protocol/socket) must
+          # stay Hyprland-free; only the .so facade TUs (mru_plugin.cpp/hpp,
+          # plugin_dispatch/lua_bridge/events/overlay_wiring/lifecycle +
+          # plugin_internal.hpp) and the V2 config layer (config_v2.cpp/hpp,
+          # which reads Hyprland config values) may pull hyprland/hyprutils types.
           if grep -nE '#include[ <"]*hypr(land|utils)' src/plugin/*.cpp src/plugin/*.hpp \
-              | grep -vE '^src/plugin/(mru_plugin\.cpp|mru_plugin\.hpp|config_v2\.cpp|config_v2\.hpp):' ; then
-            echo "plugin core must stay Hyprland-free (only facade mru_plugin.{cpp,hpp} and config layer config_v2.{cpp,hpp} may include hyprland/hyprutils)"; exit 1
+              | grep -vE '^src/plugin/(mru_plugin\.cpp|mru_plugin\.hpp|config_v2\.cpp|config_v2\.hpp|plugin_dispatch\.cpp|plugin_dispatch\.hpp|plugin_lua_bridge\.cpp|plugin_lua_bridge\.hpp|plugin_events\.cpp|plugin_events\.hpp|plugin_overlay_wiring\.cpp|plugin_overlay_wiring\.hpp|plugin_lifecycle\.cpp|plugin_lifecycle\.hpp|plugin_internal\.hpp):' ; then
+            echo "plugin core must stay Hyprland-free (only the facade TUs mru_plugin/plugin_dispatch/plugin_lua_bridge/plugin_events/plugin_overlay_wiring/plugin_lifecycle/plugin_internal and the config layer config_v2.{cpp,hpp} may include hyprland/hyprutils)"; exit 1
           fi
           echo OK
       - name: Forbid V1 config reads and raw ptr() casts (RP-1, RP-3)
