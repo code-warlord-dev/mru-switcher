@@ -73,6 +73,7 @@
 | REQ-CFG-002 | T-CFG-02 | reload next session only | M2 |
 | REQ-CFG-003 | T-CFG-02 | ui next session | M3 |
 | REQ-CFG-004 | T-CFG-03 | debounce_ms clamp to [0,5000] | M2 |
+| REQ-CFG-005 | T-CFG-07 (sidecar parse+overlay) | sidecar overlay for Lua hosts (ADR-024) | M6 |
 | REQ-UI-001 | T-UI-02, T-UI-06, `t_ui_01_io_exception_is_swallowed`, `t_ui_01_warn_sink_throw_is_swallowed`, `t_ui_009_factory_throw_is_swallowed` | UI isolation (fail-soft) | M4 |
 | REQ-UI-002 | T-UI-01, `t_ui_002_runtime_probe_degrades_no_writes`, `t_ui_002_degrade_resets_next_session`, `t_ui_01_partial_capture_skips_window` | backend -> null fallback + warn-once (ADR-011); session-start runtime probe degrade + R0 F10 capture leg | M4 |
 | REQ-UI-003 | T-UI-03, T-UI-04, `t_ui_009_backend_swap_next_session` | BorderHighlightUI via `ui=border` (ADR-017) | M4 |
@@ -170,6 +171,7 @@
 | T-CFG-03 | debounce_ms clamp to [0,5000] | M2 |
 | T-CFG-04 | ui backend parse | M2 |
 | T-CFG-05 | start_offset parse | M2 |
+| T-CFG-07 | sidecar parse + overlay (REQ-CFG-005, ADR-024) | M6 |
 | T-CFG-06 | config defaults | M2 |
 | T-UI-01 | backend fallback | M2 |
 | T-UI-02 | UI throw isolated | M4 |

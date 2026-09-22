@@ -1193,6 +1193,63 @@ the model recommended here is proven in production on the same pin. Evidence mem
   working" downgraded to "re-verify before 1.0".
 - The empirical nest check on `efb5099` is human-gated (see the correction plan's
   "Deferred" section) — this ADR carries source-level reasoning only.
+
+## ADR-024: Sidecar config file as a second delivery path for Lua hosts
+
+**Status:** Accepted (2026-09-22)
+
+**Context:**
+
+On the pinned Hyprland (v0.56.2 / `efb5099`) with the Lua config backend
+(Omarchy), every channel for `plugin:mru-switcher:*` keys is dead: the Lua
+validator rejects plugin special-category keys (`unknown config key
+'plugin.mru-switcher.*'`) both from `hl.config()` and from the config-file
+parse on reload; `hyprctl keyword` is disabled on non-legacy parsers; the
+`hl.plugin.load(path, config)` table path is unproven. Evidence:
+`docs/agent-state/reports/2026-09-22-lua-host-plugin-config-dead-end.md`.
+The plugin therefore runs on compiled defaults on Lua hosts (`ui=null` — no
+visual feedback), while hyprlang hosts configure it normally.
+
+**Decision:**
+
+- The plugin reads an opt-in sidecar file —
+  `$XDG_CONFIG_HOME/mru-switcher/config`, else `~/.config/mru-switcher/config`
+  — at `PLUGIN_INIT` (build_state) and on every `config.reloaded`, and
+  overlays it onto the hyprlang-derived config.
+- The sidecar carries the **same 11 SPEC §4 keys only** (whitelist, `key =
+  value` lines, `#`/`;` comments). No new keys, no renames, no default change
+  (`ui` stays `null` unless the file says otherwise).
+- Precedence: only keys explicitly present **and valid** in the file replace
+  the hyprlang value. Unknown keys are ignored; invalid values keep the base
+  value; every problem warns at most once and never throws into the
+  compositor (HIGH-4). Missing/unreadable file is silent (hyprlang hosts).
+- `lock_history_on_session` stays reserved and ignored downstream (ADR-021);
+  a `false` value only warns.
+- Reload semantics follow REQ-CFG-002: the overlay refreshes on
+  `config.reloaded`; the active session is untouched, new values apply to the
+  next session (and to later debounce windows).
+- This is a **delivery path**, not a new config surface: SPEC §4 gains
+  REQ-CFG-005 (sidecar overlay rule) but the key table is unchanged; the
+  1.x freeze on names/types/defaults holds.
+
+**Consequences:**
+
+- Lua/Omarchy users get the full config surface (including `ui=border`) via
+  `examples/mru-switcher-sidecar.conf` copied to `~/.config/mru-switcher/config`.
+- hyprlang users are unaffected (no file → no-op).
+- COMPAT.md records the host gap with the sidecar as mitigation; USER.md
+  directs Lua users to the sidecar.
+- A runtime setter (`mru:configure` / `hl.plugin.mru.set`) is explicitly **out
+  of scope** — a future ADR if ever needed.
+- Upstream fix (Lua `plugin {}` support) remains the long-term answer; the
+  sidecar is the product fix for the pin.
+
+### Follow-ups
+
+- `src/plugin/sidecar_config.{hpp,cpp}` (Hyprland-free core) + `tests/plugin/test_sidecar_config.cpp`.
+- Lifecycle/events integration (overlay after `read_config`, warn-once sink).
+- `examples/mru-switcher-sidecar.conf`, SPEC REQ-CFG-005, REQ-TRACE row, CHANGELOG entry.
+
 - Optional / later: native plugin Alt-release detection via
   `Event::bus()->m_events.input.keyboard.key` (event-driven, no hooks), which would make
   hyprlang users independent of the `bindrt` question.
