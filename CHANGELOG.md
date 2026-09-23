@@ -24,9 +24,10 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
   the compositor main thread; full-cycle period `pulse_period_ms`, clamped `[200, 10000]`), and `dim`
   (the selected window keeps the highlight colour and every other valid ring window's per-window
   alpha — `opacity` + `opacity_inactive` — is dropped to `dim_alpha`, clamped `[0, 1]`; `>= 1`
-  disables dimming). Alpha overrides earlier the render both channels are used (`applyAlpha` on
-  `alpha()`/`alphaInactive()`); prior alphas are restored by value on selection change / session end,
-  unreadable windows are skipped (fail-soft, REQ-UI-001/005), and pulse degrades to a constant colour
+  disables dimming). The override targets both render channels — the active channel for the focused
+  window, the inactive one for every other (`applyAlpha` on `alpha()`/`alphaInactive()`); prior alphas
+  are restored by value on selection change / session end, unreadable windows are skipped (fail-soft,
+  REQ-UI-001/005), and pulse degrades to a constant colour
   with warn-once when the host provides no timer or `schedule()` fails/throws. Unknown `border_style`
   tokens still fall back to `solid` + warn-once; `pulse`/`dim` no longer warn. Both keys deploy on the
   hyprlang channel (V2), the Lua sidecar (ADR-024), and clamp identically across both. Pure layer:
