@@ -14,6 +14,7 @@
 #include "hypr/hypr_window_source.hpp"
 #include "hypr/hyprctl_border_prop_io.hpp"
 #include "hypr/hyprland_overlay_socket.hpp"
+#include "hypr/hyprland_pulse_timer.hpp"
 #include "hypr/null_ui.hpp"
 #include "mru/domain/history_tracker.hpp"
 #include "mru/domain/session_controller.hpp"
@@ -102,6 +103,10 @@ void build_state() {
     // is empty or the socket cannot start (REQ-O-001); `null`/unknown use the no-op
     // backend.
     st.border_io = std::make_unique<HyprctlBorderPropIo>();
+    // ADR-028/REQ-UI-013: compositor-main-thread pulse timer for border_style =
+    // pulse. Lives as long as the plugin state so BorderHighlightUI can borrow a
+    // PulseTimerPort& per session (rebuilt backend keeps using the same timer).
+    st.pulse_timer = std::make_unique<HyprlandPulseTimer>();
     st.overlay_socket = std::make_unique<HyprlandOverlaySocket>();
     // Best-effort early bind (see try_start_overlay_socket). On this pin the
     // registered config values are not yet populated during PLUGIN_INIT, so the
@@ -133,6 +138,7 @@ void teardown_state() {
     st.controller.reset();
     st.ui.reset();
     st.overlay_socket.reset(); // after ui: ExternalOverlayUI holds its transport& (ADR-018)
+    st.pulse_timer.reset();    // after ui: BorderHighlightUI borrows its PulseTimerPort& (ADR-028)
     st.border_io.reset();
     st.workspace_navigator.reset(); // holds registry&; dies before the registry below
     st.fg.reset();

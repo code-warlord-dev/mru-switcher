@@ -18,9 +18,20 @@ namespace mru::plugin {
 
 // Per-window border property slots used by BorderHighlightUI. Slot names map to
 // the pinned Hyprland `setprop` grammar (`active_border_color`,
-// `inactive_border_color`, `border_size`); the mapping is adapter-private
-// (REQ-UI-011, docs/COMPAT.md).
-enum class BorderSlot { ActiveColor, InactiveColor, Size };
+// `inactive_border_color`, `border_size`, `opacity`, `opacity_inactive`); the
+// mapping is adapter-private (REQ-UI-011, docs/COMPAT.md). Alpha slots carry the
+// per-window alpha override used by border_style = dim (ADR-028/REQ-UI-014):
+// BOTH channels are overridden because the render uses the active channel for
+// the focused window and the inactive channel for every other window (pin
+// evidence: src/desktop/view/Window.cpp applyAlpha on alpha()/alphaInactive()).
+enum class BorderSlot { ActiveColor, InactiveColor, Size, Alpha, AlphaInactive };
+
+// Pure colour helper: a darker variant of the border colour for the pulse throb
+// (ADR-028/REQ-UI-013). Accepts the verbatim setprop grammar — hex 0xAARRGGBB /
+// 0xRRGGBB and rgb(...)/rgba(...) — and scales the RGB channels by 0.5 while
+// keeping the alpha channel unchanged. Unparseable input is returned unchanged
+// (constant-colour fallback). Hyprland-free; declared here for unit tests.
+std::string darker_color(std::string_view color);
 
 // Small output port for border-property reads/writes. Implemented in the
 // Hyprland adapter (HyprctlBorderPropIo) but kept here as a Hyprland-free
@@ -35,6 +46,42 @@ class BorderPropIo {
     virtual std::string get(std::uint64_t address, BorderSlot slot) = 0;
     // Applies the slot override; false on soft failure. Must not throw.
     virtual bool set(std::uint64_t address, BorderSlot slot, const std::string &value) = 0;
+};
+
+// ADR-028 / REQ-UI-013: pulse-period ticker port (Hyprland-free). The adapter
+// (HyprlandPulseTimer) arms a `wl_event_loop` timer on the compositor main
+// thread; schedule() returns false when no timer is available and the caller
+// falls back to a constant colour (fail-soft, REQ-UI-001). Never re-entrant:
+// on_tick is only ever invoked from the event loop, never from schedule().
+class PulseTimerPort {
+  public:
+    virtual ~PulseTimerPort() = default;
+    // (Re-)arms a one-shot tick `period_ms` away; on_tick fires on the event
+    // loop. Returns false when the host cannot provide a timer (caller must not
+    // throw). Cancels any previous scheduled tick.
+    virtual bool schedule(int period_ms, std::function<void()> on_tick) = 0;
+    // Removes a scheduled tick; a no-op when none is armed. Safe to call from
+    // the tick itself.
+    virtual void cancel() = 0;
+};
+
+// Null object: used by tests and by hyprland-free call sites; always declines
+// scheduling (caller falls back to the constant colour path).
+class NullPulseTimerPort final : public PulseTimerPort {
+  public:
+    bool schedule(int, std::function<void()>) override { return false; }
+    void cancel() override {}
+};
+
+inline PulseTimerPort &null_pulse_timer_port() {
+    static NullPulseTimerPort port;
+    return port;
+}
+
+// ADR-028: effective pulse/dim tunables (clamped in the pure config layer).
+struct BorderStyleParams {
+    int pulse_period_ms = 1000; // full throb cycle in ms (REQ-UI-013)
+    double dim_alpha = 0.7;     // dim strength for non-selected ring windows (REQ-UI-014)
 };
 
 // M4 border highlight backend (ADR-017): solid colour on the virtually selected
@@ -65,7 +112,8 @@ class BorderHighlightUI : public mru::domain::UIPort {
     using Warn = std::function<void(std::string_view)>;
 
     BorderHighlightUI(BorderPropIo &io, Validator is_valid, BorderStyle style, std::string color, int size,
-                      Warn warn = {}, WorkspaceNavigator &navigator = null_workspace_navigator());
+                      Warn warn = {}, WorkspaceNavigator &navigator = null_workspace_navigator(),
+                      BorderStyleParams params = {}, PulseTimerPort &pulse_timer = null_pulse_timer_port());
 
     void on_session_start(const mru::domain::Snapshot &snapshot, std::size_t index) override;
     void on_selection_changed(std::size_t index) override;
@@ -82,22 +130,40 @@ class BorderHighlightUI : public mru::domain::UIPort {
         mru::domain::WindowRef ref{};
         SlotCapture active;
         SlotCapture inactive;
+        // ADR-028 / REQ-UI-014 (border_style = dim): prior per-window alpha
+        // (opacity and opacity_inactive) for the non-selected ring windows,
+        // captured before the dim override and restored on selection change /
+        // session end. Only both-successfully-read windows get dimmed.
+        SlotCapture alpha;
+        SlotCapture alpha_inactive;
         bool size_applied = false;  // our size override write succeeded
         bool size_captured = false; // prior size read back via border_size getprop
         std::string size_value;     // prior effective size (pure integer) when captured
+        // True for the highlighted (selected) window, false for the dim ring
+        // targets (REQ-UI-014). restore_window() restores both flavours.
+        bool selected = false;
     };
 
     void highlight(std::size_t index);
+    // ADR-028/REQ-UI-014: dim every valid non-selected ring window to dim_alpha_.
+    // Skips (fail-soft) any window whose alpha channels aren't both readable back
+    // (restore-by-value safety, REQ-UI-004). dim_alpha_ >= 1.0 disables dimming.
+    void dim_ring(std::size_t selected_index);
     void restore_window(WindowCapture &cap);
     void restore_all();
     void warn_once(std::string_view reason);
     // REQ-UI-002: probe the border API on the first valid target; false -> degrade.
     bool probe_available();
 
-    // Style strategy (ADR-017 §3): M4 implements SolidStyle only; reserved/unknown
-    // tokens were coerced to Solid at config parse (REQ-UI-007). Future styles slot
-    // in here without branching in SessionController.
+    // Style strategy (ADR-017 §3, ADR-028): Solid = constant colour, Pulse =
+    // colour throb between the base colour and darker_color(color_) on a
+    // half-cycle timer, Dim = constant highlight colour + dim of the ring.
     const std::string &style_color() const;
+    // ADR-028/REQ-UI-013: (re)arm the pulse timer; on failure degrades to the
+    // constant colour (fail-soft, REQ-UI-001).
+    void start_pulse();
+    void cancel_pulse();
+    void pulse_tick();
 
     // Reads a prior effective value into `out`; false = failed/empty (no override).
     bool read_slot(std::uint64_t address, BorderSlot slot, SlotCapture &out);
@@ -122,6 +188,14 @@ class BorderHighlightUI : public mru::domain::UIPort {
 
     std::optional<mru::domain::Snapshot> snapshot_; // frozen session snapshot copy (ADR-017)
     std::vector<WindowCapture> captures_;
+    // ADR-028 / REQ-UI-013: half-cycle pulse timer state. The timer only makes
+    // sense while a session is active and a highlight is applied; it is cancelled
+    // in restore_all() (session end / selection change). pulse_dark_ toggles the
+    // base colour to its darker variant on every tick.
+    PulseTimerPort &pulse_timer_;
+    BorderStyleParams params_;
+    int half_cycle_ms_ = 500; // pulse_period_ms / 2 (min 100ms via [200,10000] clamp)
+    bool pulse_dark_ = false;
 };
 
 } // namespace mru::plugin

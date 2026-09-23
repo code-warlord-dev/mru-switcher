@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "mru/domain/scope.hpp"
+#include "mru/domain/window_ref.hpp"
 
 namespace mru::plugin {
 
@@ -46,7 +47,7 @@ struct PluginConfig {
     // ADR-028 / REQ-UI-014: dim strength for the non-selected ring windows,
     // effective only when border_style = dim. Clamped [0.0, 1.0].
     double dim_alpha = 0.7;
-    std::string external_socket;            // REQ-O-001: AF_UNIX path (empty -> null fallback)
+    std::string external_socket; // REQ-O-001: AF_UNIX path (empty -> null fallback)
 };
 
 PluginConfig default_plugin_config();
@@ -74,6 +75,11 @@ struct ParsedBorderStyle {
     bool should_warn = false;
 };
 ParsedBorderStyle parse_border_style(std::string_view s);
+// ADR-028 / REQ-UI-013: clamp pulse_period_ms to [200, 10000] (full-width before
+// narrowing, MEDIUM-9 discipline).
+int clamp_pulse_period_ms(std::int64_t raw);
+// ADR-028 / REQ-UI-014: clamp dim_alpha to [0.0, 1.0]; NaN/Inf -> default 0.7.
+double clamp_dim_alpha(double raw);
 
 // Backend actually constructed for the session (ADR-018): `external` may still
 // degrade to Null at runtime when the socket cannot start (REQ-O-001).

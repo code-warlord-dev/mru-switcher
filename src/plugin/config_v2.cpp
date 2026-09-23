@@ -20,6 +20,8 @@ constexpr const char *KEY_BORDER_STYLE = "plugin:mru-switcher:border_style";
 constexpr const char *KEY_BORDER_COLOR = "plugin:mru-switcher:border_color";
 constexpr const char *KEY_BORDER_SIZE = "plugin:mru-switcher:border_size";
 constexpr const char *KEY_SELECTION_FOLLOW_WORKSPACE = "plugin:mru-switcher:selection_follow_workspace";
+constexpr const char *KEY_PULSE_PERIOD_MS = "plugin:mru-switcher:pulse_period_ms";
+constexpr const char *KEY_DIM_ALPHA = "plugin:mru-switcher:dim_alpha";
 constexpr const char *KEY_LOCK_HISTORY_ON_SESSION = "plugin:mru-switcher:lock_history_on_session";
 constexpr const char *KEY_RESTORE_FOCUS_ON_CANCEL = "plugin:mru-switcher:restore_focus_on_cancel";
 constexpr const char *KEY_EXTERNAL_SOCKET = "plugin:mru-switcher:external_socket";
@@ -56,7 +58,9 @@ std::optional<std::string> register_all(HANDLE handle, Values &out) {
         return "host rejected config value '" + std::string(KEY_UI) + "' (name collision: already registered)";
 
     out.border_style = Config::Values::makeConfigValue<Config::Values::String>(
-        KEY_BORDER_STYLE, "Border highlight style: solid (pulse/dim reserved, treated as solid) (REQ-UI-007)", "solid");
+        KEY_BORDER_STYLE,
+        "Border highlight style: solid | pulse (colour throb) | dim (focus-assist); unknown = solid (REQ-UI-007)",
+        "solid");
     if (!HyprlandAPI::addConfigValueV2(handle, out.border_style))
         return "host rejected config value '" + std::string(KEY_BORDER_STYLE) +
                "' (name collision: already registered)";
@@ -84,6 +88,23 @@ std::optional<std::string> register_all(HANDLE handle, Values &out) {
     if (!HyprlandAPI::addConfigValueV2(handle, out.selection_follow_workspace))
         return "host rejected config value '" + std::string(KEY_SELECTION_FOLLOW_WORKSPACE) +
                "' (name collision: already registered)";
+
+    // ADR-028 / REQ-UI-013: pulse throb cycle. Registered as Int, manual clamp
+    // [200, 10000] (REQ-CFG-004 discipline: full-width before narrowing).
+    out.pulse_period_ms = Config::Values::makeConfigValue<Config::Values::Int>(
+        KEY_PULSE_PERIOD_MS, "Border style `pulse` full-cycle period in ms, clamped to [200, 10000] (ADR-028)", 1000);
+    if (!HyprlandAPI::addConfigValueV2(handle, out.pulse_period_ms))
+        return "host rejected config value '" + std::string(KEY_PULSE_PERIOD_MS) +
+               "' (name collision: already registered)";
+
+    // ADR-028 / REQ-UI-014: dim strength for non-selected ring windows. Registered
+    // as the native Float slot (Config::Values::Float, read into cfg.dim_alpha);
+    // clamped [0.0, 1.0], NaN/Inf -> default. A dim_alpha >= 1.0 disables dimming.
+    out.dim_alpha = Config::Values::makeConfigValue<Config::Values::Float>(
+        KEY_DIM_ALPHA,
+        "Border style `dim` alpha for non-selected windows, clamped to [0.0, 1.0]; >=1 disables (ADR-028)", 0.7F);
+    if (!HyprlandAPI::addConfigValueV2(handle, out.dim_alpha))
+        return "host rejected config value '" + std::string(KEY_DIM_ALPHA) + "' (name collision: already registered)";
 
     out.lock_history_on_session = Config::Values::makeConfigValue<Config::Values::Bool>(
         KEY_LOCK_HISTORY_ON_SESSION,
@@ -140,8 +161,9 @@ mru::plugin::PluginConfig read_config(const Values &values) {
     cfg.ui_external = ui.kind == ParsedUi::Kind::External;
     cfg.ui_matched = ui.matched;
 
-    // REQ-UI-007: `solid` is the only effective style in M4; reserved/unknown tokens
-    // are coerced to solid by parse_border_style() and surface one warning.
+    // ADR-028: `solid`, `pulse` and `dim` are all effective; guaranteed behavior
+    // per SPEC §4. On a pinned host without a pulse timer (or when the style
+    // visual cannot be driven), BorderHighlightUI fails soft per REQ-UI-001.
     const ParsedBorderStyle border_style = parse_border_style(read(values.border_style));
     cfg.border_style = border_style.style;
     if (border_style.should_warn) {
@@ -157,6 +179,11 @@ mru::plugin::PluginConfig read_config(const Values &values) {
     cfg.border_color = read(values.border_color);
     cfg.border_size = static_cast<int>(read(values.border_size));
     cfg.selection_follow_workspace = read(values.selection_follow_workspace); // ADR-026 / REQ-UI-012
+
+    // ADR-028 / REQ-UI-013/014: pure-layer clamps; effective only for pulse/dim
+    // styles, but always clamped so a future border_style switch is predicable.
+    cfg.pulse_period_ms = clamp_pulse_period_ms(read(values.pulse_period_ms));
+    cfg.dim_alpha = clamp_dim_alpha(static_cast<double>(read(values.dim_alpha)));
 
     // REQ-O-001 / ADR-018: empty path means `ui=external` degrades to null.
     cfg.external_socket = read(values.external_socket);

@@ -1,7 +1,9 @@
 #include "sidecar_config.hpp"
 
 #include <cctype>
+#include <cerrno>
 #include <charconv>
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -54,6 +56,10 @@ bool assign_raw(SidecarOverrides &o, const std::string &key, std::string value) 
         o.border_size = std::move(value);
     else if (key == "selection_follow_workspace")
         o.selection_follow_workspace = std::move(value);
+    else if (key == "pulse_period_ms")
+        o.pulse_period_ms = std::move(value);
+    else if (key == "dim_alpha")
+        o.dim_alpha = std::move(value);
     else if (key == "lock_history_on_session")
         o.lock_history_on_session = std::move(value);
     else if (key == "restore_focus_on_cancel")
@@ -87,6 +93,21 @@ bool parse_bool_strict(std::string_view s, bool &out) {
         return true;
     }
     return false;
+}
+
+// Strict whole-string double via strtod: consumes the entire token (no trailing
+// junk), rejects empty, and requires a finite result (INF/NaN are invalid).
+bool parse_double_strict(std::string_view s, double &out) {
+    if (s.empty())
+        return false;
+    std::string tmp(s);
+    char *end = nullptr;
+    errno = 0;
+    const double d = std::strtod(tmp.c_str(), &end);
+    if (end == tmp.c_str() || end[0] != '\0' || !std::isfinite(d))
+        return false;
+    out = d;
+    return true;
 }
 
 } // namespace
@@ -222,6 +243,24 @@ void apply_overlay(PluginConfig &cfg, const SidecarParse &parsed,
             cfg.selection_follow_workspace = b;
         else
             invalid("selection_follow_workspace", *o.selection_follow_workspace);
+    }
+    // ADR-028 / REQ-UI-013: sidecar parity for the pulse period (clamped like the
+    // hyprlang channel, REQ-CFG-004 discipline).
+    if (o.pulse_period_ms.has_value()) {
+        std::int64_t raw = 0;
+        if (parse_int_strict(*o.pulse_period_ms, raw))
+            cfg.pulse_period_ms = clamp_pulse_period_ms(raw);
+        else
+            invalid("pulse_period_ms", *o.pulse_period_ms);
+    }
+    // ADR-028 / REQ-UI-014: sidecar parity for the dim strength (clamped; a
+    // dim_alpha >= 1.0 disables dimming).
+    if (o.dim_alpha.has_value()) {
+        double raw = 0.0;
+        if (parse_double_strict(*o.dim_alpha, raw))
+            cfg.dim_alpha = clamp_dim_alpha(raw);
+        else
+            invalid("dim_alpha", *o.dim_alpha);
     }
     // REQ-H-010 / ADR-021: reserved key is stored for compat but never affects
     // behaviour (lock-in is mandatory); `false` additionally warns.
