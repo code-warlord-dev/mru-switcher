@@ -177,9 +177,11 @@ plugin {
         start_offset            = second   # first | second
         wrap                    = true
         ui                      = null     # null | border | external (unavailable backends fall back to null)
-        border_style            = solid    # solid only for now; pulse/dim reserved -> solid + warn-once
+        border_style            = solid    # solid | pulse (colour throb) | dim (focus-assist); unknown -> solid + warn-once (ADR-028)
         border_color            = 0xffffd9a0  # border highlight colour (bright accent; verbatim setprop grammar)
         border_size             = -1       # -1 = leave border size unchanged (colour only)
+        pulse_period_ms         = 1000     # border_style=pulse: one full throb cycle in ms, clamped [200, 10000]
+        dim_alpha               = 0.7      # border_style=dim: alpha for non-selected ring windows, clamped [0, 1]; >=1 disables
         selection_follow_workspace = true  # ui=border: activate the selected window's workspace so it stays visible (ADR-026)
         restore_focus_on_cancel = false
         external_socket         =        # AF_UNIX path; required when ui = external (empty = degrade to null)
@@ -204,7 +206,7 @@ and the plugin re-reads its settings (via the `config.reloaded` event):
 - Everything else (`default_scope`, `start_offset`, `wrap`,
   `restore_focus_on_cancel`, `ui`, `external_socket`,
   `selection_follow_workspace`, and the
-  border-* keys) — applies to the **next** session you start. Note: switching `ui` away
+  border-* keys including `pulse_period_ms` / `dim_alpha`) — applies to the **next** session you start. Note: switching `ui` away
   from `external` (or clearing `external_socket`) stops the socket listener at reload;
   the already-running session continues with its frozen backend.
 
@@ -305,15 +307,17 @@ Default is `border` (ADR-025) — the highlight shows out of the box. To disable
 plugin {
     mru-switcher {
         ui           = border
-        border_style = solid          # pulse/dim reserved → treated as solid + one-time warning
+        border_style = solid          # solid | pulse | dim; unknown -> solid + one-time warning (ADR-028)
         border_color = rgba(33ccffee) # example — see below and API.md for accepted formats
         border_size  = -1             # -1 = do not change border width
+        pulse_period_ms = 1000        # border_style = pulse: one full throb cycle in ms (clamped [200, 10000])
+        dim_alpha    = 0.7            # border_style = dim: alpha of the non-selected ring windows (clamped [0, 1]; >=1 disables)
         selection_follow_workspace = true  # ADR-026: keep the selection visible; false = legacy off-screen highlight
     }
 }
 ```
 
-If you omit the border keys, the documented defaults are: `border_style = solid`, `border_color = 0xffffd9a0` (hex `0xAARRGGBB`), `border_size = -1` (= do not change border width), `selection_follow_workspace = true`. Accepted colour formats are those supported by the pinned Hyprland: `rgb(...)`, `rgba(rrggbbaa)`, or hex `0xAARRGGBB` as in the default. Full key reference: `docs/API.md`; availability on your Hyprland build: `docs/COMPAT.md`.
+If you omit the border keys, the documented defaults are: `border_style = solid`, `border_color = 0xffffd9a0` (hex `0xAARRGGBB`), `border_size = -1` (= do not change border width), `pulse_period_ms = 1000`, `dim_alpha = 0.7`, `selection_follow_workspace = true`. Accepted colour formats are those supported by the pinned Hyprland: `rgb(...)`, `rgba(rrggbbaa)`, or hex `0xAARRGGBB` as in the default. Full key reference: `docs/API.md`; availability on your Hyprland build: `docs/COMPAT.md`.
 
 ### Border behaviour (what you should see)
 
@@ -329,12 +333,25 @@ If you omit the border keys, the documented defaults are: `border_style = solid`
    (the selected window is focused there next). Already-visible windows are never touched.
    Set `selection_follow_workspace = false` for the exact pre-ADR-026 behaviour
    (highlight off-screen while the switch target is on a hidden workspace).
+6. `border_style = pulse` (ADR-028 / REQ-UI-013): the highlight colour **throbs** — every
+   half-cycle it alternates between `border_color` and a darkened variant of it, driven by
+   the compositor main loop (a `wl_event_loop` timer). Full cycle period = `pulse_period_ms`
+   (default 1000 ms). The throb is restarted whenever the selection moves and stops as soon
+   as the session ends. If the host cannot provide a timer, the plugin keeps a constant
+   colour with a one-time warning (fail-soft).
+7. `border_style = dim` (ADR-028 / REQ-UI-014): the selected window keeps the constant
+   highlight colour and **every other valid ring window** gets its per-window alpha
+   (`opacity` / `opacity_inactive`) dropped to `dim_alpha` (default 0.7) — a focus-assist
+   dim so the candidate you are about to switch to stands out. Prior alphas are restored on
+   selection change and session end. `dim_alpha >= 1.0` disables dimming. A window whose
+   alpha cannot be read is left alone (fail-soft). Fullscreen windows may not look dimmed
+   (they render via a separate alpha channel — see `docs/COMPAT.md`).
 
 If the border APIs are unavailable on your Hyprland build, the plugin keeps switching correctly and falls back to no highlight (same as `null`, one-time warning). Workspace elevation is skipped too during such a degraded session.
 
 ### UI settings reload
 
-`ui` and the `border_*` keys apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel. `selection_follow_workspace` follows the same rule — it is read when a session's backend is built.
+`ui` and the `border_*` keys (including `pulse_period_ms` and `dim_alpha`) apply to the **next** Alt+Tab session after `hyprctl reload`. An already open session keeps its original UI settings until apply/cancel. `selection_follow_workspace` follows the same rule — it is read when a session's backend is built.
 
 ### Updating the plugin (never overwrite the `.so` in place)
 

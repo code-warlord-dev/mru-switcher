@@ -80,7 +80,7 @@
 | REQ-UI-004 | T-UI-04, `t_ui_04_selection_change_restores_previous`, `t_ui_06_invalid_ref_skipped_session_continues` | highlight follows selection; previous cleared; live: M4-S3 smoke 2026-09-18 (docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md; restore grammar fixed in fix/m4-s3-border-restore-grammar) | M4 |
 | REQ-UI-005 | T-UI-05, `t_ui_05_apply_restores_all_no_stuck`, `t_ui_05b_cancel_restores_all_no_stuck`, `t_ui_05c_unload_restores_all_no_stuck`, `t_ui_01_set_failure_not_applied_and_no_bare_clear` | full clear on session end / unload (no stuck borders); restore-by-value, no bare clear (R0 F10); live: M4-S3 smoke 2026-09-18 (docs/agent-state/reports/2026-09-18-m4-s3-nest-smoke.md; restore grammar fixed in fix/m4-s3-border-restore-grammar) | M4 |
 | REQ-UI-006 | T-F-01, nest | cycle never changes real focus; highlight is the only visual side effect | M4 |
-| REQ-UI-007 | T-UI-07, `t_ui_07_border_style_solid_fallback` | border_style: `solid` mandatory; unknown/reserved -> `solid` + warn-once | M4 |
+| REQ-UI-007 | T-UI-07, `t_ui_07_border_style_solid_fallback` | border_style: `solid` / `pulse` (ADR-028 / REQ-UI-013) / `dim` (ADR-028 / REQ-UI-014) effective; unknown -> `solid` + warn-once | M4 |
 | REQ-UI-008 | T-UI-03, T-CFG-04, CI key-registration guard | border_style/border_color/border_size register in M4; size `-1` = untouched | M4 |
 | REQ-UI-009 | T-CFG-02, `t_ui_009_backend_swap_next_session`, `t_ui_009_no_session_is_safe` | ui / border-* reload -> next session only (SessionUIBackendProxy) | M4 |
 | REQ-UI-010 | T-UI-06, T-ID-01, `t_ui_06_invalid_ref_skipped_session_continues` | resolve via registry weak-lock validity (ADR-013/016); invalid -> skip highlight, session continues | M4 |

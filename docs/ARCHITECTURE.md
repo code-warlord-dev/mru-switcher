@@ -233,22 +233,22 @@ Responsibilities:
 
 1. Map selection index → `WindowRef` from the active snapshot (controller still owns the snapshot).
 2. Resolve the live window via the identity registry (same validity rules as focus: address + generation / weak-lock, ADR-013 / ADR-016).
-3. Apply the style strategy (`SolidStyle` in M4) using adapter-private public APIs.
+3. Apply the style strategy (solid / pulse / dim, ADR-028) using adapter-private public APIs.
 4. Track "currently highlighted" ref + prior border state for restore.
 5. On selection change: restore previous, apply new.
 6. On session end / teardown: restore all and drop tracking (REQ-UI-005).
 
-Style strategy (foundation; `pulse` / `dim` reserved):
+Style strategy (ADR-028 — `pulse` and `dim` implemented; REQ-UI-013/014):
 
 ```text
 BorderHighlightUI
     └── BorderStyleStrategy
             ├── SolidStyle      (M4 required)
-            ├── PulseStyle      (reserved / follow-up)
-            └── DimOthersStyle  (reserved / follow-up)
+            ├── PulseStyle      (ADR-028; wl_event_loop timer, REQ-UI-013)
+            └── DimOthersStyle  (ADR-028; per-window alpha, REQ-UI-014)
 ```
 
-Unknown or not-yet-implemented style → `SolidStyle` (REQ-UI-007). Style behaviour is implemented inside the border UI adapter, never branching in `SessionController`.
+Unknown style → `SolidStyle` (REQ-UI-007). `PulseStyle` degrades to constant colour + warn-once when the host provides no timer or scheduling fails (REQ-UI-001). Style behaviour is implemented inside the border UI adapter, never branching in `SessionController`.
 
 **FocusGateway collaboration:** the border UI makes **no** focus calls (REQ-UI-006). Optional read-only use of the registry to resolve identities; it must not duplicate the FocusGateway write path.
 
@@ -326,9 +326,11 @@ plugin {
         start_offset            = second   # first|second
         wrap                    = true
         ui                      = null     # null|border|external (border from M4)
-        border_style            = solid    # solid in M4; pulse/dim reserved -> solid + warn-once
+        border_style            = solid    # solid|pulse|dim (ADR-028); unknown -> solid + warn-once
         border_color            = 0xffffd9a0   # highlight colour; format per pin (see USER/API)
         border_size             = -1       # -1 = do not touch size (colour only)
+        pulse_period_ms         = 1000     # pulse throb cycle (ms), clamp [200, 10000] (REQ-UI-013)
+        dim_alpha               = 0.7      # dim alpha of surrounding windows, clamp [0.0, 1.0]; >=1 disables (REQ-UI-014)
         restore_focus_on_cancel = false
         external_socket         =        # AF_UNIX path for ui=external (REQ-O-001; empty = degrade to null)
     }

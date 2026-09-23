@@ -60,7 +60,7 @@ change only with a CHANGELOG entry, and every such change must be reconciled bef
 | **SchedulerPort** | Abstraction for debounce timers; real impl uses compositor event loop; tests use FakeClock |
 | **UI backend** | Concrete `UIPort` implementation selected by config `ui` |
 | **Border highlight** | Temporary visual override of window border attributes for the current selection while a session is Active |
-| **Border style** | Named behaviour of `BorderHighlightUI` (`solid`, reserved `pulse` / `dim`, …) |
+| **Border style** | Named behaviour of `BorderHighlightUI` (`solid`, `pulse` = colour throb, `dim` = focus-assist dim of the ring; ADR-028, REQ-UI-013/014) |
 | **UIEndReason** | Coarse end signal to UI: `Applied` \| `Cancelled` (see REQ-F-009 mapping) |
 
 ---
