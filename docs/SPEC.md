@@ -365,9 +365,11 @@ in 1.x; a change to any of them requires a major version bump. Additive new keys
 | `start_offset` | string | `second` | `first` \| `second` |
 | `wrap` | bool | `true` | Wrap selection at ends |
 | `ui` | string | `border` | `null` \| `border` \| `external` — see REQ-UI-002. Default `border` per ADR-025; `null` = explicit opt-out |
-| `border_style` | string/enum | `solid` | Border highlight style; M4: only `solid` has effect; unknown/reserved (`pulse`, `dim`, …) → `solid` + warn-once (REQ-UI-007) |
+| `border_style` | string/enum | `solid` | Border highlight style (ADR-028): `solid` = constant colour; `pulse` = colour throb (`pulse_period_ms`); `dim` = focus-assist dim of the non-selected ring windows (`dim_alpha`); unknown tokens → `solid` + warn-once (REQ-UI-007) |
 | `border_color` | color/string | `0xffffd9a0` | Border highlight colour — documented implementation default (hex `0xAARRGGBB`); format as accepted by the pinned Hyprland; documented in USER/API (REQ-UI-008) |
 | `border_size` | int | `-1` | Border highlight size; `-1` = do not touch window border size (colour only) (REQ-UI-008) |
+| `pulse_period_ms` | int | `1000` | When `border_style = pulse`, one full throb cycle in ms; clamp **[200, 10000]** (REQ-UI-013). Ignored by `solid` / `dim` |
+| `dim_alpha` | float | `0.7` | When `border_style = dim`, dim strength applied to surrounding surfaces **[0.0, 1.0]** (REQ-UI-014). Ignored by `solid` / `pulse` |
 | `selection_follow_workspace` | bool | `true` | When `ui = border`, keep the selected window visible: elevate its workspace onto its monitor on session start / selection change without focusing any window; `false` = legacy off-screen highlight (ADR-026, REQ-UI-012). Applies to sessions started after reload (REQ-CFG-002) |
 | `lock_history_on_session` | bool | `true` | **Reserved — value ignored.** Lock-in while a session is Active is mandatory (REQ-H-001/010, ADR-021). Kept registered for 0.x config compatibility; non-default values trigger a warn-once notification. Removal is a 2.0 candidate |
 | `restore_focus_on_cancel` | bool | `false` | On cancel, focus `session_origin` if still valid |
@@ -423,11 +425,12 @@ UI provisioning follows ADR-004 / ADR-017; the config default is `border` since 
 
 **REQ-UI-006** Highlight updates MUST NOT apply real compositor focus. Focus changes remain solely via FocusGateway on apply (and restore-on-cancel policy paths). Consistent with REQ-F-003.
 
-**REQ-UI-007** Config `border_style`:
+**REQ-UI-007** Config `border_style` (ADR-028):
 
-- `solid` — required implementation in M4.
-- Reserved tokens `pulse`, `dim` (and any later documented tokens not yet implemented) SHALL behave as `solid` until a SPEC/ADR revision implements them; implementations MAY warn once.
-- Unknown tokens SHALL behave as `solid` and SHOULD warn once.
+- `solid` — constant `border_color` highlight (M4 implementation, unchanged).
+- `pulse` — highlight colour throb per REQ-UI-013.
+- `dim` — focus-assist dim of surrounding surfaces per REQ-UI-014.
+- Unknown tokens (and any documented-but-unimplemented future tokens) SHALL behave as `solid` and SHOULD warn once.
 
 **REQ-UI-008** The following config keys SHALL be registered under `plugin:mru-switcher:` in M4 (in addition to existing keys):
 
@@ -436,8 +439,10 @@ UI provisioning follows ADR-004 / ADR-017; the config default is `border` since 
 | `border_style` | Style token; default `solid` |
 | `border_color` | Colour used for the selection highlight; default is implementation-defined but MUST be documented in USER.md / API.md. The project’s documented implementation default is `0xffffd9a0` (hex `0xAARRGGBB`). |
 | `border_size` | Integer border size override; default `-1` means **do not** change the window’s border size |
+| `pulse_period_ms` | ADR-028: pulse cycle (ms), default `1000`, clamp **[200, 10000]**, effective only when `border_style = pulse` (REQ-UI-013) |
+| `dim_alpha` | ADR-028: dim strength for surrounding surfaces, default `0.7`, clamp **[0.0, 1.0]**, effective only when `border_style = dim` (REQ-UI-014) |
 
-**REQ-UI-009** Changes to `ui`, `border_style`, `border_color`, and `border_size` via config reload SHALL apply only to sessions started **after** the reload (snapshot in SessionPolicy / equivalent). An Active session keeps the UI behaviour chosen at its start.
+**REQ-UI-009** Changes to `ui`, `border_style`, `border_color`, `border_size`, `pulse_period_ms`, and `dim_alpha` via config reload SHALL apply only to sessions started **after** the reload (snapshot in SessionPolicy / equivalent). An Active session keeps the UI behaviour chosen at its start.
 
 **REQ-UI-010** `BorderHighlightUI` SHALL resolve `WindowRef` through the same validity rules as focus (address + generation / weak-lock, ADR-013 / ADR-016). If the target is invalid, highlight for that index is skipped; the session continues.
 
@@ -445,7 +450,13 @@ UI provisioning follows ADR-004 / ADR-017; the config default is `border` since 
 
 **REQ-UI-012** (ADR-026) When the effective backend is `border` and `selection_follow_workspace = true`, `BorderHighlightUI` SHALL ensure the workspace containing the selected window is the active workspace of that window's monitor on `on_session_start` and on each `on_selection_changed`, WITHOUT applying window focus (REQ-UI-006 / REQ-F-003), and only when that workspace is currently inactive on its monitor (already-visible targets on other monitors are not elevated in this revision). On `on_session_end(Cancelled)` the plugin SHALL restore the active workspaces of the monitors it elevated to their recorded session-start values; on `Applied` it SHALL leave views unchanged. Elevation failures SHALL fail soft (warn-once) and never abort the session (REQ-UI-001).
 
-M4 UI out of scope: live window previews inside the plugin; full behaviour of `pulse` / `dim` (reserved only); the M5 external overlay protocol. ~~Changing the default `ui` from `null` to `border`~~ — done via ADR-025 (default is now `border`; CHANGELOG entry under Unreleased). ~~Off-screen selection feedback~~ — mostly done via ADR-026 (`selection_follow_workspace`, default `true`); multi-monitor focus-monitor movement remains out of scope (ADR-026).
+**REQ-UI-013** (ADR-028) When the effective backend is `border` and `border_style = pulse`, `BorderHighlightUI` SHALL animate the highlight colour of the selected window on the compositor main thread (a `wl_event_loop` timer, AGENTS §7) between `border_color` and a computed darker variant, one full cycle per `pulse_period_ms` (clamped [200, 10000]). The timer SHALL restart for each selected target and SHALL be removed, with all slots restored to captured values, on `on_session_end` and between selection changes (REQ-UI-005). A degraded session (REQ-UI-002) SHALL NOT run the loop. Failures SHALL fail soft (warn-once; fall back to a constant colour) and never abort the session (REQ-UI-001).
+
+**REQ-UI-014** (ADR-028) When the effective backend is `border` and `border_style = dim`, `BorderHighlightUI` SHALL render the highlight with a constant `border_color` AND dim every non-selected ring window to `dim_alpha` (clamped [0.0, 1.0]) while the highlighted window is selected. The dim mechanism is adapter-private on the pin (the per-window `alpha` animatable, per REQ-UI-011); the `dimAround` window rule is documented as rejected (no public plugin setter). Prior per-window alpha state SHALL be captured before the override and restored on selection change / `on_session_end` (REQ-UI-005). Failures SHALL fail soft (warn-once) and never abort the session (REQ-UI-001).
+
+**REQ-UI-015** (ADR-028) `pulse_period_ms` (int, default `1000`, clamp **[200, 10000]**) and `dim_alpha` (float, default `0.7`, clamp **[0.0, 1.0]**) SHALL be registered under `plugin:mru-switcher:` (REQ-UI-008), parse+clamp in the pure config layer, and be overridable through the sidecar channel (REQ-CFG-005, ADR-024).
+
+M4 UI out of scope: live window previews inside the plugin; ~~full behaviour of `pulse` / `dim`~~ — implemented via ADR-028 (REQ-UI-013/014); the M5 external overlay protocol. ~~Changing the default `ui` from `null` to `border`~~ — done via ADR-025 (default is now `border`; CHANGELOG entry under Unreleased). ~~Off-screen selection feedback~~ — mostly done via ADR-026 (`selection_follow_workspace`, default `true`); multi-monitor focus-monitor movement remains out of scope (ADR-026).
 
 ### 5.3 External overlay (M5)
 
@@ -568,6 +579,9 @@ When `restore_focus_on_cancel = true`:
 | T-UI-06 | invalid WindowRef on highlight path -> no crash, session continues |
 | T-UI-07 | unknown `border_style` -> solid + no abort |
 | T-UI-08 | ADR-026/REQ-UI-012: `selection_follow_workspace = true` (default) drives `ensure_visible` on session start + each selection change; never on a degraded/invalid-target session; `end(reason)` forwarded verbatim (Cancelled → restore, Applied → leave); navigator failures fail soft warn-once, never abort (`tests/plugin/test_border_highlight_ui.cpp`, `t_ui_012_*`); config default + sidecar overlay (`cfg_08_*`, `sidecar_08_*`) |
+| T-UI-13 | ADR-028/REQ-UI-013: `border_style = pulse` throb — the highlight colour advances between `border_color` and a computed darker variant over `pulse_period_ms` (clamped [200, 10000]; period midpoint toggles colour); timer restarts per selection change; timer removed + all slots restored to captured values on session end; degraded session runs no loop; failures fail soft warn-once (`tests/plugin/test_border_highlight_ui.cpp`, `t_ui_013_*`) |
+| T-UI-14 | ADR-028/REQ-UI-014: `border_style = dim` — constant `border_color` highlight plus dim of every non-selected ring window via the per-window `alpha` animatable to `dim_alpha` (clamped [0.0, 1.0]; `dimAround` rejected — no public plugin setter); prior per-window alpha captured and restored on selection change / session end; failures fail soft warn-once (`tests/plugin/test_border_highlight_ui.cpp`, `t_ui_014_*`) |
+| T-UI-15 | ADR-028: `pulse_period_ms` (default 1000, clamp [200, 10000]) and `dim_alpha` (default 0.7, clamp [0.0, 1.0]) parse and register under `plugin:mru-switcher:`; sidecar parity (`cfg_09_*`, `cfg_10_*`, `sidecar_09_*`, `sidecar_10_*`) |
 | T-DISP-01 | omitted cycle direction equals next |
 | T-F-05 | FocusResult InvalidTarget and Failed paths |
 | T-S-07 | Active cycle ignores different scope token |

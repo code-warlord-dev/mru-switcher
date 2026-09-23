@@ -9,9 +9,11 @@
 
 namespace mru::plugin {
 
-// Border highlight style tokens (REQ-UI-007). M4 implements only `solid`; reserved
-// (`pulse`, `dim`) and unknown tokens are coerced to `solid` by parse_border_style().
-enum class BorderStyle { Solid };
+// Border highlight style tokens (REQ-UI-007, ADR-028). `solid` = constant
+// colour, `pulse` = colour throb (REQ-UI-013), `dim` = focus-assist dim of the
+// non-selected ring windows (REQ-UI-014). Only *unknown* tokens are coerced to
+// `solid` + warn-once by parse_border_style().
+enum class BorderStyle { Solid, Pulse, Dim };
 
 struct PluginConfig {
     int debounce_ms = 400; // clamp [0,5000] (REQ-CFG-004)
@@ -38,6 +40,12 @@ struct PluginConfig {
     // elevating its (inactive) workspace onto its monitor while a session is
     // active — no window focus. `false` = exact pre-ADR-026 off-screen highlight.
     bool selection_follow_workspace = true; // APPLIES TO THE NEXT SESSION (REQ-CFG-002)
+    // ADR-028 / REQ-UI-013: one full pulse throb cycle in ms, effective only when
+    // border_style = pulse. Clamped [200, 10000] in the pure config layer.
+    int pulse_period_ms = 1000;
+    // ADR-028 / REQ-UI-014: dim strength for the non-selected ring windows,
+    // effective only when border_style = dim. Clamped [0.0, 1.0].
+    double dim_alpha = 0.7;
     std::string external_socket;            // REQ-O-001: AF_UNIX path (empty -> null fallback)
 };
 
@@ -46,7 +54,7 @@ mru::domain::Scope parse_scope(std::string_view s);
 // Strict scope token for dispatcher arguments: std::nullopt when unknown
 // (REQ-DISP-003). Config parsing keeps the fallback path via parse_scope().
 std::optional<mru::domain::Scope> parse_scope_token(std::string_view s);
-int clamp_debounce_ms(std::int64_t raw); // clamps [0,5000] before truncation (MEDIUM-9)
+int clamp_debounce_ms(std::int64_t raw); // clamps [0,5000] before truncation (MEDIUM-9, REQ-CFG-004)
 
 // Inverse of parse_scope_token for diagnostics (mru:status, SPEC §3.4).
 std::string_view scope_name(mru::domain::Scope scope);
