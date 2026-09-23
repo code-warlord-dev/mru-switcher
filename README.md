@@ -33,6 +33,10 @@
   <img src="https://img.shields.io/badge/C%2B%2B-23-00599C" alt="C++23">
 </p>
 
+<p align="center">
+  <img src="demo.gif" alt="MRU Switcher demo" width="80%">
+</p>
+
 ---
 
 ## Positioning
