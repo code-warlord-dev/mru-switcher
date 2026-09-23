@@ -13,7 +13,7 @@ namespace mru::plugin::sidecar {
 
 // Second config delivery path (ADR-024): on Lua-config hosts the hyprlang
 // `plugin:mru-switcher:*` channel is dead (validator rejects plugin keys), so
-// the same 11 keys can be delivered through a plain sidecar file instead.
+// the same 14 keys can be delivered through a plain sidecar file instead.
 //
 // This TU is plugin core: no Hyprland includes (CI plugin-guards enforce it).
 // Parsing never throws on malformed content — every problem is reported as a
@@ -39,6 +39,8 @@ struct SidecarOverrides {
     std::optional<std::string> border_color;
     std::optional<std::string> border_size;
     std::optional<std::string> selection_follow_workspace; // ADR-026 / REQ-UI-012
+    std::optional<std::string> pulse_period_ms;            // ADR-028 / REQ-UI-013
+    std::optional<std::string> dim_alpha;                  // ADR-028 / REQ-UI-014
     std::optional<std::string> lock_history_on_session;    // reserved, REQ-H-010 / ADR-021
     std::optional<std::string> restore_focus_on_cancel;
     std::optional<std::string> external_socket;

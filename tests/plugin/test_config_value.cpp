@@ -1,6 +1,8 @@
 #include "config_value.hpp"
 #include "test_framework.hpp"
 
+#include <limits>
+
 namespace {
 using mru::domain::Scope;
 using namespace mru::plugin;
@@ -67,17 +69,24 @@ TEST(t_ui_03_effective_backend_selection) {
     EQ(effective_ui_backend(cfg), UiBackend::External);
 }
 
-// REQ-UI-007: unknown/reserved border styles behave as solid and signal a warning.
+// REQ-UI-007: solid/pulse/dim parse to their styles with no warning; only
+// *unknown* tokens fall back to solid and signal a warning (ADR-028).
 TEST(t_ui_07_border_style_solid_fallback) {
     const ParsedBorderStyle solid = parse_border_style("solid");
     EQ(solid.style, BorderStyle::Solid);
     CHECK(!solid.should_warn);
 
-    for (const char *reserved : {"pulse", "dim", "bogus"}) {
-        const ParsedBorderStyle parsed = parse_border_style(reserved);
-        EQ(parsed.style, BorderStyle::Solid);
-        CHECK(parsed.should_warn);
-    }
+    const ParsedBorderStyle pulse = parse_border_style("pulse");
+    EQ(pulse.style, BorderStyle::Pulse); // ADR-028 / REQ-UI-013
+    CHECK(!pulse.should_warn);
+
+    const ParsedBorderStyle dim = parse_border_style("dim");
+    EQ(dim.style, BorderStyle::Dim); // ADR-028 / REQ-UI-014
+    CHECK(!dim.should_warn);
+
+    const ParsedBorderStyle bogus = parse_border_style("bogus");
+    EQ(bogus.style, BorderStyle::Solid);
+    CHECK(bogus.should_warn);
 }
 
 // REQ-SEL-002: start_offset parses first|second, unknown falls back to second
@@ -114,6 +123,43 @@ TEST(cfg_07_border_defaults) {
 TEST(cfg_08_selection_follow_workspace_default) {
     const auto cfg = default_plugin_config();
     CHECK(cfg.selection_follow_workspace);
+}
+
+// ADR-028 / REQ-UI-013: pulse period clamped to [200, 10000] on the full 64-bit
+// value BEFORE narrowing (same MEDIUM-9 discipline as cfg_01b), so 2^32 and
+// negative INT64 values land on the bounds instead of a truncated bit-pattern.
+TEST(cfg_09_pulse_period_ms_clamped) {
+    EQ(clamp_pulse_period_ms(199), 200);
+    EQ(clamp_pulse_period_ms(200), 200);
+    EQ(clamp_pulse_period_ms(1000), 1000);
+    EQ(clamp_pulse_period_ms(10000), 10000);
+    EQ(clamp_pulse_period_ms(10001), 10000);
+    EQ(clamp_pulse_period_ms(4294967296LL), 10000); // 2^32: full-width clamp (MEDIUM-9)
+    EQ(clamp_pulse_period_ms(-4294967296LL), 200);
+}
+
+TEST(cfg_09_pulse_period_ms_default) {
+    const auto cfg = default_plugin_config();
+    EQ(cfg.pulse_period_ms, 1000);
+}
+
+// ADR-028 / REQ-UI-014: dim_alpha clamped to [0.0, 1.0]; NaN/Inf -> default 0.7
+// (a NaN dim would otherwise `std::format` into an invalid opacity setprop and
+// the window read-fail would never dim, so the clamp keeps it sane and finite).
+TEST(cfg_10_dim_alpha_clamped) {
+    EQ(clamp_dim_alpha(0.0), 0.0);
+    EQ(clamp_dim_alpha(0.7), 0.7);
+    EQ(clamp_dim_alpha(1.0), 1.0);
+    EQ(clamp_dim_alpha(-1.0), 0.0);
+    EQ(clamp_dim_alpha(2.5), 1.0);
+    EQ(clamp_dim_alpha(std::numeric_limits<double>::quiet_NaN()), 0.7);
+    EQ(clamp_dim_alpha(std::numeric_limits<double>::infinity()), 0.7);
+    EQ(clamp_dim_alpha(-std::numeric_limits<double>::infinity()), 0.7);
+}
+
+TEST(cfg_10_dim_alpha_default) {
+    const auto cfg = default_plugin_config();
+    EQ(cfg.dim_alpha, 0.7);
 }
 
 } // namespace

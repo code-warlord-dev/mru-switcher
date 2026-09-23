@@ -30,6 +30,12 @@ struct Values {
     // ADR-026 / REQ-UI-012: keep the selected window visible during a border
     // session (active-workspace elevation, no window focus); read by read_config().
     SP<Config::Values::Bool> selection_follow_workspace;
+    // ADR-028 / REQ-UI-013: one full pulse throb cycle in ms (clamped [200, 10000]
+    // in clamp_pulse_period_ms); effective only when border_style = pulse.
+    SP<Config::Values::Int> pulse_period_ms;
+    // ADR-028 / REQ-UI-014: dim strength for the non-selected ring windows
+    // (clamped [0.0, 1.0] in clamp_dim_alpha); effective only when border_style = dim.
+    SP<Config::Values::Float> dim_alpha;
     SP<Config::Values::Bool> wrap;
     // REQ-H-010 / ADR-021: reserved key — still registered (0.x configs keep
     // parsing) and still read so read_config() can warn once when it is `false`;
@@ -58,6 +64,10 @@ template <> struct value_traits<Config::Values::Bool> {
     using type = Config::BOOL;
 };
 
+template <> struct value_traits<Config::Values::Float> {
+    using type = Config::FLOAT;
+};
+
 // Type-contract read: throws (catchable) on a null slot or a storage type that
 // does not match the Config::* type we registered. Never take a raw pointer —
 // CStringValue::ptr() is a hard RASSERT (RP-3); Bool slots are stored as INT
@@ -72,7 +82,7 @@ auto read(const SP<V> &value) {
     return value->value();
 }
 
-// Registers the 12 documented keys; fail closed on the first registration error
+// Registers the 14 documented keys; fail closed on the first registration error
 // (short-circuit): PLUGIN_INIT aborts with a notification instead of half-registering.
 // Returns nullopt on success, or a human-readable reason for the host rejection
 // (e.g. "name collision" when the same keys are already registered by a loaded

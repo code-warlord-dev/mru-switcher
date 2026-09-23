@@ -180,7 +180,8 @@ if(MRU_BUILD_PLUGIN)
     src/plugin/hypr/hypr_workspace_navigator.cpp
     src/plugin/hypr/hypr_scheduler.cpp
     src/plugin/hypr/hyprctl_border_prop_io.cpp
-    src/plugin/hypr/hyprland_overlay_socket.cpp)
+    src/plugin/hypr/hyprland_overlay_socket.cpp
+    src/plugin/hypr/hyprland_pulse_timer.cpp)
   target_include_directories(mru_plugin_hypr PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/plugin)

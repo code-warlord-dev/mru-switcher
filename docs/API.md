@@ -68,9 +68,11 @@ Prefix: `plugin:mru-switcher:`. All keys are registered in `PLUGIN_INIT`.
 
 | Key | Type | Default | Notes |
 |-----|------|---------|-------|
-| `border_style` | string | `solid` | `solid` required; `pulse` / `dim` reserved → treated as `solid` until implemented; unknown → `solid` + one warning |
+| `border_style` | string | `solid` | `solid` \| `pulse` \| `dim`; unknown → `solid` + one warning (ADR-028) |
 | `border_color` | string | `0xffffd9a0` | Used when `ui = border`. Documented implementation default (verbatim `setprop` colour grammar: hex `0xAARRGGBB` / `rgb(...)` / `rgba(rrggbbbaa)`; intentionally registered as `String`, not `Color`) |
 | `border_size` | int | `-1` | `-1` = do not modify window border size; `≥ 0` may set the size for the highlighted window for the duration of the highlight |
+| `pulse_period_ms` | int | `1000` | ADR-028 / REQ-UI-013; one full pulse throb cycle in ms, clamped to `[200, 10000]`; effective only when `border_style = pulse` |
+| `dim_alpha` | float | `0.7` | ADR-028 / REQ-UI-014; alpha applied to the non-selected ring windows when `border_style = dim`, clamped to `[0.0, 1.0]`; `≥ 1.0` disables dimming |
 | `selection_follow_workspace` | bool | `true` | ADR-026 / REQ-UI-012, effective **only** when `ui = border`: keep the selected window visible by activating its workspace for the session (hyprland module: `CMonitor::changeWorkspace`, `noFocus`; no window/keyboard focus moves, REQ-UI-006 intact). Restored on cancel (session-start workspaces); left active on apply (target focused next). `false` = pre-ADR-026 off-screen highlight. Applied per-session (next session after reload, REQ-CFG-002); see Border behaviour in `docs/USER.md` §"UI backends" |
 
 ### External overlay protocol (`ui = external`)
@@ -98,7 +100,7 @@ value as `hyprctl clients`).
 ### Reload
 
 - `debounce_ms` — affects subsequent history commits.
-- `ui`, `border_style`, `border_color`, `border_size`, `selection_follow_workspace`, and other session-policy keys — **next session only**.
+- `ui`, `border_style`, `border_color`, `border_size`, `pulse_period_ms`, `dim_alpha`, `selection_follow_workspace`, and other session-policy keys — **next session only**.
 
 ### Non-API notes
 

@@ -1385,3 +1385,101 @@ monitor/workspace uses the same `WindowIdentityRegistry` path as
 
 ---
 
+## ADR-028: Full implementations of border styles `pulse` and `dim`
+
+**Status:** Accepted (2026-09-22) — human decision by CEO (explicit mandate:
+«делаем им полную реализацию», options B-2 chosen at design gate).
+
+**Related:** ADR-017 (Border UI style interface), ADR-025 (UI default), ADR-026
+(selection view follow), REQ-UI-007/008/009, SPEC §4/§5.2, ROADMAP M4.
+
+**Context:**
+
+REQ-UI-007 ships `border_style` with `solid` as the only implemented token;
+`pulse` and `dim` are **reserved** and degrade to `solid` + warn-once until a
+SPEC/ADR revision implements them. The style is a property of the single
+`BorderHighlightUI` backend (ADR-017), not a separate backend.
+
+The CEO mandates full implementations. This ADR is that revision.
+
+Also recorded here: the ADR-026 multi-monitor scope-out ("move focus monitor
+during the hold — revisit only with explicit multi-monitor feedback") was
+explicitly revisited at the design gate (2026-09-22) and **closed as
+keep-as-is**: cross-monitor already-visible targets keep the current behaviour
+(border on the other monitor, no focus movement until apply). REQ-F-003 stays
+untouched; no code for it.
+
+**Options considered (per-style semantics):**
+
+- `pulse`:
+  - **A1 — colour throb:** the selected window's border colour animates between
+    `border_color` and a computed dimmer variant on the compositor main thread
+    (chosen). Fits the existing `BorderPropIo` write path (setprop colour) and
+    needs no new renderer hooks.
+  - A2 — alpha throb on the border (setprop alpha per window) — more invasive,
+    touches the window alpha pipeline that REQ-UI-014-adjacent dim code also
+    uses; colour throb is sufficient and visual-reversible.
+  - A3 — reserved HUD/overlay pulse — belongs to the external overlay (M5), not
+    the border style.
+- `dim`:
+  - **B1 — dim the surrounding (non-selected ring) windows (chosen):** every
+    ring window that is not currently highlighted is dimmed to `dim_alpha` via
+    the per-window `alpha` animatable (`CWindow::alpha`, `m_dimPercent`-adjacent
+    render property on the pin; exact symbols adapter-private per REQ-UI-011).
+    Reversible, animated by the compositor, single capture/restore path per
+    window, and matches the user's phrasing «окна кольца притемняются».
+    *(The `dimAround` window-rule effect exists on the pin but the flag has no
+    public plugin setter — verified 2026-09-22; it is not used.)*
+  - B2 — dim **everything** around the highlighted window via `dimAround` +
+    `m_dimPercent` — no public plugin setter for the flag on the pin; rejected.
+- Timescale: pulse uses `wl_event_loop_add_timer` on
+  `g_pCompositor->m_wlEventLoop` — the same main-thread loop already used for
+  the M5 fd watch (ADR-019); no background threads (AGENTS §7).
+
+**Decision:**
+
+- `BorderStyle` gains `Pulse` and `Dim` (enum stays single, inside
+  `BorderHighlightUI`; parse_border_style maps `pulse`/`dim` without warn).
+  Unknown tokens still → `solid` + warn-once (REQ-UI-007 unchanged for unknown).
+- New config keys (registered under `plugin:mru-switcher:` in init, spec table
+  §4, sidecar parity per ADR-024):
+  - `pulse_period_ms` int, default `1000`, clamp **[200, 10000]** — one
+    full throb cycle; effective only when `border_style = pulse`.
+  - `dim_alpha` float, default `0.7`, clamp **[0.0, 1.0]** — dim strength;
+    effective only when `border_style = dim`.
+- `pulse` behaviour: from `on_session_start`/`on_selection_changed`, while the
+  target is highlighted, `BorderHighlightUI` schedules a main-thread timer
+  (`wl_event_loop_add_timer`) that toggles the highlight colour between
+  `border_color` and a computed darker variant each half-period; on selection
+  change the timer is restarted for the new target; on `on_session_end` the
+  timer is removed and every slot is restored to the captured values
+  (REQ-UI-005) exactly as `solid` does. Degraded session (REQ-UI-002 probe
+  failure) → no pulse loop. Fail-soft: timer API refusal / spurious throws
+  degrade to warn-once and the border falls back to a constant colour
+  (REQ-UI-001), never aborting the session.
+- `dim` behaviour: highlight colour identical to `solid` (constant
+  `border_color`); additionally every ring window except the highlighted one is
+  dimmed to `dim_alpha` via the per-window `alpha` animatable; prior alpha state
+  per window is captured on use and restored on selection change /
+  `on_session_end` — same capture discipline as every other border slot
+  (REQ-UI-005). Fail-soft identical.
+- The `null` and `external` backends are untouched.
+- REQ-UI-007's reserved-token clause is replaced: `pulse` and `dim` are
+  implemented; only *unknown* tokens degrade to `solid` + warn-once.
+- Reload semantics: all three UI keys (`border_style`, `pulse_period_ms`,
+  `dim_alpha`) apply to sessions started after reload only (REQ-UI-009).
+
+**Consequences:**
+
+- `ui = border` becomes a real style family; `pulse` is the visual "alive ring"
+  default, `dim` is the focus-assist contrast mode.
+- Two frozen-but-additive config keys enter the §4 table (minor release; we are
+  pre-1.0, no contract break — §0 versioning rule).
+- COMPAT gains a mechanism row (`wl_event_loop_add_timer`; per-window `alpha`
+  animatable for dim — `dimAround` rejected, no public plugin setter).
+- ADR-026's multi-monitor limitation is now a closed decision (no code).
+- Tests: T-UI-13 (pulse loop + restore + clamp), T-UI-14 (dim apply/capture/
+  restore + clamp), config defaults/parse tests (`cfg_09_*`, `cfg_10_*`),
+  sidecar parity (`sidecar_09_*`, `sidecar_10_*`).
+
+---

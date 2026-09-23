@@ -13,6 +13,7 @@
 #include "hypr/hypr_workspace_navigator.hpp"
 #include "hypr/hyprctl_border_prop_io.hpp"
 #include "hypr/hyprland_overlay_socket.hpp"
+#include "hypr/hyprland_pulse_timer.hpp"
 #include "hypr/null_ui.hpp"
 #include "mru/domain/history_tracker.hpp"
 #include "mru/domain/session_controller.hpp"
@@ -30,10 +31,10 @@ namespace mru::plugin {
 // Invariants: the tracker holds a Validator closing over the registry and a
 // SchedulerPort&, so it must be destroyed before both; the source holds a
 // HistoryTracker&, so the tracker must outlive it (ADR-015); the ui proxy's
-// factory builds a BorderHighlightUI holding a BorderPropIo&, so border_io must
-// outlive ui (REQ-UI-009); it may also build an ExternalOverlayUI holding an
-// OverlayTransport&, so overlay_socket must outlive ui too (ADR-018). The
-// workspace_navigator holds a registry&, so it must die before the registry. The
+// factory builds a BorderHighlightUI holding a BorderPropIo& and a PulseTimerPort&,
+// so border_io and pulse_timer must outlive ui (REQ-UI-009, ADR-028); it may also
+// build an ExternalOverlayUI holding an OverlayTransport&, so overlay_socket must
+// outlive ui too (ADR-018). The workspace_navigator holds a registry&, so it must
 // reverse order is enforced by an explicit teardown_state(); this type is
 // therefore never copyable or movable.
 struct PluginState {
@@ -53,7 +54,12 @@ struct PluginState {
     // registry&, so it dies BEFORE the registry; declared between fg and border_io
     // so the explicit reverse-order teardown places it exactly there.
     std::unique_ptr<HyprlandWorkspaceNavigator> workspace_navigator;
-    std::unique_ptr<HyprctlBorderPropIo> border_io;        // must outlive ui (factory builds BorderHighlightUI)
+    std::unique_ptr<HyprctlBorderPropIo> border_io; // must outlive ui (factory builds BorderHighlightUI)
+    // ADR-028/REQ-UI-013: compositor-main-thread pulse timer; BorderHighlightUI
+    // borrows a PulseTimerPort&, so this must outlive ui too (same reverse-order
+    // guarantee as border_io). Deliberately a full Hyprland object: the pure side
+    // only ever sees the PulseTimerPort interface.
+    std::unique_ptr<HyprlandPulseTimer> pulse_timer;
     std::unique_ptr<mru::domain::UIPort> ui;               // SessionUIBackendProxy (REQ-UI-009, ADR-017)
     std::unique_ptr<HyprlandOverlaySocket> overlay_socket; // must outlive ui (ExternalOverlayUI transport)
     std::unique_ptr<mru::domain::SessionController> controller;

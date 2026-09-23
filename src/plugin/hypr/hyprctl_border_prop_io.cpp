@@ -48,6 +48,10 @@ std::string HyprctlBorderPropIo::prop_name(BorderSlot slot) {
         return "inactive_border_color";
     case BorderSlot::Size:
         return "border_size";
+    case BorderSlot::Alpha:
+        return "opacity"; // ADR-028/REQ-UI-014: per-window alpha (active-focus channel)
+    case BorderSlot::AlphaInactive:
+        return "opacity_inactive"; // ADR-028/REQ-UI-014: per-window alpha (others)
     }
     return {};
 }

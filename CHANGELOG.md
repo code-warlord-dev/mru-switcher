@@ -17,6 +17,26 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Border highlight styles `pulse` and `dim` (ADR-028, SPEC REQ-UI-013/REQ-UI-014, new config keys
+  `pulse_period_ms` default `1000` and `dim_alpha` default `0.7`):** `border_style` is now fully
+  effective — `solid` (unchanged constant colour), `pulse` (the highlight colour **throbs** every
+  half-cycle between `border_color` and a darker re-scale of it, driven by a `wl_event_loop` timer on
+  the compositor main thread; full-cycle period `pulse_period_ms`, clamped `[200, 10000]`), and `dim`
+  (the selected window keeps the highlight colour and every other valid ring window's per-window
+  alpha — `opacity` + `opacity_inactive` — is dropped to `dim_alpha`, clamped `[0, 1]`; `>= 1`
+  disables dimming). The override targets both render channels — the active channel for the focused
+  window, the inactive one for every other (`applyAlpha` on `alpha()`/`alphaInactive()`); prior alphas
+  are restored by value on selection change / session end, unreadable windows are skipped (fail-soft,
+  REQ-UI-001/005), and pulse degrades to a constant colour
+  with warn-once when the host provides no timer or `schedule()` fails/throws. Unknown `border_style`
+  tokens still fall back to `solid` + warn-once; `pulse`/`dim` no longer warn. Both keys deploy on the
+  hyprlang channel (V2), the Lua sidecar (ADR-024), and clamp identically across both. Pure layer:
+  `clamp_pulse_period_ms` / `clamp_dim_alpha`; new Hyprland-free port `PulseTimerPort` +
+  `BorderStyleParams` in `border_highlight_ui.hpp`, `darker_color()` colour helper, `Alpha`/
+  `AlphaInactive` capture slots, `HyprlandPulseTimer` adapter (`wl_event_loop_add_timer`,
+  documented in `docs/COMPAT.md`). Tests: `t_ui_013_*` (6), `t_ui_014_*` (4), `cfg_09_*`/`cfg_10_*`,
+  `sidecar_09_*`/`sidecar_10_*`, updated `t_ui_07_*`; USER.md/API.md/COMPAT.md/CHANGELOG updated.
+
 - **Selection view follows the highlighted window (ADR-026, SPEC REQ-UI-012, new config key
   `selection_follow_workspace`, default `true`):** with `ui = border`, the plugin now keeps the
   selected window visible while a session is active — if the selected window's workspace is not the
@@ -35,11 +55,13 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
   on Lua-config Hyprland builds the `plugin:mru-switcher:*` keys are unsettable (validator rejects
   plugin special-category keys — `docs/agent-state/reports/2026-09-22-lua-host-plugin-config-dead-end.md`),
   so the plugin now reads an opt-in sidecar file (`$XDG_CONFIG_HOME/mru-switcher/config`, else
-  `~/.config/mru-switcher/config`) at load and on every `hyprctl reload` and overlays the same 11
-  SPEC §4 keys (only present-and-valid keys win; unknown/invalid warn once, never abort; missing file
+  `~/.config/mru-switcher/config`) at load and on every `hyprctl reload` and overlays the same 14
+  SPEC §4 keys (incl. `pulse_period_ms` / `dim_alpha`, ADR-028; only present-and-valid keys win;
+  unknown/invalid warn once, never abort; missing file
   is silent). New Hyprland-free `src/plugin/sidecar_config.{hpp,cpp}` + `tests/plugin/test_sidecar_config.cpp`
   (T-CFG-07, 7 cases), `examples/mru-switcher-sidecar.conf` (`ui=border` demo), COMPAT limitation row +
-  USER.md Lua caveat. No new keys, no renames, no default change; hyprlang hosts unaffected.
+  USER.md Lua caveat. The overlay mirrors the SPEC §4 surface (14 keys since ADR-028); the mechanism
+  itself introduced no config-key defaults of its own. hyprlang hosts unaffected.
 
 - **Plugin facade split by responsibility (no behavior change):** `src/plugin/mru_plugin.cpp` 516 → 74
   lines (INIT/EXIT only); new flat TUs `plugin_dispatch`, `plugin_lua_bridge`, `plugin_events`,

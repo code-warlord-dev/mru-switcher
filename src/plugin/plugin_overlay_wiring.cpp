@@ -70,6 +70,12 @@ std::unique_ptr<mru::domain::UIPort> create_session_backend() {
         WorkspaceNavigator &navigator = state().config.selection_follow_workspace
                                             ? static_cast<WorkspaceNavigator &>(*state().workspace_navigator)
                                             : null_workspace_navigator();
+        // ADR-028 / REQ-UI-013/014: pass the effective pulse/dim tunables (already
+        // clamped in the pure config layer) plus the plugin-owned compositor timer
+        // port so the freshly-built backend can throb on the main thread.
+        BorderStyleParams style_params;
+        style_params.pulse_period_ms = state().config.pulse_period_ms;
+        style_params.dim_alpha = state().config.dim_alpha;
         return std::make_unique<BorderHighlightUI>(
             *state().border_io,
             [&](const mru::domain::WindowRef &ref) { return static_cast<bool>(state().registry->resolve(ref)); },
@@ -89,7 +95,7 @@ std::unique_ptr<mru::domain::UIPort> create_session_backend() {
                 HyprlandAPI::addNotification(PHANDLE, std::string("mru-switcher: ") + std::string(reason),
                                              CHyprColor{1, 0.7, 0, 1}, 5000);
             },
-            navigator);
+            navigator, style_params, *state().pulse_timer);
     }
     if (effective_ui_backend(state().config) == UiBackend::External) {
         if (try_start_overlay_socket()) {

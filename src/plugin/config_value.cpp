@@ -1,6 +1,7 @@
 #include "config_value.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <string_view>
 
 namespace mru::plugin {
@@ -64,9 +65,27 @@ ParsedUi parse_ui_backend(std::string_view s) {
 ParsedBorderStyle parse_border_style(std::string_view s) {
     if (s == "solid")
         return {BorderStyle::Solid, false};
-    // REQ-UI-007: `pulse` / `dim` are reserved, any other token is unknown — both
-    // behave as `solid` and warrant a single warning.
+    if (s == "pulse")
+        return {BorderStyle::Pulse, false}; // ADR-028 / REQ-UI-013
+    if (s == "dim")
+        return {BorderStyle::Dim, false}; // ADR-028 / REQ-UI-014
+    // REQ-UI-007: any unknown token behaves as `solid` and warrants one warning.
     return {BorderStyle::Solid, true};
+}
+
+// ADR-028 / REQ-UI-013: clamp on the full-width value BEFORE narrowing to int
+// (same MEDIUM-9 discipline as clamp_debounce_ms), so out-of-range config values
+// land on the clamp bounds instead of a truncated bit-pattern.
+int clamp_pulse_period_ms(std::int64_t raw) {
+    return static_cast<int>(std::clamp<std::int64_t>(raw, 200, 10000));
+}
+
+// ADR-028 / REQ-UI-014: dim strength clamp [0.0, 1.0]. Handles the INT64 special
+// value NaN semantics the same way the config layer reads floats (finite check).
+double clamp_dim_alpha(double raw) {
+    if (!std::isfinite(raw))
+        return 0.7; // default on NaN/Inf from a bad config read
+    return std::clamp(raw, 0.0, 1.0);
 }
 
 UiBackend effective_ui_backend(const PluginConfig &cfg) {
