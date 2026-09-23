@@ -17,6 +17,8 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- README: border-style switching guide (solid/pulse/dim, key replacement, reload semantics).
+
 - **Border highlight styles `pulse` and `dim` (ADR-028, SPEC REQ-UI-013/REQ-UI-014, new config keys
   `pulse_period_ms` default `1000` and `dim_alpha` default `0.7`):** `border_style` is now fully
   effective — `solid` (unchanged constant colour), `pulse` (the highlight colour **throbs** every
