@@ -743,6 +743,20 @@ std::string alpha_write_of(const FakeBorderPropIo &io, std::uint64_t address, Bo
     return {};
 }
 
+// --- ADR-028 / REQ-UI-013: darker_color concrete-byte tests --------------------
+// Assertions are against FIXED expected strings, so a parser regression (wrong
+// byte order, off-by-one darkening, alpha loss) changes the expected values.
+TEST(darker_color_concrete_bytes) {
+    // 0xAARRGGBB: alpha kept, RGB scaled by half with integer division.
+    CHECK(darker_color("0xffffd9a0") == "0xff7f6c50"); // a=ff r=ff g=d9 b=a0
+    // 6-digit RRGGBB -> alpha ff stays ff.
+    CHECK(darker_color("0xd9a0ff") == "0xff6c507f"); // r=d9 g=a0 b=ff -> r/2=6c g/2=50 b/2=7f
+    // rgba(r,g,b,a) comma form: alpha taken verbatim, not assumed ff.
+    CHECK(darker_color("rgba(217, 160, 255, 128)") == "0x806c507f");
+    // Unparseable input round-trips unchanged (constant-colour fallback).
+    CHECK(darker_color("not-a-color") == "not-a-color");
+}
+
 // --- ADR-028 / REQ-UI-013: border_style = pulse -------------------------------
 TEST(t_ui_013_pulse_arms_timer_and_throbs) {
     FakeBorderPropIo io;
@@ -889,6 +903,25 @@ TEST(t_ui_014_dim_sets_ring_alpha_keeps_selection) {
     CHECK(alpha_write_of(io, C, BorderSlot::Alpha) == "1");
     CHECK(alpha_write_of(io, C, BorderSlot::AlphaInactive) == "1");
     CHECK(!any_highlight_left(io));
+}
+
+// dim_alpha reaches BorderHighlightUI as a float-widened double (config channel
+// reads Config::Values::Float 0.7F -> 0.699999988... as a double). The write to
+// the host must still carry the user-facing value, not the widening noise.
+TEST(t_ui_014_dim_alpha_written_string_roundtrips) {
+    FakeBorderPropIo io;
+    seed(io, A, "0xaa000001", "0xaa000002");
+    seed(io, B, "0xbb000001", "0xbb000002");
+    seed_alpha(io, B);
+    const auto valid = [](const WindowRef &) { return true; };
+    BorderStyleParams params;
+    params.dim_alpha = static_cast<double>(0.7F); // the exact config->double widening
+    BorderHighlightUI ui(io, valid, BorderStyle::Dim, kHighlight, -1, {}, null_workspace_navigator(), params);
+    const Snapshot snap({ref(A), ref(B)}, Scope::Global);
+
+    ui.on_session_start(snap, 0);
+    CHECK(alpha_write_of(io, B, BorderSlot::Alpha) == "0.7");
+    CHECK(alpha_write_of(io, B, BorderSlot::AlphaInactive) == "0.7");
 }
 
 // dim_alpha >= 1.0 disables dimming entirely (SPEC §4 REQ-UI-014).

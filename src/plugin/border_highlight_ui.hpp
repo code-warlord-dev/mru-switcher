@@ -139,9 +139,6 @@ class BorderHighlightUI : public mru::domain::UIPort {
         bool size_applied = false;  // our size override write succeeded
         bool size_captured = false; // prior size read back via border_size getprop
         std::string size_value;     // prior effective size (pure integer) when captured
-        // True for the highlighted (selected) window, false for the dim ring
-        // targets (REQ-UI-014). restore_window() restores both flavours.
-        bool selected = false;
     };
 
     void highlight(std::size_t index);

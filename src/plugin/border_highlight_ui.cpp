@@ -72,8 +72,12 @@ Rgb parse_hypr_color(std::string_view raw) {
         if (hex.size() == 6) {
             out = {true, hex_byte(hex.substr(0, 2)), hex_byte(hex.substr(2, 2)), hex_byte(hex.substr(4, 2)), 255};
         } else if (hex.size() == 8) {
-            out = {true, hex_byte(hex.substr(0, 2)), hex_byte(hex.substr(2, 2)), hex_byte(hex.substr(4, 2)),
-                   hex_byte(hex.substr(6, 2))};
+            // 0x is AARRGGBB per pin/docs (SPEC §4): alpha is the FIRST byte.
+            const int r = hex_byte(hex.substr(2, 2));
+            const int g = hex_byte(hex.substr(4, 2));
+            const int b = hex_byte(hex.substr(6, 2));
+            const int a = hex_byte(hex.substr(0, 2));
+            out = {true, r, g, b, a};
         }
         if (out.ok && (out.r < 0 || out.g < 0 || out.b < 0 || out.a < 0))
             out.ok = false;
@@ -294,7 +298,6 @@ void BorderHighlightUI::highlight(std::size_t index) {
     // read back, otherwise a failed restore could leave an invisible border.
     WindowCapture cap;
     cap.ref = ref;
-    cap.selected = true;
     if (!read_slot(ref.address, BorderSlot::ActiveColor, cap.active) ||
         !read_slot(ref.address, BorderSlot::InactiveColor, cap.inactive)) {
         warn_once("border property read failed; skipping highlight");
@@ -345,7 +348,11 @@ void BorderHighlightUI::highlight(std::size_t index) {
 void BorderHighlightUI::dim_ring(std::size_t selected_index) {
     if (!snapshot_ || params_.dim_alpha >= 1.0)
         return; // dim_alpha >= 1.0 disables dimming (SPEC §4 REQ-UI-014)
-    const std::string dim_value = std::format("{}", params_.dim_alpha);
+    // Fixed-precision write: dim_alpha is a float-widened double from the config
+    // channel (Config::Values::Float 0.7F widens to 0.699999988...); the default
+    // {} formatting would write that noisy value verbatim. {:.4g} keeps the
+    // user-facing value (0.7) on the wire, which the host parses identically.
+    const std::string dim_value = std::format("{:.4g}", params_.dim_alpha);
     for (std::size_t i = 0; i < snapshot_->size(); ++i) {
         const mru::domain::WindowRef &ref = snapshot_->at(i);
         if (i == selected_index)
