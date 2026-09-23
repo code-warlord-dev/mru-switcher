@@ -345,8 +345,9 @@ session keeps the policy it started with). Quick reference of the options:
 behaviour (`debounce_ms`, `start_offset`, `wrap`), default scope, history
 behaviour (`restore_focus_on_cancel` — history lock-in while a session is open
 is mandatory and has no setting), and the UI
-backend (`ui`, plus `border_style` / `border_color` / `border_size` for the
-border backend and `external_socket` for the external one).
+backend (`ui`, plus `border_style` / `border_color` / `border_size`,
+`pulse_period_ms` / `dim_alpha` for the border backend — see
+[Border styles](#border-styles) — and `external_socket` for the external one).
 
 The full reference lives in [docs/USER.md](docs/USER.md).
 
@@ -377,6 +378,58 @@ bind = ALT, TAB, mru:cycle, next monitor
   border follows the **virtual selection**; real focus only moves on apply.
 * `external` — drives an out-of-process overlay over a socket for custom UIs.
   Opt-in and advanced; without a peer it behaves exactly like `null`.
+
+### Border styles
+
+With `ui = border`, `border_style` picks how the highlight behaves while you
+browse:
+
+| Style   | What you see                                                     | Keys that matter                                                                                                      |
+| ------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `solid` | Constant highlight colour on the selected window (default)      | `border_color`, `border_size`                                                                                          |
+| `pulse` | The highlight colour **throbs** — alternates between `border_color` and a darker variant of it every half-cycle | `pulse_period_ms` — one full cycle in ms, default `1000`, clamped `[200, 10000]`                             |
+| `dim`   | The selected window keeps the constant highlight; every other valid ring window is dimmed (focus-assist) | `dim_alpha` — alpha of the surrounding windows, default `0.7`, clamped `[0, 1]`; `>= 1` disables dimming |
+
+**How to switch** — same three steps on both config channels; only the file
+you edit differs:
+
+* **hyprlang** (`plugin { mru-switcher { … } }` in your sourced conf.d file,
+  e.g. `~/.config/hypr/conf.d/mru-switcher.conf`):
+
+  1. Edit `border_style` (and the style-specific key if you want) — e.g.
+     `border_style = pulse`, `pulse_period_ms = 800`.
+  2. Run `hyprctl reload`.
+  3. The new style applies to your **next** Alt+Tab session.
+
+* **Lua / Omarchy** (sidecar file `~/.config/mru-switcher/config`, or
+  `$XDG_CONFIG_HOME/mru-switcher/config`; one `key = value` per line — the
+  host's `plugin:mru-switcher:*` keys are unsettable on Lua configs):
+
+  1. Edit the same keys in the sidecar file — e.g. `border_style = dim`,
+     `dim_alpha = 0.5`. The plugin reads the file at load and on every
+     `hyprctl reload`.
+  2. Run `hyprctl reload`.
+  3. The new style applies to your **next** Alt+Tab session.
+
+**Replacing keys** — reuse the same key name with a new value; that replaces
+the previous value, there is no separate "unset". Unknown keys are ignored
+with one warning; invalid values keep the built-in default with one warning.
+An unknown `border_style` token falls back to `solid` with a one-time
+warning. The style-specific keys are inert unless their style is active:
+`pulse_period_ms` only matters when `border_style = pulse`, `dim_alpha` only
+when `border_style = dim`.
+
+**Reload semantics** — `hyprctl reload` re-reads the config (the hyprlang
+block, or the sidecar file on Lua hosts); an already-open session keeps the
+UI settings it started with until apply/cancel — the new style shows up on
+the next session (spec anchors: REQ-UI-009 / REQ-CFG-002). To compare
+styles, switch back to `solid` between sessions, or set `ui = null` to turn
+the visuals off entirely.
+
+Full key reference (defaults, clamps, fail-soft behaviour):
+[docs/USER.md](docs/USER.md). Example files with every key documented
+inline: [examples/](examples/) — `mru-switcher.conf` (hyprlang) and
+`mru-switcher-sidecar.conf` (Lua/Omarchy sidecar).
 
 Dispatcher surface:
 
@@ -425,6 +478,12 @@ mru:status
 * **Config changes not applying** — edit the file and run
   `hyprctl reload`; an already-open session keeps its original settings until
   apply/cancel.
+* **Switching `border_style` appears to do nothing** — an already-open
+  session keeps the UI settings it started with; end it with apply/cancel and
+  retry on the next Alt+Tab. Also check the config channel matches your
+  backend: on a Lua host use the sidecar file
+  (`~/.config/mru-switcher/config`) — host `plugin:mru-switcher:*` keys are
+  unsettable there and will not take.
 * **Scratchpad / special-workspace windows missing** — a hidden scratchpad is
   excluded from every scope; once shown it behaves like a normal window.
 * **Per-monitor switching** — use the `monitor` scope (or a specific bind that
