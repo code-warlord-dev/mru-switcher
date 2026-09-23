@@ -132,6 +132,66 @@ TEST(sidecar_08_selection_follow_workspace_overlay) {
     CHECK(warns_bad.size() == 1);
 }
 
+// ADR-028 / REQ-UI-013: sidecar parity for pulse_period_ms — clamped like the
+// hyprlang channel (REQ-CFG-004 discipline), invalid/junk keeps the base.
+TEST(sidecar_09_pulse_period_ms_overlay) {
+    PluginConfig base = default_plugin_config();
+    auto overlay = [&](const char *text) {
+        PluginConfig cfg = base;
+        std::vector<std::string> warns;
+        apply_overlay(cfg, parse(text), [&](const std::string &w) { warns.push_back(w); });
+        return std::make_pair(cfg, warns);
+    };
+
+    const auto [shown, warns_ok] = overlay("pulse_period_ms = 1500\n");
+    CHECK(shown.pulse_period_ms == 1500);
+    CHECK(warns_ok.empty());
+
+    const auto [clamped, warns_clamp] = overlay("pulse_period_ms = 50\n");
+    CHECK(clamped.pulse_period_ms == 200); // REQ-UI-013 lower bound
+    CHECK(warns_clamp.empty());            // clamped, not invalid
+
+    const auto [over, warns_over] = overlay("pulse_period_ms = 99999\n");
+    CHECK(over.pulse_period_ms == 10000);
+    CHECK(warns_over.empty());
+
+    const auto [junk, warns_junk] = overlay("pulse_period_ms = twelve\n");
+    CHECK(junk.pulse_period_ms == base.pulse_period_ms); // invalid keeps the base
+    CHECK(warns_junk.size() == 1);
+}
+
+// ADR-028 / REQ-UI-014: sidecar parity for dim_alpha — clamped [0,1], NaN/Inf
+// rejected as invalid (keeps base), >= 1 disables dimming.
+TEST(sidecar_10_dim_alpha_overlay) {
+    PluginConfig base = default_plugin_config();
+    auto overlay = [&](const char *text) {
+        PluginConfig cfg = base;
+        std::vector<std::string> warns;
+        apply_overlay(cfg, parse(text), [&](const std::string &w) { warns.push_back(w); });
+        return std::make_pair(cfg, warns);
+    };
+
+    const auto [dim, warns_ok] = overlay("dim_alpha = 0.3\n");
+    CHECK(dim.dim_alpha == 0.3);
+    CHECK(warns_ok.empty());
+
+    const auto [one, warns_one] = overlay("dim_alpha = 1.0\n");
+    CHECK(one.dim_alpha == 1.0); // >=1 disables dimming (REQ-UI-014)
+    CHECK(warns_one.empty());
+
+    const auto [over, warns_over] = overlay("dim_alpha = 1.5\n");
+    CHECK(over.dim_alpha == 1.0); // clamped to the upper bound
+    CHECK(warns_over.empty());
+
+    const auto [below, warns_below] = overlay("dim_alpha = -0.2\n");
+    CHECK(below.dim_alpha == 0.0);
+    CHECK(warns_below.empty());
+
+    const auto [junk, warns_junk] = overlay("dim_alpha = 0,5\n");
+    CHECK(junk.dim_alpha == base.dim_alpha); // non-strict decimal -> invalid, keep base
+    CHECK(warns_junk.size() == 1);
+}
+
 } // namespace
 
 int main() {
