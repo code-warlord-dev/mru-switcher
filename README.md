@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <img src="demo.gif" alt="MRU Switcher demo" width="80%">
+  <img src="demo.gif" alt="MRU Switcher demo" width="100%">
 </p>
 
 ---
