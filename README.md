@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="banner.webp" alt="MRU Switcher for Hyprland" width="100%">
+  <img src="assets/banners/banner.webp" alt="MRU Switcher for Hyprland" width="100%">
 </p>
 
 <h1 align="center">MRU Window Switcher</h1>
@@ -71,7 +71,7 @@ you. No guessing which window comes next.
 ## See it in action
 
 <p align="center">
-  <img src="demo.gif" alt="MRU Window Switcher in action" width="100%">
+  <img src="assets/demo/demo.gif" alt="MRU Window Switcher in action" width="100%">
 </p>
 
 The preview shows the core interaction: the selection moves through the frozen
