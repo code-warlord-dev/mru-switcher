@@ -6,8 +6,21 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+### Added
+
+- No changes yet.
+
+## [1.0.0] - 2026-09-24
+
 ### Changed
 
+- **1.0.0 release (M6-T9, Variant A single-pin):** CMake `PROJECT_VERSION`
+  `0.5.0 → 1.0.0` (`MRU_SWITCHER_VERSION` / `PLUGIN_DESCRIPTION_INFO`);
+  `hyprpm.toml` `commit_pins` collapsed from the untested multi-pin
+  (`05b2b9a` era) to the single tested pin Hyprland `efb5099` → plugin = the
+  tagged commit itself (PR merged → pin set to main HEAD → tag placed on it);
+  `docs/VERSION-MAP.md` 1.0.0 row and `docs/COMPAT.md` 1.0.0 row updated
+  (no more `320c4cb`/`05b2b9a`); contract freeze per M6-T1 stands.
 - **`scripts/install.sh` builds any checkout (SPEC REQ-DIST-026(a) amended; ADR-020 §4 amendment,
   2026-09-24):** a first run from a clone outside `~/.local/src/mru-switcher` is no longer refused —
   the installer builds the checkout it lives in, reports the paths it used, and leaves the canonical

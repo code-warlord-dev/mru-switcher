@@ -1,33 +1,30 @@
 # Distribution manifest for hyprpm (M6-T5, issue #47).
 #
 # Hyprland pins: each entry is "<hyprland_sha> = <plugin_sha>".
-# Primary tested pin: v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f) —
+# Single tested pin for v1.0.0 (Variant A): v0.56.2 (efb50993780079460b0cbed1363e2166a2de1d9f) —
 # the only revision covered by nest smokes per docs/COMPAT.md.
-# Entries for v0.56.1 / v0.56.0 / v0.55.0 / v0.54.0 are declared but
-# UNTESTED (no nest on those revisions; see COMPAT matrix) — honest
-# multi-pin for hyprpm users on slightly older compositors.
+# Older multi-pin entries (v0.56.1 / v0.56.0 / v0.55.0 / v0.54.0) were declared
+# but UNTESTED — removed for the 1.0 release; re-add only with nest evidence.
 # Pinning is a **release contract** (COMPAT "Risk note").
 #
-# 05b2b9a (2026-09-20): Lua bridge hl.plugin.mru.* (#83) — v0.56.2 pin
-# re-verified by hyprpm update + live plugin load on the Lua session
-# (addLuaFunction registered; dispatchers/config unchanged).
-# The v1.0.0 tag itself remains an explicit human gate; the pins MUST be
-# re-verified against the tagged commit before the release is published.
+# The plugin-side hash below is the release-prep commit itself: the PR branch
+# is merged first, then the pin is set to the resulting main HEAD and the
+# v1.0.0 tag is placed on that exact commit (Variant A self-pin sequence —
+# see docs/VERSION-MAP.md 1.0.0 row).
 [repository]
 name = "mru-switcher"
 # Attribution for hyprpm metadata (VERSION-MAP 1.0.0 / M6-T9 prep): name + handle,
 # no email anywhere in the repository - contact is the GitHub repo/profile.
 authors = ["Yuriy Tretyakov (code-warlord-dev)"]
 # commit_pins: "<hyprland_sha> = <plugin_sha>" (hyprpm reads this array).
-# Plugin-side hash finalized at multi-pin commit (M6-T9 prep follow-up);
-# re-verify against the tagged commit at v1.0.0.
-commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "5c9377c15f85c50648f35ca5a213754f95b93ca0 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "36b2e0cfe0c6094dbc47bd42a437431315bb3087 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "af923e30d1d24f1f4a4f5cb8308065173c1d9539 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c", "0002f148c9a4fe421a9d33c0faa5528cdc411e62 = 05b2b9a0661c170c0a24ffb694d6a5e4e14ec88c"]
+# Placeholder: replaced with the post-merge main HEAD before the v1.0.0 tag
+# (Variant A self-pin). CI only asserts the array is non-empty.
+commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = <release-prep-main-HEAD>"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
 # Authors filled for v0.3.0 (audit L-14 hyprpm publish blocker); commit_pins
-# populated for M6-T5; plugin-side hash finalized in the M6-T9 prep pass —
-# see the header note (the tag itself remains an explicit human gate).
+# single tested pin for v1.0.0 (Variant A, M6-T9) — see the header note.
 # Attribution matches PLUGIN_INIT / LICENSE / README (name + handle, no email).
 authors = ["Yuriy Tretyakov (code-warlord-dev)"]
 output = "build/mru-switcher.so"
