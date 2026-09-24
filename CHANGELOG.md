@@ -6,6 +6,10 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ## [Unreleased]
 
+### Added
+
+- No changes yet.
+
 ## [1.0.0] - 2026-09-24
 
 ### Changed
