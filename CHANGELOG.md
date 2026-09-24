@@ -10,6 +10,10 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 - No changes yet.
 
+### Changed
+
+- **Repo assets restructured under `assets/`:** `logo_v1.png/webp` → `assets/logo/logo.png/webp`, `banner.png/webp` → `assets/banners/banner.png/webp`, `video-banner_v2.mp4/webm` → `assets/banners/video-banner.mp4/webm`, `demo.gif` → `assets/demo/demo.gif`; README media paths updated. Fork-ready materials for hyprwm/hyprland-website staged under `assets/website-fork/static/plugins-data/`.
+
 ## [1.0.0] - 2026-09-24
 
 ### Changed
