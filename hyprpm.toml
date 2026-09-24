@@ -7,19 +7,20 @@
 # but UNTESTED — removed for the 1.0 release; re-add only with nest evidence.
 # Pinning is a **release contract** (COMPAT "Risk note").
 #
-# The plugin-side hash below is the release-prep commit itself: the PR branch
-# is merged first, then the pin is set to the resulting main HEAD and the
-# v1.0.0 tag is placed on that exact commit (Variant A self-pin sequence —
-# see docs/VERSION-MAP.md 1.0.0 row).
+# The plugin-side hash below is the release-prep squash-merge commit eda3bd9
+# on main (PR #117, nest-gated 2026-09-24); the v1.0.0 tag sits on the pin-fix
+# commit carrying this exact pin (Variant A — see docs/VERSION-MAP.md 1.0.0 row).
 [repository]
 name = "mru-switcher"
 # Attribution for hyprpm metadata (VERSION-MAP 1.0.0 / M6-T9 prep): name + handle,
 # no email anywhere in the repository - contact is the GitHub repo/profile.
 authors = ["Yuriy Tretyakov (code-warlord-dev)"]
 # commit_pins: "<hyprland_sha> = <plugin_sha>" (hyprpm reads this array).
-# Placeholder: replaced with the post-merge main HEAD before the v1.0.0 tag
-# (Variant A self-pin). CI only asserts the array is non-empty.
-commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = <release-prep-main-HEAD>"]
+# v1.0.0 (Variant A single-pin): plugin-side = the release-prep squash-merge
+# commit eda3bd9 on main (PR #117). The v1.0.0 tag is placed on the pin-fix
+# commit that contains this exact line — same tree content as eda3bd9 plus
+# this pin, nest-gated 2026-09-24 (docs/agent-state/reports/2026-09-24-m6-pre-tag-smoke.md).
+commit_pins = ["efb50993780079460b0cbed1363e2166a2de1d9f = eda3bd9d5c31441c003267ea646446a548fbf02e"]
 
 [mru-switcher]
 description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, lock-in)"
