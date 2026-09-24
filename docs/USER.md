@@ -314,6 +314,23 @@ hyprctl dispatch mru:cycle next
 hyprctl dispatch mru:apply
 ```
 
+> **Lua-config hosts: `hyprctl dispatch` cannot reach plugin dispatchers.** The
+> Lua parser re-evaluates the dispatch text as Lua (`return hl.dispatch(<text>)`),
+> so `hyprctl dispatch mru:cycle next` fails with
+> `function arguments expected near 'next'` before the plugin sees it — the same
+> host behaviour that blocks `dispatch setprop` (`docs/COMPAT.md`). Drive the
+> plugin from your Lua config instead, where the bridge works:
+>
+> ```lua
+> hl.plugin.mru.cycle("next")   -- or "prev"; scope as the second argument
+> hl.plugin.mru.apply()
+> hl.plugin.mru.cancel()
+> hl.plugin.mru.status()
+> ```
+>
+> (`bindings.lua` already does this; verified live on 0.56.2 / `efb5099` — the
+> bridge call runs, only the `hl.dispatch(…)` wrapper around shell text errors.)
+
 The status payload is frozen for 1.x: `active= index= size= scope= session= last_end=` —
 additional keys may appear in minor releases; tolerate them. On Hyprland 0.56.x,
 `hyprctl dispatch mru:status` prints only `ok`: the plugin carries the status payload in a field

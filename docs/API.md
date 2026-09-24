@@ -123,6 +123,10 @@ hyprctl dispatch mru:cycle next monitor
 hyprctl dispatch mru:apply
 ```
 
+On **Lua-config hosts** these shell commands do not reach plugin dispatchers at
+all — the dispatch text is re-evaluated as Lua and fails to parse. Use the Lua
+bridge below (`hl.plugin.mru.*`) instead; see `docs/COMPAT.md`.
+
 ---
 
 ## Lua bridge (`hl.plugin.mru.*`)
