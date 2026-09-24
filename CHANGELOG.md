@@ -24,6 +24,14 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
   out of the box — on Lua/Omarchy hosts no config channel exists (ADR-024), so the old
   `null` default meant invisible switching. Set `ui = null` explicitly to opt out.
   Unknown `ui` tokens still fall back to null per REQ-CFG-001.
+- **Docs correction — `hyprctl dispatch mru:*` does not work on Lua-config hosts.** USER.md
+  ("Dispatchers") and API.md ("Example binds") suggested `hyprctl dispatch mru:cycle next`; on the Lua
+  backend the parser re-evaluates the dispatch text as Lua (`return hl.dispatch(<text>)`), so the
+  command is a syntax error and plugin dispatchers are unreachable over IPC. Both docs now say so and
+  point at the working channel — the Lua bridge `hl.plugin.mru.cycle/apply/cancel/status`, which
+  `bindings.lua` already uses — and COMPAT gains the matching host row (observed live 2026-09-24,
+  0.56.2 / `efb5099`: `hyprctl dispatch mru:status` → `function arguments expected near ')'`, while
+  `hyprctl dispatch 'hl.plugin.mru.status()'` runs the bridge and only fails inside the wrapper).
 
 ### Added
 
