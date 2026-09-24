@@ -137,6 +137,10 @@ hyprpm reload
 > is published**. Until that pin exists, install from source as described
 > below. A Hyprland upgrade is a rebuild event — never a silent compatibility
 > window.
+>
+> **`hyprpm enable` is not enough to keep the plugin loaded.** Nothing survives a
+> reboot on its own — add the one-line autostart from
+> [Part 4](#part-4--load-the-plugin-on-every-login-hyprpm).
 
 **Build from source.** Source installs live in a canonical, `sudo`-free
 directory under your home folder:
@@ -309,6 +313,60 @@ config ships with
 find and flip it) so you can see the
 selection while you browse; set `ui = null` in the file to switch visuals off.
 
+### Part 4 — load the plugin on every login (hyprpm)
+
+Hyprland starts with **no plugins loaded**: plugin state does not survive a
+reboot. `hyprpm enable mru-switcher` only *marks* the plugin as enabled — the
+load itself happens when `hyprpm reload` runs. A session that skipped it looks
+like this:
+
+```bash
+$ hyprctl plugin list
+no plugins loaded
+```
+
+So add one line that loads enabled plugins at every compositor start:
+
+**Lua config** (`~/.config/hypr/autostart.lua`, or any file your
+`hyprland.lua` loads):
+
+```lua
+hl.on("hyprland.start", function()
+  hl.exec_cmd("hyprpm reload -n")
+end)
+```
+
+(In Hyprland's Lua API this build has no `hl.exec_once` — `hl.on("hyprland.start", …)`
+is the way to run a command once at startup; Omarchy ships the shorthand
+`o.exec_on_start("hyprpm reload -n")`.)
+
+**hyprlang config** (`hyprland.conf`):
+
+```conf
+exec-once = hyprpm reload -n
+```
+
+`-n` asks for a confirmation notification ("Loaded plugins"); warnings and
+errors notify even without it, so drop `-n` for a completely silent login.
+
+Verify after logging in — `hyprctl plugin list` must list `mru-switcher`. If it
+is still empty, run `hyprpm reload -n` once by hand and read its output:
+
+* `✔ Loaded mru-switcher` → loading works, so your autostart line is missing or
+  sits in a file the config never loads (Lua: is that file actually
+  `require`d/`dofile`d?);
+* nothing about `mru-switcher` → the plugin is not *enabled* yet:
+  `hyprpm list` shows `enabled: false` and you need the one-time
+  `hyprpm enable mru-switcher`.
+
+> **Why the one-time `enable` asks for your password and the login does not.**
+> `hyprpm enable` / `add` / `update` write root-owned state under
+> `/var/cache/hyprpm/` (hyprpm installs it as `sudo install -m644 -o 0 -g 0`),
+> so they prompt — and hyprpm **refuses to run as root itself**, so run it from
+> a normal terminal without `sudo`. `hyprpm reload` only *reads* that state and
+> talks to the running compositor: no root, which is why it is safe in
+> autostart on every login.
+
 ### Guided helper for the keybindings
 
 `./scripts/setup-bindings.sh` installs the binding file for you, autodetecting
@@ -455,6 +513,14 @@ mru:status
 
 ## Troubleshooting
 
+* **`no plugins loaded` after a reboot** (or a Lua error like `field 'mru' is
+  nil` on every Alt+Tab) — plugins are not persistent: Hyprland starts clean,
+  and `hyprpm enable` only *marks* the plugin enabled, so the load happens only
+  when `hyprpm reload` runs. Add the one-line autostart from
+  [Part 4](#part-4--load-the-plugin-on-every-login-hyprpm) and check
+  `hyprctl plugin list` after login. If `hyprpm list` still says
+  `enabled: false`, run `hyprpm enable mru-switcher` once from a normal terminal
+  (it asks for your sudo password; never run `hyprpm` itself with `sudo`).
 * **No visual feedback while switching** — visual feedback is on by default
   (`ui = border`, ADR-025), so silence means it was explicitly disabled or the
   border backend degraded at session start (one-time warning). Set `ui = null`
