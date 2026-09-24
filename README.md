@@ -33,10 +33,6 @@
   <img src="https://img.shields.io/badge/C%2B%2B-23-00599C" alt="C++23">
 </p>
 
-<p align="center">
-  <img src="demo.gif" alt="MRU Switcher demo" width="100%">
-</p>
-
 ---
 
 ## Positioning
@@ -75,7 +71,7 @@ you. No guessing which window comes next.
 ## See it in action
 
 <p align="center">
-  <img src="docs/images/mru-switcher.gif" alt="MRU Window Switcher in action" width="900">
+  <img src="demo.gif" alt="MRU Window Switcher in action" width="100%">
 </p>
 
 The preview shows the core interaction: the selection moves through the frozen
