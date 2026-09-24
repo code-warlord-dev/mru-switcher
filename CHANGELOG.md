@@ -13,6 +13,7 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 ### Changed
 
 - **Repo assets restructured under `assets/`:** `logo_v1.png/webp` → `assets/logo/logo.png/webp`, `banner.png/webp` → `assets/banners/banner.png/webp`, `video-banner_v2.mp4/webm` → `assets/banners/video-banner.mp4/webm`, `demo.gif` → `assets/demo/demo.gif`; README media paths updated. Fork-ready materials for hyprwm/hyprland-website staged under `assets/website-fork/static/plugins-data/`.
+- **`assets/demo/demo.gif` rebuilt from source video (`demo.mp4`):** now 960×540 @30 fps, 256-colour palette + dither, frame-layer optimized (9.4 MB, 32.6 s) — sharp, smooth demo with no blocky artefacts.
 
 ## [1.0.0] - 2026-09-24
 
