@@ -764,7 +764,7 @@ hyprctl plugin load "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
 
 **REQ-DIST-011** If `scripts/install.sh` is shipped, it SHALL:
 
-- target the canonical layout of REQ-DIST-007,
+- build the checkout it is run from (the canonical layout of REQ-DIST-007 stays the documented, recommended location — it is not an entry condition),
 - detect or accept the Hyprland version / headers,
 - configure and build with the same flags used in `hyprpm.toml` / CI,
 - verify that `build/mru-switcher.so` exists after the build,
@@ -784,12 +784,12 @@ cd ~/.local/src/mru-switcher
 
 **REQ-DIST-026** If `scripts/install.sh` is shipped, it SHALL additionally:
 
-- **(a) canonical layout** — work in the canonical layout of REQ-DIST-007 by default, and, when run outside it, either refuse with an explicit error naming both remedies (use the canonical checkout, or opt in explicitly) or accept an explicit opt-out (`--dir <path>` / `--allow-non-canonical`). A silent warning is not sufficient.
+- **(a) any checkout** — build the checkout the script is run from by default, with no opt-in required. `~/.local/src/mru-switcher` (REQ-DIST-007) is the documented, recommended layout in README and USER.md; a run from any other directory SHALL still succeed and SHALL report the paths it used (source root, build directory, plugin path). `--dir <path>` selects a different checkout; `--allow-non-canonical` SHALL remain accepted as a no-op for backward compatibility. Refusing a run because the checkout is not canonical is explicitly not allowed.
 - **(b) interface** — support `--dry-run` (change nothing, print the full plan, exit 0), `--quiet` / `--verbose`, and `--jobs N`; reject unknown options and stray positional arguments with a non-zero exit code and a `--help` hint.
 - **(c) `--write-conf`** — write the shipped examples (`examples/*.conf`) **verbatim** into `${XDG_CONFIG_HOME:-$HOME/.config}/hypr/conf.d/` (no duplicate fragment maintained inline in the script), never overwrite an existing file without `--force`, and with `--force` save a `.bak` backup before replacing it.
-- **(d) exit status and summary** — return documented exit codes (0 on success; distinct non-zero codes for usage errors, refused non-canonical layouts, preflight failures, build failures, and refused overwrites), report the failing location on unexpected errors, and print a final summary with the source path, plugin path, detected Hyprland version, and next steps.
+- **(d) exit status and summary** — return documented exit codes (0 on success; distinct non-zero codes for usage errors, a target that is not a mru-switcher checkout (no `CMakeLists.txt`), preflight failures, build failures, and refused overwrites), report the failing location on unexpected errors, and print a final summary with the source path, plugin path, detected Hyprland version, and next steps.
 
-**REQ-DIST-027** If the installer is checked in CI, `scripts/install.sh` SHALL be validated at minimum with `bash -n`, `shellcheck` (when available on the runner) and `--dry-run` in a clean temporary directory; a negative case (unknown option) MUST assert a non-zero exit code.
+**REQ-DIST-027** If the installer is checked in CI, `scripts/install.sh` SHALL be validated at minimum with `bash -n`, `shellcheck` (when available on the runner) and `--dry-run` in a clean temporary directory; a negative case (unknown option) MUST assert a non-zero exit code. The job SHALL also cover REQ-DIST-026(a) — a `--dry-run` from a temporary checkout outside the canonical layout MUST exit 0 — and the exit-3 refusal (a target without `CMakeLists.txt`).
 
 ### 14.5 Examples
 

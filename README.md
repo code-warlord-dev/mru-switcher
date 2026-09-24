@@ -155,12 +155,19 @@ The plugin is `~/.local/src/mru-switcher/build/mru-switcher.so`. Load it:
 hyprctl plugin load "$HOME/.local/src/mru-switcher/build/mru-switcher.so"
 ```
 
+That directory is a **convention, not a requirement** — it keeps the commands
+on this page copy-pasteable. Any other checkout builds identically: `cd` into
+it and run `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON`
+(the plugin then lands in that checkout's `build/`). The guided installer below
+does the same for whatever checkout it lives in.
+
 (Or point the equivalent `plugin =` line in `hyprland.conf` at the same
 path — either way, no root and no system directories involved.)
 
 **Optional — guided install.** Prefer a guided install? The helper script
-builds into the canonical path and verifies your Hyprland headers against the
-pin:
+builds the checkout it runs from, verifies your Hyprland headers against the
+pin, and prints the paths it used — so it works from any directory, not only
+`~/.local/src/mru-switcher`:
 
 ```bash
 git clone https://github.com/code-warlord-dev/mru-switcher.git ~/.local/src/mru-switcher && cd ~/.local/src/mru-switcher && ./scripts/install.sh
@@ -539,6 +546,10 @@ ctest --test-dir build --output-on-failure
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+**Author:** Yuriy Tretyakov ([code-warlord-dev](https://github.com/code-warlord-dev)).
+Bug reports, questions and security reports go through the GitHub repository
+and profile — there is no email contact.
 
 ---
 

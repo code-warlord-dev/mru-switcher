@@ -787,6 +787,17 @@ Rules:
 - The script **MUST NOT** silently edit the user’s `hyprland.conf` without an explicit flag; it may offer to print or write a fragment under `~/.config/hypr/conf.d/` when asked.
 - Failures **MUST** be human-readable (missing `cmake`, headers not found, hash mismatch, etc.).
 
+> **Amendment — 2026-09-24 (pre-1.0, human-approved).** The canonical layout is no longer an
+> entry condition for the installer. `scripts/install.sh` builds whatever checkout it is run from
+> and prints the paths it used; `~/.local/src/mru-switcher` (§3) stays the documented convention
+> that README/USER commands rely on, and moving a checkout there is a recommendation, not a gate.
+> Rationale: refusing a first run from an arbitrary clone (§4's original "refuse or warn" reading)
+> was a poor first-run experience for 1.0 and bought no safety — the script only ever writes inside
+> the checkout's `build/` and, with `--write-conf`, under `~/.config/hypr/conf.d/`. SPEC
+> REQ-DIST-011 / REQ-DIST-026(a)(d) / REQ-DIST-027 and REQ-TRACE T-DIST-05 were amended in the same
+> change set; exit code 3 now means "not a mru-switcher checkout (no `CMakeLists.txt`)" and the CI
+> `installer` job covers both the any-checkout run (exit 0, `--dry-run`) and that refusal.
+
 ### 5. Examples are first-class user assets
 
 Repository layout **SHALL** include:
@@ -926,6 +937,7 @@ Excluded as noise for this project stage: stars, forks, downloads, codecov, CMak
 - [x] USER.md Quick start uses the canonical `~/.local/src/mru-switcher` path — PR #71
 - [ ] `hyprpm.toml` `commit_pins` finalised on the v1.0.0 tag commit — M6-T9 (human gate)
 - [x] `scripts/install.sh` shipped — PR #72
+- [x] Installer builds **any** checkout (REQ-DIST-026(a) amended 2026-09-24, see the amendment note in §4) — same change set as the author-attribution pass
 
 ---
 

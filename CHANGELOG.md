@@ -8,6 +8,16 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Changed
 
+- **`scripts/install.sh` builds any checkout (SPEC REQ-DIST-026(a) amended; ADR-020 §4 amendment,
+  2026-09-24):** a first run from a clone outside `~/.local/src/mru-switcher` is no longer refused —
+  the installer builds the checkout it lives in, reports the paths it used, and leaves the canonical
+  path as the documented convention that README/USER commands rely on. `--dir` still selects another
+  tree; `--allow-non-canonical` stays accepted as a no-op. Exit code 3 now means "not a mru-switcher
+  checkout" (no `CMakeLists.txt`). CI `installer` job: `--dry-run` from a temporary checkout with no
+  opt-in must exit 0 and report the custom layout, plus the new exit-3 negative case.
+- **Author attribution:** `Yuriy Tretyakov (code-warlord-dev)` in `hyprpm.toml` (both `authors`
+  blocks), `LICENSE`, `PLUGIN_INIT` `PLUGIN_DESCRIPTION_INFO.author` (was `mru`) and README; no email
+  anywhere in the repository — contact is the GitHub repository/profile only.
 - Plugin version corrected to match the 0.5.0 release line (CMake PROJECT_VERSION was stale at
   0.4.0 while the v0.5.0 tag already exists).
 - **`ui` default is now `border` (ADR-025):** the plugin shows the border highlight

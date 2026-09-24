@@ -210,4 +210,4 @@
 | T-DIST-02 | hyprpm add + enable + reload loads the plugin on the pinned revision after the 1.0 tag | M6 |
 | T-DIST-03 | `examples/mru-switcher.conf` accepted by hyprlang (no unknown keys, defaults load) | M6 |
 | T-DIST-04 | README and USER.md contain zero occurrences of `/path/to/` or `/absolute/path` in user commands | M6 |
-| T-DIST-05 | `scripts/install.sh`: `bash -n` + `shellcheck` (when available) clean, `--dry-run` in a clean temp dir writes nothing and exits 0, unknown option exits non-zero (CI `installer` job) | M6 |
+| T-DIST-05 | `scripts/install.sh`: `bash -n` + `shellcheck` (when available) clean, `--dry-run` in a clean temp dir writes nothing and exits 0, `--dry-run` from a non-canonical checkout (temporary clone, no opt-in) exits 0 and reports the custom layout, unknown option exits non-zero, a target without `CMakeLists.txt` exits 3 (CI `installer` job) | M6 |
