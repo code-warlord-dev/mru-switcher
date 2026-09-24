@@ -3,7 +3,11 @@
 # (ADR-020 section 4; SPEC section 14.4, REQ-DIST-011..013 and REQ-DIST-026..027).
 #
 # hyprpm stays the primary channel (SPEC REQ-DIST-001/002); this script only
-# automates a source build into the canonical layout (SPEC REQ-DIST-007).
+# automates a source build of whatever checkout it is run from (SPEC
+# REQ-DIST-026(a)). ~/.local/src/mru-switcher (REQ-DIST-007) is the documented,
+# recommended location - not an entry condition: any checkout builds without an
+# opt-in, and the summary prints the paths actually used (REQ-DIST-008 stays the
+# documentation rule; it is not enforced on the user's directory choice).
 # It never downloads anything, never needs sudo, and never touches
 # hyprland.conf: the only writes it can make are the cmake build directory and
 # - with the explicit --write-conf opt-in - verbatim copies of examples/*.conf
@@ -14,11 +18,13 @@
 #   cd ~/.local/src/mru-switcher
 #   ./scripts/install.sh
 #
+# Any other checkout: cd into it and run ./scripts/install.sh exactly the same.
+#
 # Exit codes:
 #   0  success (also for --help / --version / a clean --dry-run)
 #   1  unexpected failure (the ERR trap prints the failing line and command)
 #   2  usage error: unknown option, missing/invalid value, stray argument
-#   3  refused: not the canonical source layout (see --dir / --allow-non-canonical)
+#   3  refused: the target path is not a mru-switcher checkout (no CMakeLists.txt)
 #   4  preflight failure: architecture, toolchain, Hyprland headers, pin skew
 #   5  build failure: configure, compile, or .so verification
 #   6  refused: --write-conf would replace an existing file without --force
@@ -77,10 +83,15 @@ usage() {
   cat <<EOF
 Usage: ${SCRIPT_NAME} [options]
 
-Build the mru-switcher Hyprland plugin from this source tree and verify the
-result, targeting the canonical layout (SPEC REQ-DIST-007):
+Build the mru-switcher Hyprland plugin from this checkout and verify the result.
+The build directory is always <checkout>/build/mru-switcher.so; the documented
+source layout (SPEC REQ-DIST-007, used by README.md and docs/USER.md) is:
 
     ${CANONICAL_ROOT}/build/mru-switcher.so
+
+Any other checkout works too and needs no opt-in: the summary always prints the
+paths actually used, so the commands below stay copy-pasteable from wherever
+this script runs (or from the tree given with --dir).
 
 Configure/build commands (identical to hyprpm.toml and CI):
 
@@ -96,11 +107,11 @@ Options:
         --version           Print script version and the expected Hyprland pin,
                             then exit 0.
         --dir DIR           Build the checkout at DIR (absolute path) instead of
-                            the tree this script lives in. Selecting DIR
-                            explicitly marks a non-canonical location as
-                            deliberate.
+                            the tree this script lives in.
         --allow-non-canonical
-                            Accept a checkout outside ${CANONICAL_ROOT}.
+                            Accepted for backward compatibility (no-op): a
+                            checkout outside ${CANONICAL_ROOT} builds by default
+                            and needs no opt-in.
         --write-conf        Copy examples/${EXAMPLES[0]} and
                             examples/${EXAMPLES[1]} (verbatim) into
                             ${CONF_D_DIR}/.
@@ -128,13 +139,16 @@ Environment:
                             (default: \$HOME/.config).
 
 Exit codes:
-    0 success | 1 unexpected | 2 usage | 3 non-canonical layout
+    0 success | 1 unexpected | 2 usage | 3 not a mru-switcher checkout
     4 preflight (arch/toolchain/headers/pin) | 5 build | 6 --write-conf refused
 
 Documented invocation (SPEC REQ-DIST-012):
     git clone ${REPO_URL} ~/.local/src/mru-switcher
     cd ~/.local/src/mru-switcher
     ./${SCRIPT_NAME}
+
+${CANONICAL_ROOT} is the documented convention, not a requirement: any other
+checkout is supported as-is (cd into it and run ./${SCRIPT_NAME}).
 
 Docs: docs/USER.md (installation + configuration), README.md (quick start).
 EOF
@@ -296,30 +310,20 @@ report_running_hyprland() {
 
 # --- plan / layout ---------------------------------------------------------
 
-enforce_layout() {
+report_layout() {
+  if ((ALLOW_NON_CANONICAL)); then
+    info "--allow-non-canonical: accepted as a deprecated no-op - a checkout outside ${CANONICAL_ROOT} builds by default (SPEC REQ-DIST-026(a))."
+  fi
   if [[ "$ROOT" == "$CANONICAL_ROOT" ]]; then
-    info "layout: canonical (${CANONICAL_ROOT})"
+    info "layout: canonical (${CANONICAL_ROOT}; documented source layout, SPEC REQ-DIST-007)"
     return 0
   fi
-  if ((ALLOW_NON_CANONICAL)) || [[ -n "$OPT_DIR" ]]; then
-    warn "building outside the canonical layout ${CANONICAL_ROOT}: README.md and docs/USER.md document every path from that location, so copy the commands below with the paths printed here."
-    return 0
-  fi
-  err "refusing to install from '${ROOT}': the documented source layout is ${CANONICAL_ROOT} (SPEC REQ-DIST-007), and every command in README.md / docs/USER.md uses that path."
-  err "Fix it one of two ways:"
-  err "  1. use the canonical checkout:"
-  err "       git clone ${REPO_URL} ${CANONICAL_ROOT}"
-  err "       cd ${CANONICAL_ROOT} && ./${SCRIPT_NAME}"
-  err "  2. keep this location deliberately (explicit opt-in):"
-  err "       ./${SCRIPT_NAME} --dir ${ROOT}"
-  err "       ./${SCRIPT_NAME} --allow-non-canonical"
-  err "Exit code 3; run ./${SCRIPT_NAME} --help for all options."
-  exit 3
+  info "layout: ${ROOT} (custom checkout) - supported; ${CANONICAL_ROOT} is only the documented convention (SPEC REQ-DIST-007), so copy the paths printed below."
 }
 
 print_plan() {
-  local layout="canonical"
-  [[ "$ROOT" == "$CANONICAL_ROOT" ]] || layout="non-canonical (explicit opt-in)"
+  local layout="canonical (${CANONICAL_ROOT})"
+  [[ "$ROOT" == "$CANONICAL_ROOT" ]] || layout="custom checkout (supported; no opt-in needed)"
   local wc_desc="no"
   if ((WRITE_CONF)); then
     wc_desc="yes -> ${CONF_D_DIR}/{${EXAMPLES[0]}, ${EXAMPLES[1]}}"
@@ -427,8 +431,8 @@ write_conf() {
 # --- summary ---------------------------------------------------------------
 
 success_summary() {
-  local layout="canonical"
-  [[ "$ROOT" == "$CANONICAL_ROOT" ]] || layout="non-canonical (accepted explicitly)"
+  local layout="canonical (${CANONICAL_ROOT})"
+  [[ "$ROOT" == "$CANONICAL_ROOT" ]] || layout="custom checkout (supported; documented paths use ${CANONICAL_ROOT})"
   local f
   printf '\n'
   printf '%s\n' "----------------------------------------------------------------"
@@ -573,9 +577,9 @@ main() {
     ROOT="$(resolve_root "${BASH_SOURCE[0]}")"
   fi
   [[ -f "${ROOT}/CMakeLists.txt" ]] ||
-    die 3 "no CMakeLists.txt at ${ROOT} - this is not a mru-switcher checkout; point --dir at one (see --help)."
+    die 3 "no CMakeLists.txt at ${ROOT} - this is not a mru-switcher checkout; run the script from a checkout, or point --dir at one (see --help)."
 
-  enforce_layout
+  report_layout
 
   info "source root: ${ROOT}"
   info "expected Hyprland pin: ${EXPECTED_VERSION} (${PIN_DOC})"

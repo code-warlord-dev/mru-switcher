@@ -251,17 +251,22 @@ jobs:
           ./scripts/install.sh --version
           ./scripts/setup-bindings.sh --help > /dev/null
           ./scripts/setup-bindings.sh --version
-      - name: --dry-run in a clean temp dir exits 0 and writes nothing
+      - name: --dry-run in a clean temp checkout exits 0 and writes nothing (no opt-in needed)
         run: |
           tmp="$(mktemp -d)"
           cp -a examples scripts CMakeLists.txt hyprpm.toml "$tmp/"
           before="$(cd "$tmp" && find . -type f -printf '%P %s\n' | sort | md5sum)"
-          (cd "$tmp" && ./scripts/install.sh --dry-run --dir "$tmp" --allow-non-canonical)
+          (cd "$tmp" && ./scripts/install.sh --dry-run) | tee /tmp/dry.log
           after="$(cd "$tmp" && find . -type f -printf '%P %s\n' | sort | md5sum)"
           [ "$before" = "$after" ] || { echo "::error::--dry-run modified the tree"; exit 1; }
           [ ! -e "$tmp/build" ] || { echo "::error::--dry-run created build/"; exit 1; }
-          echo "OK: dry-run wrote nothing"
-      - name: negative cases exit non-zero (unknown option, stray arg, non-canonical refusal)
+          grep -q "source root" /tmp/dry.log || { echo "::error::plan does not report the source root"; exit 1; }
+          # REQ-DIST-026(a): a non-canonical checkout is supported and reported, not refused.
+          grep -q "custom checkout" /tmp/dry.log || { echo "::error::plan does not report the custom checkout layout"; exit 1; }
+          # Deprecated opt-in flag stays accepted (backward compatibility).
+          ./scripts/install.sh --dry-run --allow-non-canonical > /dev/null
+          echo "OK: dry-run wrote nothing, custom checkout accepted, deprecated flag accepted"
+      - name: negative cases exit non-zero (unknown option, stray arg, non-checkout target)
         run: |
           check() { # expected_code, description, args...
             local want="$1" desc="$2"
@@ -272,12 +277,13 @@ jobs:
             set -e
             echo "${desc}: exit ${code}"
             [ "${code}" -eq "${want}" ] || { echo "::error::${desc}: expected exit ${want}, got ${code}"; cat /tmp/out.log; exit 1; }
-            grep -q -e '--help' /tmp/out.log || [ "${code}" -eq 3 ] || { echo "::error::${desc}: message lacks a --help hint"; exit 1; }
+            grep -q -e '--help' /tmp/out.log || { echo "::error::${desc}: message lacks a --help hint"; exit 1; }
           }
           check 2 "unknown option" --definitely-not-an-option
           check 2 "stray argument" some-stray-argument
           check 2 "invalid --jobs" --jobs 0
-          check 3 "non-canonical layout without opt-in"
+          not_a_checkout="$(mktemp -d)"
+          check 3 "target is not a mru-switcher checkout" --dir "$not_a_checkout"
           echo "OK: negative cases behaved as documented"
       - name: setup-bindings sandbox (backend detect, dry-run no-write, force+backup, negative)
         run: |
