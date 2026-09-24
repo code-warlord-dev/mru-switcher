@@ -66,8 +66,10 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         return {};
     }
 
-    return {"mru-switcher", "Niri-style MRU Alt+Tab (snapshot, apply-on-release, lock-in)", "mru",
-            MRU_SWITCHER_VERSION};
+    // Attribution shown by `hyprctl plugin list` / hyprpm: name + handle, no email
+    // (matches hyprpm.toml authors, LICENSE, README; contact is the GitHub repo).
+    return {"mru-switcher", "Niri-style MRU Alt+Tab (snapshot, apply-on-release, lock-in)",
+            "Yuriy Tretyakov (code-warlord-dev)", MRU_SWITCHER_VERSION};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

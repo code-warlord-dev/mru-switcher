@@ -15,7 +15,9 @@
 # re-verified against the tagged commit before the release is published.
 [repository]
 name = "mru-switcher"
-authors = ["code-warlord-dev"]
+# Attribution for hyprpm metadata (VERSION-MAP 1.0.0 / M6-T9 prep): name + handle,
+# no email anywhere in the repository - contact is the GitHub repo/profile.
+authors = ["Yuriy Tretyakov (code-warlord-dev)"]
 # commit_pins: "<hyprland_sha> = <plugin_sha>" (hyprpm reads this array).
 # Plugin-side hash finalized at multi-pin commit (M6-T9 prep follow-up);
 # re-verify against the tagged commit at v1.0.0.
@@ -26,7 +28,8 @@ description = "Niri-style MRU Alt+Tab for Hyprland (snapshot, apply-on-release, 
 # Authors filled for v0.3.0 (audit L-14 hyprpm publish blocker); commit_pins
 # populated for M6-T5; plugin-side hash finalized in the M6-T9 prep pass —
 # see the header note (the tag itself remains an explicit human gate).
-authors = ["code-warlord-dev"]
+# Attribution matches PLUGIN_INIT / LICENSE / README (name + handle, no email).
+authors = ["Yuriy Tretyakov (code-warlord-dev)"]
 output = "build/mru-switcher.so"
 build = [
   "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMRU_BUILD_PLUGIN=ON",
