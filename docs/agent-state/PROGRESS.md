@@ -1,7 +1,5 @@
 # Progress
-Updated: 2026-09-22 (late) — ADR-028 pulse/dim merged PR #104 (742a9ad); next: optional nest smoke, then M6-T9 tag — human gate only
-Updated: 2026-09-22 (skills integration PR #96 + ADR-025 ui=border default PR #97 merged; next: M6-T9 tag — human gate only)
-Updated: 2026-09-22 (ADR-023 merged PR #87; live-host diagnosis: Lua plugin-config dead end — reports/2026-09-22-lua-host-plugin-config-dead-end.md; next: M6-T9 tag — human gate only)
+Updated: 2026-09-24 — v1.0.0 TAGGED + RELEASED (PR #117 prep eda3bd9 + PR #118 pin aee883d; tag v1.0.0 on aee883d; GitHub Release live; M6 DONE)
 
 ## M0 Foundations
 - [x] ARCHITECTURE.md
