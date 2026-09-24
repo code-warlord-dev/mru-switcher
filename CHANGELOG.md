@@ -27,6 +27,17 @@ Versioning: see `docs/VERSION-MAP.md` and `AGENTS.md` §15.
 
 ### Added
 
+- **Autoload / autostart documented (docs only).** README gains
+  **"Part 4 — load the plugin on every login (hyprpm)"** plus a `no plugins loaded`-after-reboot
+  troubleshooting entry, and USER.md gains the matching Quick-start section, a recovery procedure
+  ("If the plugin is gone after a reboot") and an FAQ entry. Two host facts are recorded (both with
+  COMPAT rows and a report in `docs/agent-state/reports/2026-09-24-hyprpm-autoload-and-autostart.md`):
+  (1) `hyprpm enable` does **not** autoload — it writes root-owned state
+  (`sudo install -m644 -o 0 -g 0`, so it needs a real terminal for its sudo prompt, and hyprpm
+  refuses to run as root), while `hyprpm reload` is root-free and is the command every login must
+  run; (2) Hyprland's Lua API on 0.56.2 has **no `hl.exec_once`** — the start hook is
+  `hl.on("hyprland.start", …)` (Omarchy shorthand `o.exec_on_start`). No code, config or dispatcher
+  change; no `SPEC`/`REQ-*` change (this is README-as-user-doc, REQ-DIST-018).
 - README: border-style switching guide (solid/pulse/dim, key replacement, reload semantics).
 
 - **Border highlight styles `pulse` and `dim` (ADR-028, SPEC REQ-UI-013/REQ-UI-014, new config keys

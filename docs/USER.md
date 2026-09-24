@@ -39,6 +39,39 @@ git clone https://github.com/code-warlord-dev/mru-switcher.git ~/.local/src/mru-
 
 Run `./scripts/install.sh --help` for flags.
 
+### Load the plugin on every login (hyprpm)
+
+Hyprland starts with **no plugins loaded** — plugin state does not survive a
+reboot. `hyprpm enable` only marks a plugin enabled; the load happens when
+`hyprpm reload` runs. Add one line so every compositor start loads the enabled
+plugins:
+
+**Lua** (`~/.config/hypr/autostart.lua`, or any file your `hyprland.lua` loads):
+
+```lua
+hl.on("hyprland.start", function()
+  hl.exec_cmd("hyprpm reload -n")
+end)
+```
+
+(`hl.exec_once` does not exist in this Lua API build; Omarchy also ships the
+shorthand `o.exec_on_start("hyprpm reload -n")`.)
+
+**hyprlang** (`hyprland.conf`):
+
+```conf
+exec-once = hyprpm reload -n
+```
+
+Check after login: `hyprctl plugin list` must list `mru-switcher`. If it does
+not, run `hyprpm reload -n` by hand — `✔ Loaded mru-switcher` in its output means
+only the autostart line is missing; silence about the plugin means it is not
+enabled (`hyprpm list` → `enabled: false`), so run `hyprpm enable mru-switcher`
+once. That one-time command writes root-owned state under `/var/cache/hyprpm/`
+and therefore asks for your sudo password — run it from a normal terminal
+(`hyprpm` refuses to run as root). `hyprpm reload` itself needs no root, which is
+why the autostart line is safe on every login.
+
 ### 2. Start from the shipped examples
 
 The files under `examples/` are the starting point for configuration. The
@@ -373,6 +406,29 @@ Equivalently: `rm` the old file before copying a new one in, or use `mv`/rename,
 updated binary in a fresh Hyprland session. A normal `plugin unload` / `plugin load` of an
 **unchanged** binary is safe.
 
+### If the plugin is gone after a reboot (`no plugins loaded`)
+
+**What you see.** A fresh session has no plugins: `hyprctl plugin list` prints
+`no plugins loaded`, and on Lua/Omarchy every `mru:*` keypress raises a Lua error
+(`attempt to index a nil value (field 'mru')`).
+
+**What it means.** Hyprland does not persist loaded plugins. `hyprpm enable`
+records the *intent* to load — the load itself is performed by `hyprpm reload`,
+and nothing runs that command at login unless your config says so.
+
+**Recover.**
+
+```bash
+hyprctl plugin list          # empty?
+hyprpm list                  # is mru-switcher "enabled: true"?
+hyprpm reload -n             # loads every enabled plugin; prints "Loaded mru-switcher"
+```
+
+If `hyprpm list` says `enabled: false`, run `hyprpm enable mru-switcher` once from
+a normal terminal (it asks for your sudo password: hyprpm writes root-owned state
+under `/var/cache/hyprpm/` and refuses to run as root itself). Then make it
+permanent — see "Load the plugin on every login (hyprpm)" in the Quick start.
+
 ### If the plugin fails to load after a Hyprland update
 
 **What you see.** The plugin is not loaded — `mru:*` binds do nothing and the dispatchers are
@@ -496,6 +552,13 @@ binds (hyprlang), or that the Lua fragment is actually loaded (Lua/Omarchy).
 On Omarchy you must also out-bind the default `Alt+Tab` ("Focus on next
 window"): the Lua recipe does this with `hl.unbind("ALT + TAB")`; on hyprlang
 use `unbind = ALT, TAB`.
+
+**The plugin disappears after a reboot (`no plugins loaded`).**  
+Loaded plugins are not persistent, and `hyprpm enable` only marks a plugin
+enabled — the load happens in `hyprpm reload`. Add the one-line autostart
+(`hl.on("hyprland.start", function() hl.exec_cmd("hyprpm reload -n") end)` on
+Lua, `exec-once = hyprpm reload -n` on hyprlang); details and recovery in the
+Quick start.
 
 **Selection does not apply when I release Alt (Lua/Omarchy).**  
 Known host limitation: a release bind keyed on a *modifier* token never fires
