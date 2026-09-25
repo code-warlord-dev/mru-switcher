@@ -129,14 +129,11 @@ hyprpm enable mru-switcher
 hyprpm reload
 ```
 
-> hyprpm becomes the preferred one-command install **since the pinned release
-> is published**. Until that pin exists, install from source as described
-> below. A Hyprland upgrade is a rebuild event — never a silent compatibility
-> window.
->
-> **`hyprpm enable` is not enough to keep the plugin loaded.** Nothing survives a
-> reboot on its own — add the one-line autostart from
-> [Part 4](#part-4--load-the-plugin-on-every-login-hyprpm).
+Since the `v1.0.0` release pin is published, this is the preferred one-command install workflow. Until a pin exists, install from source as described below.
+
+> **`hyprpm enable` is not enough to keep the plugin loaded.** Nothing survives a reboot on its own — add the one-line autostart from [Part 4](#part-4--load-the-plugin-on-every-login-hyprpm). `hyprpm enable` writes root-owned state under `/var/cache/hyprpm/` and therefore asks for your sudo password; never run `hyprpm` itself with `sudo`.
+
+Build from source. Source installs live in a canonical, `sudo`-free directory under your home folder:
 
 **Build from source.** Source installs live in a canonical, `sudo`-free
 directory under your home folder:
