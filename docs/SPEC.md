@@ -467,6 +467,11 @@ AF_UNIX stream socket, with peer-issued selection commands. The protocol is froz
 cannot be bound, the plugin SHALL use `NullUI` behaviour for that session and MAY emit at most one
 warning per plugin lifetime (REQ-UI-002 continuation).
 
+**REQ-O-010** `external_socket` SHALL be an absolute path located under the user's runtime
+directory (typically `$XDG_RUNTIME_DIR`). If the path is empty, relative, contains `..`, or
+resolves outside the runtime directory, the plugin SHALL refuse to bind, degrade to `NullUI`
+for that session, and MAY emit at most one warning (continuation of REQ-O-001 / REQ-UI-002).
+
 **REQ-O-002** On session start with `ui = external` and a successfully bound socket, the plugin SHALL
 install `ExternalOverlayUI` as the session UIPort. The absence, slowness, or death of a peer MUST NOT
 change session logic: outgoing messages are best-effort (REQ-PERF-003) and MAY be dropped under

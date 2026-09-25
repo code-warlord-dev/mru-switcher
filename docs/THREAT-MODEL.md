@@ -1,6 +1,6 @@
 # Threat model (plugin)
 
-**Status:** Draft for 1.0 readiness  
+**Status:** Accepted (M6-T4 release pass)  
 **Related:** SECURITY.md, SPEC Appendix B (external UI)
 
 ## Assets
@@ -41,7 +41,7 @@
 - Timeouts on write; non-blocking I/O
 - **Socket file mode `0600` — enforced by the plugin** (`fchmod` on the bound listener fd after `bind()`; failure is non-fatal and logged)
 - **Parent-directory protection — operator responsibility**: run the socket under a `0700`-permission directory (e.g. `$XDG_RUNTIME_DIR`)
-- **Fuzz parser in CI** — `T-FUZZ-01`: `LLVMFuzzerTestOneInput` harness over `overlay_protocol::parse_command` with deterministic generated/mutated inputs; runs as a ctest under every CI job incl. the ASan/UBSan `sanitize` job  
+- **REQ-O-010**: plugin validates `external_socket` is under the runtime directory; rejects paths outside → `NullUI` degrade (additive, 1.x freeze)  
 
 ## Out of scope
 

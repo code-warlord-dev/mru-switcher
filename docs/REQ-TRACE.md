@@ -114,6 +114,7 @@
 | REQ-O-006 | T-O-07, nest | listener/client fd watch via `wl_event_loop_add_fd` / `wl_event_source_remove` (adapter: nest smoke only; loop is compositor-owned, ADR-019) | M5 |
 | REQ-O-007 | T-O-02, `t_o_07_oversized_drop_and_no_client_send` | out-of-range `select` ignored; oversize peer line dropped without send | M5 |
 | REQ-O-008 | T-O-07, nest (unload mid-session), (adapter: nest smoke only; loop is compositor-owned, ADR-019) | teardown: remove fd watches, close clients, unlink socket; no leak | M5 |
+| REQ-O-010 | — | `external_socket` under `$XDG_RUNTIME_DIR` validated at load; reject outside paths → null + warn | M6 |
 | REQ-O-005/008 | T-FUZZ-01 | `tests/fuzz/fuzz_overlay_protocol.cpp` — parse-path fuzz harness (deterministic, sanitizer CI; no crash/throw, bad line -> nullopt) | M6 |
 | REQ-DIST-001..003 | T-DIST-02 | README, USER.md, ADR-020 | M6 packaging |
 | REQ-DIST-004..006 | T-DIST-02 | `hyprpm.toml`, README, USER.md | M6-T5 / T9 |
