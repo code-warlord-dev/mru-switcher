@@ -609,6 +609,32 @@ reload succeeds.
 
 ---
 
+## Lifecycle
+
+### After a reboot
+Plugins are not persistent. Hyprland starts with no plugins loaded.
+
+1. `hyprpm list` — confirm `mru-switcher` shows `enabled: true`.
+2. If not enabled: run `hyprpm enable mru-switcher` once from a normal terminal (it will ask for your password; never run `hyprpm` itself with `sudo`).
+3. `hyprpm reload -n` — look for `✔ Loaded mru-switcher`.
+4. Permanent autostart: add the one-line load from README Part 4 so the plugin comes up on every login.
+
+### After `hyprctl reload` / config reload
+- `debounce_ms` applies to subsequent history commits while Idle.
+- All other keys (`ui`, `border_*`, `selection_follow_workspace`, `external_socket`, scopes, etc.) apply to the **next** session only.
+- An already-open session keeps its frozen policy (REQ-S-009) until apply or cancel.
+
+### Plugin unload
+- `hyprctl plugin unload <path-to-mru-switcher.so>` is safe: borders restored by value, timers cancelled, no crash.
+- After unload: `hyprctl plugin list` shows no mru-switcher.
+- To load again: rebuild if needed, then `hyprctl plugin load <path>` (new inode preferred) or restart Hyprland.
+
+### Uninstall
+- hyprpm: `hyprpm disable mru-switcher` then remove the repository entry if desired.
+- Source install: remove the `plugin =` / load line from config, delete `~/.local/src/mru-switcher` (or your checkout), and optionally remove the example conf fragments under `~/.config/hypr/`.
+
+---
+
 ## Manual test checklist
 
 - [ ] First Alt+Tab selects previous window

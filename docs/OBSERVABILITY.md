@@ -49,6 +49,21 @@ There is no `verbose` argument (`mru:status` takes no args) and no `pending_debo
 
 Repeated identical `warn`/`error` (same key) at most once per N seconds (default 5) to avoid log storms under FFM.
 
+## Diagnosing stuck state
+
+### Stuck border highlight
+Symptoms: window keeps the highlight colour/size after session end or plugin unload.
+
+1. `hyprctl getoption plugin:mru-switcher:ui` — confirm current backend.
+2. End any active session: `hyprctl dispatch mru:cancel` (or apply).
+3. If still stuck after graceful unload: `hyprctl plugin unload <path>` then reload, or restart Hyprland.
+4. Abrupt kill (FM-22) may leave overrides until compositor restart — this is a documented gap; restore-by-value only covers graceful paths.
+
+### Stuck / unexpected session
+1. `hyprctl dispatch mru:status` — read `active=`, `session=`, `index=`, `last_end=`.
+2. If `active=1` and you are not holding the switcher: `hyprctl dispatch mru:cancel`.
+3. Check Hyprland log for plugin warn/error lines (hash mismatch, UI degrade, socket bind failure).
+
 ## Debug builds
 
 Compile definition `MRU_DEBUG=1`: assertions on domain invariants (index bounds, single session, no focus in cycle path in tests).
