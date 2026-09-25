@@ -129,14 +129,11 @@ hyprpm enable mru-switcher
 hyprpm reload
 ```
 
-Since the `v1.0.0` release pin is published, this is the preferred one-command install workflow. Until a pin exists, install from source as described below.
+Since the `v1.0.0` release pin is published, this is the preferred one-command install workflow.
 
 > **`hyprpm enable` is not enough to keep the plugin loaded.** Nothing survives a reboot on its own — add the one-line autostart from [Part 4](#part-4--load-the-plugin-on-every-login-hyprpm). `hyprpm enable` writes root-owned state under `/var/cache/hyprpm/` and therefore asks for your sudo password; never run `hyprpm` itself with `sudo`.
 
 Build from source. Source installs live in a canonical, `sudo`-free directory under your home folder:
-
-**Build from source.** Source installs live in a canonical, `sudo`-free
-directory under your home folder:
 
 ```bash
 mkdir -p ~/.local/src
